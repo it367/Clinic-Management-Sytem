@@ -236,6 +236,7 @@ export default function ClinicSystem() {
     setAdminPassword('');
     setView('entry');
     setAdminView('records');
+    setPwdForm({ current: '', new: '', confirm: '' });
   };
 
   const addUser = () => {
@@ -290,6 +291,30 @@ export default function ClinicSystem() {
     }
     localStorage.setItem('admin-password', pwdForm.new);
     setAdminPwd(pwdForm.new);
+    setPwdForm({ current: '', new: '', confirm: '' });
+    setMessage('✓ Password changed successfully!');
+    setTimeout(() => setMessage(''), 3000);
+  };
+
+  const changeUserPassword = () => {
+    if (pwdForm.current !== currentUser.password) {
+      setMessage('Current password is incorrect');
+      setTimeout(() => setMessage(''), 3000);
+      return;
+    }
+    if (pwdForm.new.length < 4) {
+      setMessage('New password must be at least 4 characters');
+      setTimeout(() => setMessage(''), 3000);
+      return;
+    }
+    if (pwdForm.new !== pwdForm.confirm) {
+      setMessage('New passwords do not match');
+      setTimeout(() => setMessage(''), 3000);
+      return;
+    }
+    const updatedUsers = users.map(u => u.id === currentUser.id ? { ...u, password: pwdForm.new } : u);
+    saveUsers(updatedUsers);
+    setCurrentUser({ ...currentUser, password: pwdForm.new });
     setPwdForm({ current: '', new: '', confirm: '' });
     setMessage('✓ Password changed successfully!');
     setTimeout(() => setMessage(''), 3000);
@@ -367,7 +392,6 @@ export default function ClinicSystem() {
     const entries = allData[exportSystem] || [];
     let filtered = entries;
     if (exportLocation !== 'all') filtered = filtered.filter(e => e.location === exportLocation);
-    // Date filtering would go here
     
     if (filtered.length === 0) { setMessage('No data to export'); setTimeout(() => setMessage(''), 3000); return; }
     
@@ -540,7 +564,7 @@ export default function ClinicSystem() {
 
         <nav className="p-4 space-y-1">
           {MODULES.map(m => (
-            <button key={m.id} onClick={() => { setActiveModule(m.id); setAdminView('records'); setView('entry'); setSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left ${activeModule === m.id && adminView !== 'users' && adminView !== 'export' && adminView !== 'settings' && view !== 'export' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'}`}>
+            <button key={m.id} onClick={() => { setActiveModule(m.id); setAdminView('records'); setView('entry'); setSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left ${activeModule === m.id && adminView !== 'users' && adminView !== 'export' && adminView !== 'settings' && view !== 'export' && view !== 'settings' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'}`}>
               <m.icon className="w-5 h-5" /><span className="text-sm font-medium">{m.name}</span>
             </button>
           ))}
@@ -569,6 +593,11 @@ export default function ClinicSystem() {
               <Settings className="w-4 h-4" /> Settings
             </button>
           )}
+          {!isAdmin && (
+            <button onClick={() => { setView('settings'); setSidebarOpen(false); }} className={`w-full flex items-center justify-center gap-2 py-2 mb-2 rounded-lg ${view === 'settings' ? 'bg-blue-100 text-blue-700' : 'text-gray-500 hover:bg-gray-100'}`}>
+              <Settings className="w-4 h-4" /> Settings
+            </button>
+          )}
           <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 py-2 text-gray-500 hover:text-gray-700">
             <LogOut className="w-4 h-4" /> Logout
           </button>
@@ -582,7 +611,7 @@ export default function ClinicSystem() {
             <div className="flex items-center gap-3">
               <button onClick={() => setSidebarOpen(!sidebarOpen)} className="lg:hidden p-2"><Menu className="w-5 h-5" /></button>
               <div>
-                <h1 className="font-bold text-gray-800">{isAdmin ? (adminView === 'users' ? 'User Management' : adminView === 'export' ? 'Export Data' : adminView === 'settings' ? 'Settings' : currentModule?.name) : currentModule?.name}</h1>
+                <h1 className="font-bold text-gray-800">{isAdmin ? (adminView === 'users' ? 'User Management' : adminView === 'export' ? 'Export Data' : adminView === 'settings' ? 'Settings' : currentModule?.name) : (view === 'settings' ? 'Settings' : currentModule?.name)}</h1>
                 <p className="text-xs text-gray-500">{isAdmin ? `${adminLocation === 'all' ? 'All Locations' : adminLocation}` : selectedLocation}</p>
               </div>
             </div>
@@ -594,7 +623,7 @@ export default function ClinicSystem() {
                   <tab.icon className="w-4 h-4" />{tab.label}
                 </button>
               ))
-            ) : !isAdmin ? (
+            ) : !isAdmin && view !== 'settings' ? (
               [{ id: 'entry', label: 'New Entry' }, { id: 'history', label: 'History' }, { id: 'ai', label: 'AI Help' }].map(tab => (
                 <button key={tab.id} onClick={() => setView(tab.id)} className={`px-4 py-2 rounded-lg text-sm font-medium ${view === tab.id ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>{tab.label}</button>
               ))
@@ -816,6 +845,29 @@ export default function ClinicSystem() {
           )}
 
           {/* ========== STAFF VIEWS ========== */}
+          {!isAdmin && view === 'settings' && (
+            <div className="bg-white rounded-2xl shadow-sm p-5 border">
+              <h2 className="font-semibold mb-4 flex items-center gap-2"><Lock className="w-5 h-5" />Change Password</h2>
+              <div className="space-y-4 max-w-sm">
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">Current Password</label>
+                  <input type="password" value={pwdForm.current} onChange={e => setPwdForm({...pwdForm, current: e.target.value})} className="w-full p-2.5 border-2 rounded-lg outline-none focus:border-blue-400" placeholder="Enter current password" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">New Password</label>
+                  <input type="password" value={pwdForm.new} onChange={e => setPwdForm({...pwdForm, new: e.target.value})} className="w-full p-2.5 border-2 rounded-lg outline-none focus:border-blue-400" placeholder="Enter new password" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">Confirm New Password</label>
+                  <input type="password" value={pwdForm.confirm} onChange={e => setPwdForm({...pwdForm, confirm: e.target.value})} className="w-full p-2.5 border-2 rounded-lg outline-none focus:border-blue-400" placeholder="Confirm new password" />
+                </div>
+                <button onClick={changeUserPassword} className="w-full py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700">
+                  Update Password
+                </button>
+              </div>
+            </div>
+          )}
+
           {!isAdmin && view === 'entry' && (
             <div className="space-y-4">
               {activeModule === 'daily-recon' && (
