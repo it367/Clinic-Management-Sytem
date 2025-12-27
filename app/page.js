@@ -395,34 +395,32 @@ export default function ClinicSystem() {
     setMessage('✓ Export complete!'); setTimeout(() => setMessage(''), 3000);
   };
 
-  const askAI = async () => {
-    if (!chatInput.trim()) return;
-    setChatMessages(prev => [...prev, { role: 'user', content: chatInput }]); setChatInput(''); setAiLoading(true);
-    let dataSummary = ''; MODULES.forEach(m => { dataSummary += `\n${m.name}: ${(allData[m.id] || []).length} entries`; });
-    try {
-      const response = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: [{ role: 'user', content: chatInput }], dataSummary }) });
-      const data = await response.json();
-      setChatMessages(prev => [...prev, { role: 'assistant', content: data.content?.[0]?.text || 'Sorry, an error occurred.' }]);
-    } catch (e) { setChatMessages(prev => [...prev, { role: 'assistant', content: 'Error connecting to AI. Please try again.' }]); }
-    setAiLoading(false);
-  };
+// NEW improved askAI function (from Step 3 artifact)
+const askAI = async () => {
+  if (!chatInput.trim()) return;
+  
+  const userMessage = chatInput;
+  setChatMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+  // ... rest of the new function
+};
 
-  const getModuleEntries = (moduleId) => {
-    const entries = allData[moduleId] || [];
-    if (isAdmin && adminLocation !== 'all') return entries.filter(e => e.location === adminLocation);
-    if (!isAdmin && selectedLocation) return entries.filter(e => e.location === selectedLocation);
-    return entries;
-  };
+// KEEP THESE - don't change them
+const getModuleEntries = (moduleId) => {
+  const entries = allData[moduleId] || [];
+  if (isAdmin && adminLocation !== 'all') return entries.filter(e => e.location === adminLocation);
+  if (!isAdmin && selectedLocation) return entries.filter(e => e.location === selectedLocation);
+  return entries;
+};
 
-  const getFileCount = (entry) => entry.files ? Object.values(entry.files).reduce((sum, arr) => sum + (arr?.length || 0), 0) : 0;
+const getFileCount = (entry) => entry.files ? Object.values(entry.files).reduce((sum, arr) => sum + (arr?.length || 0), 0) : 0;
 
-  const getAllDocuments = () => {
-    const docs = [];
-    MODULES.forEach(m => { (allData[m.id] || []).forEach(entry => { if (entry.files) { Object.entries(entry.files).forEach(([cat, fileList]) => { (fileList || []).forEach(file => { docs.push({ ...file, module: m.name, location: entry.location, entryDate: entry.timestamp?.split('T')[0], enteredBy: entry.enteredBy, category: cat }); }); }); } }); });
-    return docs;
-  };
+const getAllDocuments = () => {
+  const docs = [];
+  MODULES.forEach(m => { (allData[m.id] || []).forEach(entry => { if (entry.files) { Object.entries(entry.files).forEach(([cat, fileList]) => { (fileList || []).forEach(file => { docs.push({ ...file, module: m.name, location: entry.location, entryDate: entry.timestamp?.split('T')[0], enteredBy: entry.enteredBy, category: cat }); }); }); } }); });
+  return docs;
+};
 
-  const currentColors = MODULE_COLORS[activeModule];
+const currentColors = MODULE_COLORS[activeModule];
 
   // ========== LOGIN ==========
   if (!currentUser) {
