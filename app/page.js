@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import { DollarSign, FileText, Building2, Bot, Send, Loader2, LogOut, User, Upload, X, File, Shield, Receipt, CreditCard, Package, RefreshCw, Monitor, Menu, Eye, EyeOff, FolderOpen, Edit3, Users, Plus, Trash2, Lock, Download, Settings, MessageCircle, Sparkles, AlertCircle, Maximize2, Minimize2, Headphones } from 'lucide-react';
+import { DollarSign, FileText, Building2, Bot, Send, Loader2, LogOut, User, Upload, X, File, Shield, Receipt, CreditCard, Package, RefreshCw, Monitor, Menu, Eye, EyeOff, FolderOpen, Edit3, Users, Plus, Trash2, Lock, Download, Settings, MessageCircle, Sparkles, AlertCircle, Maximize2, Minimize2, Search } from 'lucide-react';
 
 const MODULES = [
   { id: 'daily-recon', name: 'Daily Recon', icon: DollarSign, color: 'emerald', table: 'daily_recon' },
@@ -213,10 +213,7 @@ function FloatingChat({ messages, input, setInput, onSend, loading, userRole }) 
   }, [messages]);
 
   const isAdmin = userRole === 'super_admin' || userRole === 'finance_admin';
-
-  const chatSize = isExpanded 
-    ? 'w-[600px] h-[700px]' 
-    : 'w-96 h-[500px]';
+  const chatSize = isExpanded ? 'w-[600px] h-[700px]' : 'w-96 h-[500px]';
 
   return (
     <>
@@ -303,6 +300,7 @@ function FloatingChat({ messages, input, setInput, onSend, loading, userRole }) 
 }
 
 export default function ClinicSystem() {
+  // Auth state
   const [currentUser, setCurrentUser] = useState(null);
   const [userLocations, setUserLocations] = useState([]);
   const [loginEmail, setLoginEmail] = useState('');
@@ -311,6 +309,7 @@ export default function ClinicSystem() {
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [showLoginPwd, setShowLoginPwd] = useState(false);
 
+  // Data state
   const [locations, setLocations] = useState([]);
   const [users, setUsers] = useState([]);
   const [activeModule, setActiveModule] = useState('daily-recon');
@@ -324,19 +323,25 @@ export default function ClinicSystem() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [adminLocation, setAdminLocation] = useState('all');
   const [editingStatus, setEditingStatus] = useState(null);
-  const [editingEntry, setEditingEntry] = useState(null);
   const [documents, setDocuments] = useState([]);
+  const [docSearch, setDocSearch] = useState('');
+  const [entryDocuments, setEntryDocuments] = useState({});
 
+  // User management
   const [showAddUser, setShowAddUser] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [newUser, setNewUser] = useState({ name: '', email: '', password: '', role: 'staff', locations: [] });
 
+  // Settings
   const [pwdForm, setPwdForm] = useState({ current: '', new: '', confirm: '' });
+  const [nameForm, setNameForm] = useState('');
 
+  // Export
   const [exportModule, setExportModule] = useState('daily-recon');
   const [exportLocation, setExportLocation] = useState('all');
   const [exportRange, setExportRange] = useState('This Month');
 
+  // AI Chat
   const [chatMessages, setChatMessages] = useState([{
     role: 'assistant',
     content: "👋 Hi! I'm your AI assistant. I can help with:\n\n• Data summaries & reports\n• Weekly comparisons\n• Location analytics\n• IT request status\n\nWhat would you like to know?"
@@ -344,50 +349,46 @@ export default function ClinicSystem() {
   const [chatInput, setChatInput] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
 
-  const [entryDocuments, setEntryDocuments] = useState({});
-
-  const loadEntryDocuments = async (recordType, recordId) => {
-    const key = `${recordType}-${recordId}`;
-    if (entryDocuments[key]) return; // Already loaded
-    
-    const { data } = await supabase
-      .from('documents')
-      .select('*')
-      .eq('record_type', recordType)
-      .eq('record_id', recordId);
-    
-    if (data) {
-      setEntryDocuments(prev => ({ ...prev, [key]: data }));
-    }
-  };
-
   const today = new Date().toISOString().split('T')[0];
 
+  // Form states for each module - Updated to match Excel templates
   const [forms, setForms] = useState({
-    'daily-recon': { recon_date: today, cash: '', credit_card: '', checks_otc: '', insurance_checks: '', care_credit: '', vcc: '', efts: '', deposit_cash: '', deposit_credit_card: '', deposit_checks: '', deposit_insurance: '', deposit_care_credit: '', deposit_vcc: '', notes: '' },
-    'billing-inquiry': { patient_name: '', chart_number: '', date_of_service: '', amount_in_question: '', best_contact_method: '', best_contact_time: '', reviewed_by: '', initials: '', status: 'Pending', result: '' },
-    'bills-payment': { status: 'Pending', bill_date: today, vendor: '', description: '', amount: '', due_date: '', manager_initials: '', ap_reviewed: false, date_reviewed: '', paid_date: '' },
-    'order-requests': { date_entered: today, vendor: '', invoice_number: '', invoice_date: '', due_date: '', amount: '', status: 'Pending', notes: '' },
+    'daily-recon': { recon_date: today, cash: '', credit_card: '', checks_otc: '', insurance_checks: '', care_credit: '', vcc: '', efts: '', deposit_cash: '', deposit_credit_card: '', deposit_checks: '', deposit_insurance: '', deposit_care_credit: '', deposit_vcc: '', entered_by_name: '', notes: '' },
+    'billing-inquiry': { patient_name: '', chart_number: '', parent_name: '', date_of_request: today, inquiry_type: '', description: '', amount_in_question: '', best_contact_method: '', best_contact_time: '', reviewed_by: '', date_reviewed: '', status: 'Pending', result: '' },
+    'bills-payment': { status: 'Pending', bill_date: today, vendor: '', description: '', amount: '', due_date: '', manager_initials: '', ap_reviewed: '', date_reviewed: '', paid: '' },
+    'order-requests': { date_entered: today, vendor: '', invoice_number: '', invoice_date: '', due_date: '', amount: '', entered_by_name: '', notes: '' },
     'refund-requests': { patient_name: '', chart_number: '', parent_name: '', rp_address: '', date_of_request: today, type: '', description: '', amount_requested: '', best_contact_method: '', eassist_audited: '', status: 'Pending' },
-    'it-requests': { date_reported: today, urgency: '', requester_name: '', device_system: '', description_of_issue: '', best_contact_method: '', best_contact_time: '' }
+    'it-requests': { date_reported: today, urgency: '', requester_name: '', device_system: '', description_of_issue: '', best_contact_method: '', best_contact_time: '', assigned_to: '' }
   });
 
+  // Unified file state - single upload per module
   const [files, setFiles] = useState({
-    'daily-recon': { eodDaySheets: [], eodBankReceipts: [], otherFiles: [] },
-    'billing-inquiry': { documentation: [] },
-    'bills-payment': { documentation: [] },
-    'order-requests': { orderInvoices: [] },
-    'refund-requests': { documentation: [] },
-    'it-requests': { documentation: [] }
+    'daily-recon': { documents: [] },
+    'billing-inquiry': { documents: [] },
+    'bills-payment': { documents: [] },
+    'order-requests': { documents: [] },
+    'refund-requests': { documents: [] },
+    'it-requests': { documents: [] }
   });
 
-  useEffect(() => { loadLocations(); }, []);
+  // Load locations on mount
+  useEffect(() => {
+    loadLocations();
+  }, []);
 
+  // Load data when user logs in or location changes
   useEffect(() => {
     if (currentUser && (selectedLocation || isAdmin)) {
       loadModuleData(activeModule);
     }
   }, [currentUser, selectedLocation, activeModule, adminLocation]);
+
+  // Set name form when user loads
+  useEffect(() => {
+    if (currentUser) {
+      setNameForm(currentUser.name);
+    }
+  }, [currentUser]);
 
   const isAdmin = currentUser?.role === 'super_admin' || currentUser?.role === 'finance_admin';
   const isSuperAdmin = currentUser?.role === 'super_admin';
@@ -397,6 +398,8 @@ export default function ClinicSystem() {
     setTimeout(() => setMessage({ type: '', text: '' }), 4000);
   };
 
+  // ==================== DATA LOADING ====================
+
   const loadLocations = async () => {
     const { data, error } = await supabase.from('locations').select('*').eq('is_active', true).order('name');
     if (data) setLocations(data);
@@ -405,7 +408,6 @@ export default function ClinicSystem() {
   const loadUsers = async () => {
     console.log('Loading users...');
     
-    // Get all users without any joins
     const { data: usersData, error: usersError } = await supabase
       .from('users')
       .select('*')
@@ -421,21 +423,17 @@ export default function ClinicSystem() {
       return;
     }
     
-    // Get user_locations separately (no join to users)
     const { data: userLocsData } = await supabase
       .from('user_locations')
       .select('user_id, location_id');
     
-    // Get all locations
     const { data: locsData } = await supabase
       .from('locations')
       .select('id, name');
     
-    // Build a location map for quick lookup
     const locationMap = {};
     locsData?.forEach(loc => { locationMap[loc.id] = loc; });
     
-    // Combine users with their locations
     const usersWithLocations = usersData.map(user => ({
       ...user,
       locations: userLocsData
@@ -449,12 +447,11 @@ export default function ClinicSystem() {
   };
 
   const loadDocuments = async () => {
-    // Get documents without joining to users
     const { data: docsData, error } = await supabase
       .from('documents')
       .select('*')
       .order('uploaded_at', { ascending: false })
-      .limit(200);
+      .limit(500);
     
     if (error) {
       console.error('Documents load error:', error);
@@ -466,15 +463,16 @@ export default function ClinicSystem() {
       return;
     }
     
-    // Get uploader names separately
     const uploaderIds = [...new Set(docsData.map(d => d.uploaded_by).filter(Boolean))];
-    const { data: uploadersData } = await supabase
-      .from('users')
-      .select('id, name')
-      .in('id', uploaderIds);
+    let uploaderMap = {};
     
-    const uploaderMap = {};
-    uploadersData?.forEach(u => { uploaderMap[u.id] = u; });
+    if (uploaderIds.length > 0) {
+      const { data: uploadersData } = await supabase
+        .from('users')
+        .select('id, name')
+        .in('id', uploaderIds);
+      uploadersData?.forEach(u => { uploaderMap[u.id] = u; });
+    }
     
     const docsWithUploaders = docsData.map(doc => ({
       ...doc,
@@ -483,6 +481,21 @@ export default function ClinicSystem() {
     
     console.log('Loaded documents:', docsWithUploaders.length);
     setDocuments(docsWithUploaders);
+  };
+
+  const loadEntryDocuments = async (recordType, recordId) => {
+    const key = `${recordType}-${recordId}`;
+    if (entryDocuments[key]) return;
+    
+    const { data } = await supabase
+      .from('documents')
+      .select('*')
+      .eq('record_type', recordType)
+      .eq('record_id', recordId);
+    
+    if (data) {
+      setEntryDocuments(prev => ({ ...prev, [key]: data }));
+    }
   };
 
   const loadModuleData = async (moduleId) => {
@@ -501,23 +514,24 @@ export default function ClinicSystem() {
     }
 
     const { data, error } = await query.limit(500);
+    
     if (error) {
       console.error('Module data load error:', moduleId, error);
     }
+    
     if (data && data.length > 0) {
-      // Get location names
       const locationIds = [...new Set(data.map(d => d.location_id).filter(Boolean))];
       const { data: locsData } = await supabase.from('locations').select('id, name').in('id', locationIds);
       const locMap = {};
       locsData?.forEach(l => { locMap[l.id] = l; });
       
-      // Get creator/updater names
       const userIds = [...new Set([...data.map(d => d.created_by), ...data.map(d => d.updated_by)].filter(Boolean))];
-      const { data: usersData } = await supabase.from('users').select('id, name').in('id', userIds);
-      const userMap = {};
-      usersData?.forEach(u => { userMap[u.id] = u; });
+      let userMap = {};
+      if (userIds.length > 0) {
+        const { data: usersData } = await supabase.from('users').select('id, name').in('id', userIds);
+        usersData?.forEach(u => { userMap[u.id] = u; });
+      }
       
-      // Combine
       const enrichedData = data.map(d => ({
         ...d,
         locations: locMap[d.location_id] || null,
@@ -532,6 +546,38 @@ export default function ClinicSystem() {
     }
     setLoading(false);
   };
+
+  // ==================== DOCUMENT FUNCTIONS ====================
+
+  const getDocumentUrl = async (storagePath) => {
+    const { data } = await supabase.storage
+      .from('clinic-documents')
+      .createSignedUrl(storagePath, 3600);
+    return data?.signedUrl;
+  };
+
+  const viewDocument = async (doc) => {
+    const url = await getDocumentUrl(doc.storage_path);
+    if (url) {
+      setViewingFile({ ...doc, url, name: doc.file_name, type: doc.file_type });
+    } else {
+      showMessage('error', 'Could not load document');
+    }
+  };
+
+  const downloadDocument = async (doc) => {
+    const url = await getDocumentUrl(doc.storage_path);
+    if (url) {
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = doc.file_name;
+      a.click();
+    } else {
+      showMessage('error', 'Could not download document');
+    }
+  };
+
+  // ==================== AUTHENTICATION ====================
 
   const handleLogin = async () => {
     if (!loginEmail || !loginPassword) {
@@ -563,13 +609,11 @@ export default function ClinicSystem() {
         return;
       }
 
-      // Get user_locations separately without joins
       const { data: userLocsData } = await supabase
         .from('user_locations')
         .select('location_id')
         .eq('user_id', user.id);
       
-      // Get location details
       const locIds = userLocsData?.map(ul => ul.location_id) || [];
       let locationsList = [];
       if (locIds.length > 0) {
@@ -616,6 +660,8 @@ export default function ClinicSystem() {
     }]);
     setModuleData({});
   };
+
+  // ==================== USER MANAGEMENT ====================
 
   const addUser = async () => {
     if (!newUser.name || !newUser.email || !newUser.password) {
@@ -714,6 +760,8 @@ export default function ClinicSystem() {
     }
   };
 
+  // ==================== SETTINGS ====================
+
   const changePassword = async () => {
     if (pwdForm.current !== currentUser.password_hash) {
       showMessage('error', 'Current password is incorrect');
@@ -743,6 +791,28 @@ export default function ClinicSystem() {
     showMessage('success', '✓ Password changed successfully!');
   };
 
+  const changeName = async () => {
+    if (!nameForm.trim()) {
+      showMessage('error', 'Name cannot be empty');
+      return;
+    }
+
+    const { error } = await supabase
+      .from('users')
+      .update({ name: nameForm.trim(), updated_by: currentUser.id })
+      .eq('id', currentUser.id);
+
+    if (error) {
+      showMessage('error', 'Failed to update name');
+      return;
+    }
+
+    setCurrentUser({ ...currentUser, name: nameForm.trim() });
+    showMessage('success', '✓ Name updated successfully!');
+  };
+
+  // ==================== FORM HANDLING ====================
+
   const updateForm = (module, field, value) => {
     setForms(prev => ({ ...prev, [module]: { ...prev[module], [field]: value } }));
   };
@@ -751,16 +821,15 @@ export default function ClinicSystem() {
     setFiles(prev => ({ ...prev, [module]: { ...prev[module], [field]: newFiles } }));
   };
 
+  // ==================== FILE UPLOAD ====================
+
   const uploadFiles = async (recordType, recordId, filesByCategory) => {
     const uploadedFiles = [];
-    console.log('Uploading files for', recordType, recordId, filesByCategory);
+    console.log('Uploading files for', recordType, recordId);
 
     for (const [category, fileList] of Object.entries(filesByCategory)) {
       for (const file of fileList) {
-        if (!file.isNew || !file.file) {
-          console.log('Skipping file (not new or no file object):', file.name);
-          continue;
-        }
+        if (!file.isNew || !file.file) continue;
 
         const filePath = `${recordType}/${recordId}/${category}/${Date.now()}_${file.name}`;
         console.log('Uploading to path:', filePath);
@@ -775,9 +844,6 @@ export default function ClinicSystem() {
           continue;
         }
 
-        console.log('Upload success, saving to documents table...');
-        
-        // Save file metadata to documents table
         const { data: docData, error: docError } = await supabase.from('documents').insert({
           record_type: recordType,
           record_id: recordId,
@@ -798,9 +864,10 @@ export default function ClinicSystem() {
       }
     }
 
-    console.log('Total files uploaded:', uploadedFiles.length);
     return uploadedFiles;
   };
+
+  // ==================== SAVE ENTRY ====================
 
   const saveEntry = async (moduleId) => {
     setSaving(true);
@@ -833,6 +900,7 @@ export default function ClinicSystem() {
         deposit_insurance: parseFloat(form.deposit_insurance) || 0,
         deposit_care_credit: parseFloat(form.deposit_care_credit) || 0,
         deposit_vcc: parseFloat(form.deposit_vcc) || 0,
+        entered_by_name: form.entered_by_name || currentUser.name,
         notes: form.notes
       };
     } else if (moduleId === 'billing-inquiry') {
@@ -840,12 +908,15 @@ export default function ClinicSystem() {
         ...entryData,
         patient_name: form.patient_name,
         chart_number: form.chart_number,
-        date_of_service: form.date_of_service || null,
+        parent_name: form.parent_name,
+        date_of_service: form.date_of_request || null,
+        inquiry_type: form.inquiry_type,
+        description: form.description,
         amount_in_question: parseFloat(form.amount_in_question) || null,
         best_contact_method: form.best_contact_method || null,
         best_contact_time: form.best_contact_time,
         reviewed_by: form.reviewed_by,
-        initials: form.initials,
+        date_reviewed: form.date_reviewed || null,
         status: form.status || 'Pending',
         result: form.result
       };
@@ -861,7 +932,7 @@ export default function ClinicSystem() {
         manager_initials: form.manager_initials,
         ap_reviewed: form.ap_reviewed === 'Yes',
         date_reviewed: form.date_reviewed || null,
-        paid_date: form.paid_date || null
+        paid: form.paid === 'Yes'
       };
     } else if (moduleId === 'order-requests') {
       entryData = {
@@ -872,7 +943,7 @@ export default function ClinicSystem() {
         invoice_date: form.invoice_date || null,
         due_date: form.due_date || null,
         amount: parseFloat(form.amount) || 0,
-        status: form.status || 'Pending',
+        entered_by_name: form.entered_by_name || currentUser.name,
         notes: form.notes
       };
     } else if (moduleId === 'refund-requests') {
@@ -887,7 +958,7 @@ export default function ClinicSystem() {
         description: form.description,
         amount_requested: parseFloat(form.amount_requested) || 0,
         best_contact_method: form.best_contact_method || null,
-        eassist_audited: form.eassist_audited === 'Yes' ? true : form.eassist_audited === 'No' ? false : null,
+        eassist_audited: form.eassist_audited || null,
         status: form.status || 'Pending'
       };
     } else if (moduleId === 'it-requests') {
@@ -900,6 +971,7 @@ export default function ClinicSystem() {
         description_of_issue: form.description_of_issue,
         best_contact_method: form.best_contact_method || null,
         best_contact_time: form.best_contact_time,
+        assigned_to: form.assigned_to,
         status: 'Open'
       };
     }
@@ -920,19 +992,19 @@ export default function ClinicSystem() {
 
     showMessage('success', '✓ Entry saved successfully!');
 
-    const resetForm = { ...forms[moduleId] };
-    Object.keys(resetForm).forEach(k => {
-      if (!k.includes('date')) resetForm[k] = '';
+    // Reset form
+    const resetForm = {};
+    Object.keys(forms[moduleId]).forEach(k => {
+      resetForm[k] = k.includes('date') ? today : '';
     });
-    setForms(prev => ({ ...prev, [moduleId]: { ...resetForm, [Object.keys(resetForm).find(k => k.includes('date'))]: today } }));
-    setFiles(prev => ({
-      ...prev,
-      [moduleId]: Object.fromEntries(Object.entries(files[moduleId]).map(([k]) => [k, []]))
-    }));
+    setForms(prev => ({ ...prev, [moduleId]: resetForm }));
+    setFiles(prev => ({ ...prev, [moduleId]: { documents: [] } }));
 
     loadModuleData(moduleId);
     setSaving(false);
   };
+
+  // ==================== UPDATE STATUS ====================
 
   const updateEntryStatus = async (moduleId, entryId, newStatus, additionalFields = {}) => {
     const module = ALL_MODULES.find(m => m.id === moduleId);
@@ -963,9 +1035,11 @@ export default function ClinicSystem() {
     loadModuleData(moduleId);
   };
 
+  // ==================== EXPORT - Updated to match templates ====================
+
   const exportToCSV = async () => {
     const module = ALL_MODULES.find(m => m.id === exportModule);
-    let query = supabase.from(module.table).select('*, locations(name)');
+    let query = supabase.from(module.table).select('*');
 
     if (exportLocation !== 'all') {
       const loc = locations.find(l => l.name === exportLocation);
@@ -979,24 +1053,39 @@ export default function ClinicSystem() {
       return;
     }
 
-    const headers = Object.keys(data[0]).filter(k => k !== 'locations' && k !== 'location_id');
-    headers.push('location');
+    // Get location names
+    const locIds = [...new Set(data.map(d => d.location_id).filter(Boolean))];
+    const { data: locsData } = await supabase.from('locations').select('id, name').in('id', locIds);
+    const locMap = {};
+    locsData?.forEach(l => { locMap[l.id] = l.name; });
 
-    const rows = data.map(row => {
-      const newRow = {};
-      headers.forEach(h => {
-        if (h === 'location') {
-          newRow[h] = row.locations?.name || '';
-        } else {
-          newRow[h] = row[h] ?? '';
-        }
-      });
-      return newRow;
-    });
+    let headers = [];
+    let rows = [];
+
+    // Format based on module template
+    if (exportModule === 'daily-recon') {
+      headers = ['Date', 'Cash', 'Credit Card (OTC)', 'Checks (OTC)', 'Insurance Checks', 'Care Credit', 'VCC', 'EFTs', 'Total Collected', 'Entered By', 'Notes', 'Deposit Cash', 'Deposit Credit Card', 'Deposit Checks', 'Deposit Insurance', 'Deposit Care Credit', 'Deposit VCC', 'Total Deposited', 'Location'];
+      rows = data.map(r => [r.recon_date, r.cash, r.credit_card, r.checks_otc, r.insurance_checks, r.care_credit, r.vcc, r.efts, r.total_collected, r.entered_by_name, r.notes, r.deposit_cash, r.deposit_credit_card, r.deposit_checks, r.deposit_insurance, r.deposit_care_credit, r.deposit_vcc, r.total_deposited, locMap[r.location_id]]);
+    } else if (exportModule === 'billing-inquiry') {
+      headers = ['Patient Name', 'Chart Number', 'Parent Name', 'Date of Request', 'Type of Inquiry', 'Description', 'Amount in Question', 'Best Contact Method', 'Best Time to Contact', 'Billing Team Reviewed', 'Date Reviewed', 'Status', 'Result', 'Location'];
+      rows = data.map(r => [r.patient_name, r.chart_number, r.parent_name, r.date_of_service, r.inquiry_type, r.description, r.amount_in_question, r.best_contact_method, r.best_contact_time, r.reviewed_by, r.date_reviewed, r.status, r.result, locMap[r.location_id]]);
+    } else if (exportModule === 'bills-payment') {
+      headers = ['Bill Status', 'Date', 'Vendor', 'Description (Bill Details)', 'Amount', 'Due Date', 'Manager Initials', 'Accounts Payable Reviewed', 'Date Reviewed', 'Paid (Y/N)', 'Location'];
+      rows = data.map(r => [r.status, r.bill_date, r.vendor, r.description, r.amount, r.due_date, r.manager_initials, r.ap_reviewed ? 'Yes' : 'No', r.date_reviewed, r.paid ? 'Yes' : 'No', locMap[r.location_id]]);
+    } else if (exportModule === 'order-requests') {
+      headers = ['Date Entered', 'Vendor', 'Invoice Number', 'Invoice Date', 'Due Date', 'Amount', 'Entered By', 'Notes', 'Location'];
+      rows = data.map(r => [r.date_entered, r.vendor, r.invoice_number, r.invoice_date, r.due_date, r.amount, r.entered_by_name, r.notes, locMap[r.location_id]]);
+    } else if (exportModule === 'refund-requests') {
+      headers = ['Patient Name', 'Chart Number', 'Parent Name', 'RP Address', 'Date of Request', 'Type', 'Description', 'Amount Requested', 'Best Contact Method', 'Eassist Audited', 'Status', 'Location'];
+      rows = data.map(r => [r.patient_name, r.chart_number, r.parent_name, r.rp_address, r.date_of_request, r.type, r.description, r.amount_requested, r.best_contact_method, r.eassist_audited, r.status, locMap[r.location_id]]);
+    } else if (exportModule === 'it-requests') {
+      headers = ['Request #', 'Date Reported', 'Urgency Level', 'Requester Name', 'Device/System Affected', 'Description of Issue', 'Best Contact Method', 'Best Contact Time', 'Assigned To', 'Status', 'Resolution Notes', 'Completed By', 'Location'];
+      rows = data.map(r => [r.ticket_number, r.date_reported, r.urgency, r.requester_name, r.device_system, r.description_of_issue, r.best_contact_method, r.best_contact_time, r.assigned_to, r.status, r.resolution_notes, r.completed_by, locMap[r.location_id]]);
+    }
 
     const csv = [
       headers.join(','),
-      ...rows.map(row => headers.map(h => `"${String(row[h]).replace(/"/g, '""')}"`).join(','))
+      ...rows.map(row => row.map(c => `"${String(c ?? '').replace(/"/g, '""')}"`).join(','))
     ].join('\n');
 
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -1008,6 +1097,8 @@ export default function ClinicSystem() {
 
     showMessage('success', '✓ Export complete!');
   };
+
+  // ==================== AI CHAT ====================
 
   const askAI = async () => {
     if (!chatInput.trim()) return;
@@ -1046,33 +1137,7 @@ export default function ClinicSystem() {
     setAiLoading(false);
   };
 
-  const getDocumentUrl = async (storagePath) => {
-    const { data } = await supabase.storage
-      .from('clinic-documents')
-      .createSignedUrl(storagePath, 3600); // 1 hour expiry
-    return data?.signedUrl;
-  };
-
-  const viewDocument = async (doc) => {
-    const url = await getDocumentUrl(doc.storage_path);
-    if (url) {
-      setViewingFile({ ...doc, url, name: doc.file_name, type: doc.file_type });
-    } else {
-      showMessage('error', 'Could not load document');
-    }
-  };
-
-  const downloadDocument = async (doc) => {
-    const url = await getDocumentUrl(doc.storage_path);
-    if (url) {
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = doc.file_name;
-      a.click();
-    } else {
-      showMessage('error', 'Could not download document');
-    }
-  };
+  // ==================== RENDER HELPERS ====================
 
   const getModuleEntries = () => moduleData[activeModule] || [];
   const currentColors = MODULE_COLORS[activeModule];
@@ -1083,7 +1148,16 @@ export default function ClinicSystem() {
     return mod?.name || moduleId;
   };
 
-  // LOGIN SCREEN
+  const filteredDocs = documents.filter(d => {
+    if (!docSearch) return true;
+    const search = docSearch.toLowerCase();
+    return d.file_name?.toLowerCase().includes(search) || 
+           d.record_type?.toLowerCase().includes(search) ||
+           d.category?.toLowerCase().includes(search);
+  });
+
+  // ==================== LOGIN SCREEN ====================
+
   if (!currentUser) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4">
@@ -1137,14 +1211,14 @@ export default function ClinicSystem() {
             >
               {loginLoading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Login →'}
             </button>
-            <p className="text-xs text-center text-gray-400">Default admin: admin / admin123</p>
           </div>
         </div>
       </div>
     );
   }
 
-  // LOCATION SELECTION
+  // ==================== LOCATION SELECTION ====================
+
   if (!isAdmin && !selectedLocation && userLocations.length > 1) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4">
@@ -1178,7 +1252,8 @@ export default function ClinicSystem() {
     );
   }
 
-  // MAIN DASHBOARD
+  // ==================== MAIN DASHBOARD ====================
+
   const entries = getModuleEntries();
 
   return (
@@ -1202,6 +1277,7 @@ export default function ClinicSystem() {
           </div>
         </div>
 
+        {/* Location Filter */}
         {isAdmin && (
           <div className="p-4 border-b bg-purple-50">
             <label className="text-xs font-medium text-purple-700 mb-1.5 block">Filter by Location</label>
@@ -1226,7 +1302,7 @@ export default function ClinicSystem() {
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">Modules</p>
           {MODULES.map(m => {
             const colors = MODULE_COLORS[m.id];
-            const isActive = activeModule === m.id && adminView !== 'users' && adminView !== 'export' && adminView !== 'settings' && view !== 'settings';
+            const isActive = activeModule === m.id && adminView !== 'users' && adminView !== 'export' && adminView !== 'documents' && adminView !== 'settings' && view !== 'settings';
             return (
               <button
                 key={m.id}
@@ -1245,7 +1321,7 @@ export default function ClinicSystem() {
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">Support</p>
           {SUPPORT_MODULES.map(m => {
             const colors = MODULE_COLORS[m.id];
-            const isActive = activeModule === m.id && adminView !== 'users' && adminView !== 'export' && adminView !== 'settings' && view !== 'settings';
+            const isActive = activeModule === m.id && adminView !== 'users' && adminView !== 'export' && adminView !== 'documents' && adminView !== 'settings' && view !== 'settings';
             return (
               <button
                 key={m.id}
@@ -1324,6 +1400,7 @@ export default function ClinicSystem() {
           </div>
         </header>
 
+        {/* Messages */}
         {message.text && (
           <div className={`mx-4 mt-4 p-4 rounded-xl text-center font-medium shadow-sm flex items-center justify-center gap-2 ${message.type === 'error' ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 text-emerald-700'}`}>
             {message.type === 'error' ? <AlertCircle className="w-4 h-4" /> : null}
@@ -1342,6 +1419,7 @@ export default function ClinicSystem() {
                 </button>
               </div>
 
+              {/* Add/Edit User Form */}
               {(showAddUser || editingUser) && (
                 <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
                   <h3 className="font-semibold mb-4 text-gray-800">{editingUser ? 'Edit User' : 'Add New User'}</h3>
@@ -1376,6 +1454,7 @@ export default function ClinicSystem() {
                 </div>
               )}
 
+              {/* Users List */}
               <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
                 <div className="divide-y">
                   {users.map(u => (
@@ -1419,23 +1498,35 @@ export default function ClinicSystem() {
             </div>
           )}
 
-          {/* ADMIN: Documents */}
+          {/* ADMIN: Documents with Search */}
           {isAdmin && adminView === 'documents' && (
             <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-xl flex items-center justify-center">
-                  <FolderOpen className="w-6 h-6 text-white" />
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-xl flex items-center justify-center">
+                    <FolderOpen className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="font-semibold text-gray-800">All Documents</h2>
+                    <p className="text-sm text-gray-500">{filteredDocs.length} files</p>
+                  </div>
                 </div>
-                <div>
-                  <h2 className="font-semibold text-gray-800">All Uploaded Documents</h2>
-                  <p className="text-sm text-gray-500">{documents.length} files</p>
+                <div className="relative">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    value={docSearch}
+                    onChange={e => setDocSearch(e.target.value)}
+                    placeholder="Search files..."
+                    className="pl-10 pr-4 py-2 border-2 border-gray-200 rounded-xl text-sm focus:border-purple-400 outline-none w-64"
+                  />
                 </div>
               </div>
-              {documents.length === 0 ? (
-                <p className="text-gray-500 text-center py-8">No documents uploaded yet</p>
+              {filteredDocs.length === 0 ? (
+                <p className="text-gray-500 text-center py-8">No documents found</p>
               ) : (
                 <div className="space-y-2">
-                  {documents.map(doc => (
+                  {filteredDocs.map(doc => (
                     <div key={doc.id} className="p-4 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -1493,7 +1584,7 @@ export default function ClinicSystem() {
                   <p className="text-sm text-gray-500">Download records as CSV file</p>
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-4 mb-6">
+              <div className="grid grid-cols-2 gap-4 mb-6">
                 <div>
                   <label className="text-xs font-medium text-gray-600 mb-1.5 block">Module</label>
                   <select value={exportModule} onChange={e => setExportModule(e.target.value)} className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-purple-400 outline-none">
@@ -1507,12 +1598,6 @@ export default function ClinicSystem() {
                     {locations.map(l => <option key={l.id} value={l.name}>{l.name}</option>)}
                   </select>
                 </div>
-                <div>
-                  <label className="text-xs font-medium text-gray-600 mb-1.5 block">Date Range</label>
-                  <select value={exportRange} onChange={e => setExportRange(e.target.value)} className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-purple-400 outline-none">
-                    {DATE_RANGES.map(r => <option key={r} value={r}>{r}</option>)}
-                  </select>
-                </div>
               </div>
               <button onClick={exportToCSV} className="w-full py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-semibold flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transition-all">
                 <Download className="w-5 h-5" />Export to CSV
@@ -1520,25 +1605,49 @@ export default function ClinicSystem() {
             </div>
           )}
 
-          {/* Settings */}
+          {/* Settings - with Name Change */}
           {((isAdmin && adminView === 'settings') || (!isAdmin && view === 'settings')) && (
-            <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
-              <div className="flex items-center gap-3 mb-6">
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${isAdmin ? 'bg-gradient-to-br from-purple-500 to-indigo-500' : 'bg-gradient-to-br from-blue-500 to-indigo-500'}`}>
-                  <Lock className="w-6 h-6 text-white" />
+            <div className="space-y-6">
+              {/* Change Name */}
+              <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${isAdmin ? 'bg-gradient-to-br from-purple-500 to-indigo-500' : 'bg-gradient-to-br from-blue-500 to-indigo-500'}`}>
+                    <User className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="font-semibold text-gray-800">Change Name</h2>
+                    <p className="text-sm text-gray-500">Update your display name</p>
+                  </div>
                 </div>
-                <div>
-                  <h2 className="font-semibold text-gray-800">Change Password</h2>
-                  <p className="text-sm text-gray-500">Update your account password</p>
+                <div className="flex gap-4 max-w-md">
+                  <div className="flex-1">
+                    <InputField label="Name" value={nameForm} onChange={e => setNameForm(e.target.value)} />
+                  </div>
+                  <button onClick={changeName} className={`self-end px-6 py-2.5 text-white rounded-xl font-medium shadow-lg hover:shadow-xl transition-all ${isAdmin ? 'bg-gradient-to-r from-purple-600 to-indigo-600' : 'bg-gradient-to-r from-blue-600 to-indigo-600'}`}>
+                    Save
+                  </button>
                 </div>
               </div>
-              <div className="space-y-4 max-w-sm">
-                <PasswordField label="Current Password" value={pwdForm.current} onChange={e => setPwdForm({...pwdForm, current: e.target.value})} placeholder="Enter current password" />
-                <PasswordField label="New Password" value={pwdForm.new} onChange={e => setPwdForm({...pwdForm, new: e.target.value})} placeholder="Enter new password" />
-                <PasswordField label="Confirm New Password" value={pwdForm.confirm} onChange={e => setPwdForm({...pwdForm, confirm: e.target.value})} placeholder="Confirm new password" />
-                <button onClick={changePassword} className={`w-full py-4 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all ${isAdmin ? 'bg-gradient-to-r from-purple-600 to-indigo-600' : 'bg-gradient-to-r from-blue-600 to-indigo-600'}`}>
-                  Update Password
-                </button>
+
+              {/* Change Password */}
+              <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${isAdmin ? 'bg-gradient-to-br from-purple-500 to-indigo-500' : 'bg-gradient-to-br from-blue-500 to-indigo-500'}`}>
+                    <Lock className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="font-semibold text-gray-800">Change Password</h2>
+                    <p className="text-sm text-gray-500">Update your account password</p>
+                  </div>
+                </div>
+                <div className="space-y-4 max-w-sm">
+                  <PasswordField label="Current Password" value={pwdForm.current} onChange={e => setPwdForm({...pwdForm, current: e.target.value})} placeholder="Enter current password" />
+                  <PasswordField label="New Password" value={pwdForm.new} onChange={e => setPwdForm({...pwdForm, new: e.target.value})} placeholder="Enter new password" />
+                  <PasswordField label="Confirm New Password" value={pwdForm.confirm} onChange={e => setPwdForm({...pwdForm, confirm: e.target.value})} placeholder="Confirm new password" />
+                  <button onClick={changePassword} className={`w-full py-4 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all ${isAdmin ? 'bg-gradient-to-r from-purple-600 to-indigo-600' : 'bg-gradient-to-r from-blue-600 to-indigo-600'}`}>
+                    Update Password
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -1559,11 +1668,8 @@ export default function ClinicSystem() {
                   {entries.slice(0, 50).map(e => {
                     const docKey = `${activeModule}-${e.id}`;
                     const docs = entryDocuments[docKey] || [];
-                    
-                    if (!entryDocuments[docKey]) {
-                      loadEntryDocuments(activeModule, e.id);
-                    }
-                    
+                    if (!entryDocuments[docKey]) loadEntryDocuments(activeModule, e.id);
+
                     return (
                       <div key={e.id} className={`p-4 rounded-xl border-2 ${currentColors?.border} ${currentColors?.bg} hover:shadow-md transition-all`}>
                         <div className="flex justify-between items-start gap-4">
@@ -1579,8 +1685,8 @@ export default function ClinicSystem() {
                             </p>
                             {e.description_of_issue && <p className="text-sm text-gray-600 mt-2 line-clamp-2">{e.description_of_issue}</p>}
                             {e.total_collected && <p className="text-lg font-bold text-emerald-600 mt-2">${Number(e.total_collected).toFixed(2)}</p>}
-                            
-                            {/* Documents for this entry */}
+
+                            {/* Documents */}
                             {docs.length > 0 && (
                               <div className="mt-3 flex flex-wrap gap-2">
                                 {docs.map(doc => (
@@ -1633,9 +1739,10 @@ export default function ClinicSystem() {
             </div>
           )}
 
-          {/* Entry Form - Staff */}
+          {/* Entry Form - Staff - UPDATED TO MATCH TEMPLATES */}
           {!isAdmin && view === 'entry' && (
             <div className="space-y-4">
+              {/* Daily Recon Form */}
               {activeModule === 'daily-recon' && (
                 <>
                   <div className={`bg-white rounded-2xl shadow-lg p-6 border-l-4 ${currentColors?.accent}`}>
@@ -1651,17 +1758,18 @@ export default function ClinicSystem() {
                       <InputField label="Care Credit" prefix="$" value={forms['daily-recon'].care_credit} onChange={e => updateForm('daily-recon', 'care_credit', e.target.value)} />
                       <InputField label="VCC" prefix="$" value={forms['daily-recon'].vcc} onChange={e => updateForm('daily-recon', 'vcc', e.target.value)} />
                       <InputField label="EFTs" prefix="$" value={forms['daily-recon'].efts} onChange={e => updateForm('daily-recon', 'efts', e.target.value)} />
+                      <InputField label="Entered By" value={forms['daily-recon'].entered_by_name} onChange={e => updateForm('daily-recon', 'entered_by_name', e.target.value)} placeholder={currentUser.name} />
                     </div>
                   </div>
                   <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-blue-500">
                     <h2 className="font-semibold mb-4 text-gray-800 flex items-center gap-2">
-                      <Building2 className="w-5 h-5 text-blue-500" />Bank Deposit
+                      <Building2 className="w-5 h-5 text-blue-500" />Bank Deposit (Accounting Only)
                     </h2>
                     <div className="grid grid-cols-2 gap-4">
                       <InputField label="Cash" prefix="$" value={forms['daily-recon'].deposit_cash} onChange={e => updateForm('daily-recon', 'deposit_cash', e.target.value)} />
                       <InputField label="Credit Card" prefix="$" value={forms['daily-recon'].deposit_credit_card} onChange={e => updateForm('daily-recon', 'deposit_credit_card', e.target.value)} />
-                      <InputField label="Checks" prefix="$" value={forms['daily-recon'].deposit_checks} onChange={e => updateForm('daily-recon', 'deposit_checks', e.target.value)} />
-                      <InputField label="Insurance" prefix="$" value={forms['daily-recon'].deposit_insurance} onChange={e => updateForm('daily-recon', 'deposit_insurance', e.target.value)} />
+                      <InputField label="Checks (OTC)" prefix="$" value={forms['daily-recon'].deposit_checks} onChange={e => updateForm('daily-recon', 'deposit_checks', e.target.value)} />
+                      <InputField label="Insurance Checks" prefix="$" value={forms['daily-recon'].deposit_insurance} onChange={e => updateForm('daily-recon', 'deposit_insurance', e.target.value)} />
                       <InputField label="Care Credit" prefix="$" value={forms['daily-recon'].deposit_care_credit} onChange={e => updateForm('daily-recon', 'deposit_care_credit', e.target.value)} />
                       <InputField label="VCC" prefix="$" value={forms['daily-recon'].deposit_vcc} onChange={e => updateForm('daily-recon', 'deposit_vcc', e.target.value)} />
                     </div>
@@ -1670,18 +1778,114 @@ export default function ClinicSystem() {
                     </div>
                   </div>
                   <div className="bg-white rounded-2xl shadow-lg p-6">
-                    <h2 className="font-semibold mb-4 text-gray-800 flex items-center gap-2">
-                      <File className="w-5 h-5 text-amber-500" />Documents
-                    </h2>
-                    <div className="space-y-4">
-                      <FileUpload label="EOD Day Sheets" files={files['daily-recon'].eodDaySheets} onFilesChange={f => updateFiles('daily-recon', 'eodDaySheets', f)} onViewFile={setViewingFile} />
-                      <FileUpload label="EOD Bank Receipts" files={files['daily-recon'].eodBankReceipts} onFilesChange={f => updateFiles('daily-recon', 'eodBankReceipts', f)} onViewFile={setViewingFile} />
-                      <FileUpload label="Other Files" files={files['daily-recon'].otherFiles} onFilesChange={f => updateFiles('daily-recon', 'otherFiles', f)} onViewFile={setViewingFile} />
-                    </div>
+                    <FileUpload label="Upload Documents (EOD Sheets, Bank Receipts, etc.)" files={files['daily-recon'].documents} onFilesChange={f => updateFiles('daily-recon', 'documents', f)} onViewFile={setViewingFile} />
                   </div>
                 </>
               )}
 
+              {/* Billing Inquiry Form - Updated */}
+              {activeModule === 'billing-inquiry' && (
+                <>
+                  <div className={`bg-white rounded-2xl shadow-lg p-6 border-l-4 ${currentColors?.accent}`}>
+                    <h2 className="font-semibold mb-4 text-gray-800">Patient Accounting Inquiry</h2>
+                    <div className="grid grid-cols-2 gap-4">
+                      <InputField label="Patient Name" value={forms['billing-inquiry'].patient_name} onChange={e => updateForm('billing-inquiry', 'patient_name', e.target.value)} />
+                      <InputField label="Chart Number" value={forms['billing-inquiry'].chart_number} onChange={e => updateForm('billing-inquiry', 'chart_number', e.target.value)} />
+                      <InputField label="Parent Name" value={forms['billing-inquiry'].parent_name} onChange={e => updateForm('billing-inquiry', 'parent_name', e.target.value)} />
+                      <InputField label="Date of Request" type="date" value={forms['billing-inquiry'].date_of_request} onChange={e => updateForm('billing-inquiry', 'date_of_request', e.target.value)} />
+                      <InputField label="Type of Inquiry" value={forms['billing-inquiry'].inquiry_type} onChange={e => updateForm('billing-inquiry', 'inquiry_type', e.target.value)} options={['Refund', 'Balance', 'Insurance', 'Other']} />
+                      <InputField label="Amount in Question" prefix="$" value={forms['billing-inquiry'].amount_in_question} onChange={e => updateForm('billing-inquiry', 'amount_in_question', e.target.value)} />
+                      <InputField label="Best Contact Method" value={forms['billing-inquiry'].best_contact_method} onChange={e => updateForm('billing-inquiry', 'best_contact_method', e.target.value)} options={['Phone', 'Email', 'Text']} />
+                      <InputField label="Best Time to Contact" value={forms['billing-inquiry'].best_contact_time} onChange={e => updateForm('billing-inquiry', 'best_contact_time', e.target.value)} />
+                      <InputField label="Billing Team Reviewed By" value={forms['billing-inquiry'].reviewed_by} onChange={e => updateForm('billing-inquiry', 'reviewed_by', e.target.value)} />
+                      <InputField label="Date Reviewed" type="date" value={forms['billing-inquiry'].date_reviewed} onChange={e => updateForm('billing-inquiry', 'date_reviewed', e.target.value)} />
+                      <InputField label="Status" value={forms['billing-inquiry'].status} onChange={e => updateForm('billing-inquiry', 'status', e.target.value)} options={['Pending', 'In Progress', 'Resolved']} />
+                      <InputField label="Result" value={forms['billing-inquiry'].result} onChange={e => updateForm('billing-inquiry', 'result', e.target.value)} />
+                    </div>
+                    <div className="mt-4">
+                      <InputField label="Description" large value={forms['billing-inquiry'].description} onChange={e => updateForm('billing-inquiry', 'description', e.target.value)} placeholder="Details about the inquiry..." />
+                    </div>
+                  </div>
+                  <div className="bg-white rounded-2xl shadow-lg p-6">
+                    <FileUpload label="Upload Documents" files={files['billing-inquiry'].documents} onFilesChange={f => updateFiles('billing-inquiry', 'documents', f)} onViewFile={setViewingFile} />
+                  </div>
+                </>
+              )}
+
+              {/* Bills Payment Form - Updated */}
+              {activeModule === 'bills-payment' && (
+                <>
+                  <div className={`bg-white rounded-2xl shadow-lg p-6 border-l-4 ${currentColors?.accent}`}>
+                    <h2 className="font-semibold mb-4 text-gray-800">Bills Payment Log</h2>
+                    <div className="grid grid-cols-2 gap-4">
+                      <InputField label="Bill Status" value={forms['bills-payment'].status} onChange={e => updateForm('bills-payment', 'status', e.target.value)} options={['Pending', 'Approved', 'Paid']} />
+                      <InputField label="Date" type="date" value={forms['bills-payment'].bill_date} onChange={e => updateForm('bills-payment', 'bill_date', e.target.value)} />
+                      <InputField label="Vendor" value={forms['bills-payment'].vendor} onChange={e => updateForm('bills-payment', 'vendor', e.target.value)} />
+                      <InputField label="Description (Bill Details)" value={forms['bills-payment'].description} onChange={e => updateForm('bills-payment', 'description', e.target.value)} />
+                      <InputField label="Amount" prefix="$" value={forms['bills-payment'].amount} onChange={e => updateForm('bills-payment', 'amount', e.target.value)} />
+                      <InputField label="Due Date" type="date" value={forms['bills-payment'].due_date} onChange={e => updateForm('bills-payment', 'due_date', e.target.value)} />
+                      <InputField label="Manager Initials" value={forms['bills-payment'].manager_initials} onChange={e => updateForm('bills-payment', 'manager_initials', e.target.value)} />
+                      <InputField label="Accounts Payable Reviewed" value={forms['bills-payment'].ap_reviewed} onChange={e => updateForm('bills-payment', 'ap_reviewed', e.target.value)} options={['Yes', 'No']} />
+                      <InputField label="Date Reviewed" type="date" value={forms['bills-payment'].date_reviewed} onChange={e => updateForm('bills-payment', 'date_reviewed', e.target.value)} />
+                      <InputField label="Paid (Y/N)" value={forms['bills-payment'].paid} onChange={e => updateForm('bills-payment', 'paid', e.target.value)} options={['Yes', 'No']} />
+                    </div>
+                  </div>
+                  <div className="bg-white rounded-2xl shadow-lg p-6">
+                    <FileUpload label="Upload Documents" files={files['bills-payment'].documents} onFilesChange={f => updateFiles('bills-payment', 'documents', f)} onViewFile={setViewingFile} />
+                  </div>
+                </>
+              )}
+
+              {/* Order Requests Form - Updated */}
+              {activeModule === 'order-requests' && (
+                <>
+                  <div className={`bg-white rounded-2xl shadow-lg p-6 border-l-4 ${currentColors?.accent}`}>
+                    <h2 className="font-semibold mb-4 text-gray-800">Order Invoice Log</h2>
+                    <div className="grid grid-cols-2 gap-4">
+                      <InputField label="Date Entered" type="date" value={forms['order-requests'].date_entered} onChange={e => updateForm('order-requests', 'date_entered', e.target.value)} />
+                      <InputField label="Vendor" value={forms['order-requests'].vendor} onChange={e => updateForm('order-requests', 'vendor', e.target.value)} />
+                      <InputField label="Invoice Number" value={forms['order-requests'].invoice_number} onChange={e => updateForm('order-requests', 'invoice_number', e.target.value)} />
+                      <InputField label="Invoice Date" type="date" value={forms['order-requests'].invoice_date} onChange={e => updateForm('order-requests', 'invoice_date', e.target.value)} />
+                      <InputField label="Due Date" type="date" value={forms['order-requests'].due_date} onChange={e => updateForm('order-requests', 'due_date', e.target.value)} />
+                      <InputField label="Amount" prefix="$" value={forms['order-requests'].amount} onChange={e => updateForm('order-requests', 'amount', e.target.value)} />
+                      <InputField label="Entered By" value={forms['order-requests'].entered_by_name} onChange={e => updateForm('order-requests', 'entered_by_name', e.target.value)} placeholder={currentUser.name} />
+                      <InputField label="Notes" value={forms['order-requests'].notes} onChange={e => updateForm('order-requests', 'notes', e.target.value)} />
+                    </div>
+                  </div>
+                  <div className="bg-white rounded-2xl shadow-lg p-6">
+                    <FileUpload label="Upload Documents (Invoices, POs)" files={files['order-requests'].documents} onFilesChange={f => updateFiles('order-requests', 'documents', f)} onViewFile={setViewingFile} />
+                  </div>
+                </>
+              )}
+
+              {/* Refund Requests Form - Updated */}
+              {activeModule === 'refund-requests' && (
+                <>
+                  <div className={`bg-white rounded-2xl shadow-lg p-6 border-l-4 ${currentColors?.accent}`}>
+                    <h2 className="font-semibold mb-4 text-gray-800">Patient Refund Request</h2>
+                    <div className="grid grid-cols-2 gap-4">
+                      <InputField label="Patient Name" value={forms['refund-requests'].patient_name} onChange={e => updateForm('refund-requests', 'patient_name', e.target.value)} />
+                      <InputField label="Chart Number" value={forms['refund-requests'].chart_number} onChange={e => updateForm('refund-requests', 'chart_number', e.target.value)} />
+                      <InputField label="Parent Name" value={forms['refund-requests'].parent_name} onChange={e => updateForm('refund-requests', 'parent_name', e.target.value)} />
+                      <InputField label="RP Address" value={forms['refund-requests'].rp_address} onChange={e => updateForm('refund-requests', 'rp_address', e.target.value)} />
+                      <InputField label="Date of Request" type="date" value={forms['refund-requests'].date_of_request} onChange={e => updateForm('refund-requests', 'date_of_request', e.target.value)} />
+                      <InputField label="Type of Transaction" value={forms['refund-requests'].type} onChange={e => updateForm('refund-requests', 'type', e.target.value)} options={['Refund', 'Credit', 'Adjustment']} />
+                      <InputField label="Amount Requested" prefix="$" value={forms['refund-requests'].amount_requested} onChange={e => updateForm('refund-requests', 'amount_requested', e.target.value)} />
+                      <InputField label="Best Contact Method" value={forms['refund-requests'].best_contact_method} onChange={e => updateForm('refund-requests', 'best_contact_method', e.target.value)} options={['Phone', 'Email', 'Text']} />
+                      <InputField label="Eassist Audited" value={forms['refund-requests'].eassist_audited} onChange={e => updateForm('refund-requests', 'eassist_audited', e.target.value)} options={['Yes', 'No', 'N/A']} />
+                      <InputField label="Status" value={forms['refund-requests'].status} onChange={e => updateForm('refund-requests', 'status', e.target.value)} options={['Pending', 'Approved', 'Completed', 'Denied']} />
+                    </div>
+                    <div className="mt-4">
+                      <InputField label="Description" large value={forms['refund-requests'].description} onChange={e => updateForm('refund-requests', 'description', e.target.value)} placeholder="Details about the refund..." />
+                    </div>
+                  </div>
+                  <div className="bg-white rounded-2xl shadow-lg p-6">
+                    <FileUpload label="Upload Documents" files={files['refund-requests'].documents} onFilesChange={f => updateFiles('refund-requests', 'documents', f)} onViewFile={setViewingFile} />
+                  </div>
+                </>
+              )}
+
+              {/* IT Requests Form - Updated */}
               {activeModule === 'it-requests' && (
                 <>
                   <div className={`bg-white rounded-2xl shadow-lg p-6 border-l-4 ${currentColors?.accent}`}>
@@ -1691,112 +1895,21 @@ export default function ClinicSystem() {
                       <InputField label="Date Reported" type="date" value={forms['it-requests'].date_reported} onChange={e => updateForm('it-requests', 'date_reported', e.target.value)} />
                       <InputField label="Urgency Level" value={forms['it-requests'].urgency} onChange={e => updateForm('it-requests', 'urgency', e.target.value)} options={['Low', 'Medium', 'High', 'Critical']} />
                       <InputField label="Requester Name" value={forms['it-requests'].requester_name} onChange={e => updateForm('it-requests', 'requester_name', e.target.value)} />
-                      <InputField label="Device / System" value={forms['it-requests'].device_system} onChange={e => updateForm('it-requests', 'device_system', e.target.value)} />
-                      <InputField label="Contact Method" value={forms['it-requests'].best_contact_method} onChange={e => updateForm('it-requests', 'best_contact_method', e.target.value)} options={['Phone', 'Email', 'Text']} />
-                      <InputField label="Contact Time" value={forms['it-requests'].best_contact_time} onChange={e => updateForm('it-requests', 'best_contact_time', e.target.value)} />
+                      <InputField label="Device / System Affected" value={forms['it-requests'].device_system} onChange={e => updateForm('it-requests', 'device_system', e.target.value)} />
+                      <InputField label="Best Contact Method" value={forms['it-requests'].best_contact_method} onChange={e => updateForm('it-requests', 'best_contact_method', e.target.value)} options={['Phone', 'Email', 'Text']} />
+                      <InputField label="Best Contact Time" value={forms['it-requests'].best_contact_time} onChange={e => updateForm('it-requests', 'best_contact_time', e.target.value)} />
                     </div>
                     <div className="mt-4">
                       <InputField label="Description of Issue" large value={forms['it-requests'].description_of_issue} onChange={e => updateForm('it-requests', 'description_of_issue', e.target.value)} placeholder="Describe the issue in detail..." />
                     </div>
                   </div>
                   <div className="bg-white rounded-2xl shadow-lg p-6">
-                    <FileUpload label="Screenshots / Documentation" files={files['it-requests'].documentation} onFilesChange={f => updateFiles('it-requests', 'documentation', f)} onViewFile={setViewingFile} />
+                    <FileUpload label="Upload Screenshots / Documentation" files={files['it-requests'].documents} onFilesChange={f => updateFiles('it-requests', 'documents', f)} onViewFile={setViewingFile} />
                   </div>
                 </>
               )}
 
-              {activeModule === 'billing-inquiry' && (
-                <>
-                  <div className={`bg-white rounded-2xl shadow-lg p-6 border-l-4 ${currentColors?.accent}`}>
-                    <h2 className="font-semibold mb-4 text-gray-800">Billing Inquiry</h2>
-                    <div className="grid grid-cols-2 gap-4">
-                      <InputField label="Patient Name" value={forms['billing-inquiry'].patient_name} onChange={e => updateForm('billing-inquiry', 'patient_name', e.target.value)} />
-                      <InputField label="Chart Number" value={forms['billing-inquiry'].chart_number} onChange={e => updateForm('billing-inquiry', 'chart_number', e.target.value)} />
-                      <InputField label="Date of Service" type="date" value={forms['billing-inquiry'].date_of_service} onChange={e => updateForm('billing-inquiry', 'date_of_service', e.target.value)} />
-                      <InputField label="Amount in Question" prefix="$" value={forms['billing-inquiry'].amount_in_question} onChange={e => updateForm('billing-inquiry', 'amount_in_question', e.target.value)} />
-                      <InputField label="Contact Method" value={forms['billing-inquiry'].best_contact_method} onChange={e => updateForm('billing-inquiry', 'best_contact_method', e.target.value)} options={['Phone', 'Email', 'Text']} />
-                      <InputField label="Contact Time" value={forms['billing-inquiry'].best_contact_time} onChange={e => updateForm('billing-inquiry', 'best_contact_time', e.target.value)} />
-                      <InputField label="Status" value={forms['billing-inquiry'].status} onChange={e => updateForm('billing-inquiry', 'status', e.target.value)} options={['Pending', 'In Progress', 'Resolved']} />
-                      <InputField label="Result" value={forms['billing-inquiry'].result} onChange={e => updateForm('billing-inquiry', 'result', e.target.value)} />
-                    </div>
-                  </div>
-                  <div className="bg-white rounded-2xl shadow-lg p-6">
-                    <h2 className="font-semibold mb-4 text-gray-800 flex items-center gap-2">
-                      <File className="w-5 h-5 text-blue-500" />Documents
-                    </h2>
-                    <FileUpload label="Supporting Documentation" files={files['billing-inquiry'].documentation} onFilesChange={f => updateFiles('billing-inquiry', 'documentation', f)} onViewFile={setViewingFile} />
-                  </div>
-                </>
-              )}
-
-              {activeModule === 'bills-payment' && (
-                <>
-                  <div className={`bg-white rounded-2xl shadow-lg p-6 border-l-4 ${currentColors?.accent}`}>
-                    <h2 className="font-semibold mb-4 text-gray-800">Bills Payment</h2>
-                    <div className="grid grid-cols-2 gap-4">
-                      <InputField label="Bill Date" type="date" value={forms['bills-payment'].bill_date} onChange={e => updateForm('bills-payment', 'bill_date', e.target.value)} />
-                      <InputField label="Vendor" value={forms['bills-payment'].vendor} onChange={e => updateForm('bills-payment', 'vendor', e.target.value)} />
-                      <InputField label="Description" value={forms['bills-payment'].description} onChange={e => updateForm('bills-payment', 'description', e.target.value)} />
-                      <InputField label="Amount" prefix="$" value={forms['bills-payment'].amount} onChange={e => updateForm('bills-payment', 'amount', e.target.value)} />
-                      <InputField label="Due Date" type="date" value={forms['bills-payment'].due_date} onChange={e => updateForm('bills-payment', 'due_date', e.target.value)} />
-                      <InputField label="Status" value={forms['bills-payment'].status} onChange={e => updateForm('bills-payment', 'status', e.target.value)} options={['Pending', 'Approved', 'Paid']} />
-                    </div>
-                  </div>
-                  <div className="bg-white rounded-2xl shadow-lg p-6">
-                    <h2 className="font-semibold mb-4 text-gray-800 flex items-center gap-2">
-                      <File className="w-5 h-5 text-violet-500" />Documents
-                    </h2>
-                    <FileUpload label="Bill / Invoice Documents" files={files['bills-payment'].documentation} onFilesChange={f => updateFiles('bills-payment', 'documentation', f)} onViewFile={setViewingFile} />
-                  </div>
-                </>
-              )}
-
-              {activeModule === 'order-requests' && (
-                <>
-                  <div className={`bg-white rounded-2xl shadow-lg p-6 border-l-4 ${currentColors?.accent}`}>
-                    <h2 className="font-semibold mb-4 text-gray-800">Order Request</h2>
-                    <div className="grid grid-cols-2 gap-4">
-                      <InputField label="Date Entered" type="date" value={forms['order-requests'].date_entered} onChange={e => updateForm('order-requests', 'date_entered', e.target.value)} />
-                      <InputField label="Vendor" value={forms['order-requests'].vendor} onChange={e => updateForm('order-requests', 'vendor', e.target.value)} />
-                      <InputField label="Invoice Number" value={forms['order-requests'].invoice_number} onChange={e => updateForm('order-requests', 'invoice_number', e.target.value)} />
-                      <InputField label="Invoice Date" type="date" value={forms['order-requests'].invoice_date} onChange={e => updateForm('order-requests', 'invoice_date', e.target.value)} />
-                      <InputField label="Due Date" type="date" value={forms['order-requests'].due_date} onChange={e => updateForm('order-requests', 'due_date', e.target.value)} />
-                      <InputField label="Amount" prefix="$" value={forms['order-requests'].amount} onChange={e => updateForm('order-requests', 'amount', e.target.value)} />
-                      <InputField label="Status" value={forms['order-requests'].status} onChange={e => updateForm('order-requests', 'status', e.target.value)} options={['Pending', 'Approved', 'Paid']} />
-                      <InputField label="Notes" value={forms['order-requests'].notes} onChange={e => updateForm('order-requests', 'notes', e.target.value)} />
-                    </div>
-                  </div>
-                  <div className="bg-white rounded-2xl shadow-lg p-6">
-                    <h2 className="font-semibold mb-4 text-gray-800 flex items-center gap-2">
-                      <File className="w-5 h-5 text-amber-500" />Documents
-                    </h2>
-                    <FileUpload label="Order Invoices / POs" files={files['order-requests'].orderInvoices} onFilesChange={f => updateFiles('order-requests', 'orderInvoices', f)} onViewFile={setViewingFile} />
-                  </div>
-                </>
-              )}
-
-              {activeModule === 'refund-requests' && (
-                <>
-                  <div className={`bg-white rounded-2xl shadow-lg p-6 border-l-4 ${currentColors?.accent}`}>
-                    <h2 className="font-semibold mb-4 text-gray-800">Refund Request</h2>
-                    <div className="grid grid-cols-2 gap-4">
-                      <InputField label="Patient Name" value={forms['refund-requests'].patient_name} onChange={e => updateForm('refund-requests', 'patient_name', e.target.value)} />
-                      <InputField label="Chart Number" value={forms['refund-requests'].chart_number} onChange={e => updateForm('refund-requests', 'chart_number', e.target.value)} />
-                      <InputField label="Date of Request" type="date" value={forms['refund-requests'].date_of_request} onChange={e => updateForm('refund-requests', 'date_of_request', e.target.value)} />
-                      <InputField label="Type" value={forms['refund-requests'].type} onChange={e => updateForm('refund-requests', 'type', e.target.value)} options={['Refund', 'Credit', 'Adjustment']} />
-                      <InputField label="Amount Requested" prefix="$" value={forms['refund-requests'].amount_requested} onChange={e => updateForm('refund-requests', 'amount_requested', e.target.value)} />
-                      <InputField label="Status" value={forms['refund-requests'].status} onChange={e => updateForm('refund-requests', 'status', e.target.value)} options={['Pending', 'Approved', 'Completed', 'Denied']} />
-                    </div>
-                  </div>
-                  <div className="bg-white rounded-2xl shadow-lg p-6">
-                    <h2 className="font-semibold mb-4 text-gray-800 flex items-center gap-2">
-                      <File className="w-5 h-5 text-rose-500" />Documents
-                    </h2>
-                    <FileUpload label="Supporting Documentation" files={files['refund-requests'].documentation} onFilesChange={f => updateFiles('refund-requests', 'documentation', f)} onViewFile={setViewingFile} />
-                  </div>
-                </>
-              )}
-
+              {/* Save Button */}
               <button
                 onClick={() => saveEntry(activeModule)}
                 disabled={saving}
@@ -1821,60 +1934,11 @@ export default function ClinicSystem() {
                     const canEdit = canEditRecord(e.created_at);
                     const docKey = `${activeModule}-${e.id}`;
                     const docs = entryDocuments[docKey] || [];
-                    
-                    // Load documents for this entry if not loaded
-                    if (!entryDocuments[docKey]) {
-                      loadEntryDocuments(activeModule, e.id);
-                    }
-                    
+                    if (!entryDocuments[docKey]) loadEntryDocuments(activeModule, e.id);
+
                     return (
                       <div key={e.id} className={`p-4 rounded-xl ${currentColors?.bg} border ${currentColors?.border}`}>
                         <div className="flex justify-between items-start">
                           <div className="flex-1">
                             <div className="flex items-center gap-2">
-                              <p className="font-medium text-gray-800">
-                                {e.ticket_number ? `IT-${e.ticket_number}` : e.patient_name || e.vendor || e.recon_date || new Date(e.created_at).toLocaleDateString()}
-                              </p>
-                              <StatusBadge status={e.status} />
-                              {!canEdit && <Lock className="w-4 h-4 text-gray-400" title="Locked (past Friday cutoff)" />}
-                            </div>
-                            <p className="text-xs text-gray-500 mt-1">{new Date(e.created_at).toLocaleDateString()}</p>
-                            
-                            {/* Documents for this entry */}
-                            {docs.length > 0 && (
-                              <div className="mt-3 space-y-1">
-                                <p className="text-xs font-medium text-gray-500">Attached Files:</p>
-                                {docs.map(doc => (
-                                  <div key={doc.id} className="flex items-center gap-2 text-sm">
-                                    <File className="w-3 h-3 text-gray-400" />
-                                    <span className="text-gray-600 truncate">{doc.file_name}</span>
-                                    <button
-                                      onClick={() => viewDocument(doc)}
-                                      className="p-1 text-blue-500 hover:bg-blue-100 rounded transition-colors"
-                                      title="Preview"
-                                    >
-                                      <Eye className="w-3 h-3" />
-                                    </button>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                          <div className="text-right">
-                            {e.total_collected && <p className="font-bold text-emerald-600">${Number(e.total_collected).toFixed(2)}</p>}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-        </main>
-      </div>
-
-      {sidebarOpen && <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-30 lg:hidden" onClick={() => setSidebarOpen(false)} />}
-    </div>
-  );
-}
+                              <p className="font-medium text-gray-
