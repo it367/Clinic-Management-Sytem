@@ -26,13 +26,12 @@ const MODULE_COLORS = {
 const IT_STATUSES = ['Open', 'In Progress', 'Resolved', 'Closed'];
 const DATE_RANGES = ['This Week', 'Last 2 Weeks', 'This Month', 'Last Month', 'This Quarter', 'This Year', 'Custom'];
 
-function InputField({ label, value, onChange, type = 'text', placeholder = '', prefix, options, large, accentColor = 'blue' }) {
-  const focusColor = `focus-within:border-${accentColor}-400 focus-within:ring-2 focus-within:ring-${accentColor}-100`;
+function InputField({ label, value, onChange, type = 'text', placeholder = '', prefix, options, large }) {
   if (options) {
     return (
       <div className="flex flex-col">
         <label className="text-xs font-medium text-gray-600 mb-1.5">{label}</label>
-        <select value={value} onChange={onChange} className={`w-full p-2.5 border-2 border-gray-200 rounded-xl outline-none transition-all hover:border-gray-300 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 bg-white`}>
+        <select value={value} onChange={onChange} className="w-full p-2.5 border-2 border-gray-200 rounded-xl outline-none transition-all hover:border-gray-300 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 bg-white">
           <option value="">Select...</option>
           {options.map(o => <option key={o} value={o}>{o}</option>)}
         </select>
@@ -147,7 +146,6 @@ function FloatingChat({ messages, input, setInput, onSend, loading, isAdmin }) {
 
   return (
     <>
-      {/* Floating Button */}
       <button 
         onClick={() => setIsOpen(!isOpen)} 
         className={`fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-110 hover:shadow-xl ${isOpen ? 'bg-gray-700' : 'bg-gradient-to-r from-indigo-600 to-purple-600'}`}
@@ -160,10 +158,8 @@ function FloatingChat({ messages, input, setInput, onSend, loading, isAdmin }) {
         )}
       </button>
 
-      {/* Chat Window */}
       {isOpen && (
         <div className="fixed bottom-24 right-6 z-50 w-96 h-[500px] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-200">
-          {/* Header */}
           <div className={`p-4 text-white ${isAdmin ? 'bg-gradient-to-r from-purple-600 to-indigo-600' : 'bg-gradient-to-r from-blue-600 to-indigo-600'}`}>
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
@@ -176,7 +172,6 @@ function FloatingChat({ messages, input, setInput, onSend, loading, isAdmin }) {
             </div>
           </div>
 
-          {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gradient-to-b from-gray-50 to-white">
             {messages.map((msg, i) => (
               <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -199,7 +194,6 @@ function FloatingChat({ messages, input, setInput, onSend, loading, isAdmin }) {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Input */}
           <div className="p-3 border-t bg-white">
             <div className="flex gap-2">
               <input 
@@ -395,7 +389,7 @@ export default function ClinicSystem() {
     setMessage('✓ Export complete!'); setTimeout(() => setMessage(''), 3000);
   };
 
-const askAI = async () => {
+  const askAI = async () => {
     if (!chatInput.trim()) return;
     
     const userMessage = chatInput;
@@ -403,10 +397,8 @@ const askAI = async () => {
     setChatInput('');
     setAiLoading(true);
     
-    // Build comprehensive data summary for AI context
     let dataSummary = '\n📊 SYSTEM OVERVIEW:\n';
     
-    // Daily Recon Summary
     const reconEntries = allData['daily-recon'] || [];
     if (reconEntries.length > 0) {
       const totalCash = reconEntries.reduce((sum, e) => sum + (e.total || 0), 0);
@@ -416,7 +408,6 @@ const askAI = async () => {
       dataSummary += `\n   - Total Deposits: $${totalDeposits.toFixed(2)}`;
     }
     
-    // Billing Inquiry Summary
     const billingEntries = allData['billing-inquiry'] || [];
     if (billingEntries.length > 0) {
       const pending = billingEntries.filter(e => e.status === 'Pending').length;
@@ -426,7 +417,6 @@ const askAI = async () => {
       dataSummary += `\n   - Pending: ${pending}, In Progress: ${inProgress}, Resolved: ${resolved}`;
     }
     
-    // Bills Payment Summary
     const billsEntries = allData['bills-payment'] || [];
     if (billsEntries.length > 0) {
       const unpaid = billsEntries.filter(e => e.paid !== 'Yes').length;
@@ -436,7 +426,6 @@ const askAI = async () => {
       dataSummary += `\n   - Total amount: $${totalAmount.toFixed(2)}`;
     }
     
-    // Order Requests Summary
     const orderEntries = allData['order-requests'] || [];
     if (orderEntries.length > 0) {
       const totalOrders = orderEntries.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
@@ -444,7 +433,6 @@ const askAI = async () => {
       dataSummary += `\n   - Total order value: $${totalOrders.toFixed(2)}`;
     }
     
-    // Refund Requests Summary
     const refundEntries = allData['refund-requests'] || [];
     if (refundEntries.length > 0) {
       const pendingRefunds = refundEntries.filter(e => e.status === 'Pending').length;
@@ -454,7 +442,6 @@ const askAI = async () => {
       dataSummary += `\n   - Total requested: $${totalRefunds.toFixed(2)}`;
     }
     
-    // IT Requests Summary
     const itEntries = allData['it-requests'] || [];
     if (itEntries.length > 0) {
       const open = itEntries.filter(e => e.status === 'Open').length;
@@ -465,7 +452,6 @@ const askAI = async () => {
       dataSummary += `\n   - Critical issues: ${critical}`;
     }
     
-    // Location info
     dataSummary += `\n\n📍 LOCATIONS: ${LOCATIONS.join(', ')}`;
     dataSummary += `\n👤 Current user: ${currentUser?.name || 'Unknown'}`;
     dataSummary += `\n📍 Current location filter: ${isAdmin ? adminLocation : selectedLocation}`;
@@ -495,7 +481,23 @@ const askAI = async () => {
     setAiLoading(false);
   };
 
-  // ========== LOGIN ==========
+  const getModuleEntries = (moduleId) => {
+    const entries = allData[moduleId] || [];
+    if (isAdmin && adminLocation !== 'all') return entries.filter(e => e.location === adminLocation);
+    if (!isAdmin && selectedLocation) return entries.filter(e => e.location === selectedLocation);
+    return entries;
+  };
+
+  const getFileCount = (entry) => entry.files ? Object.values(entry.files).reduce((sum, arr) => sum + (arr?.length || 0), 0) : 0;
+
+  const getAllDocuments = () => {
+    const docs = [];
+    MODULES.forEach(m => { (allData[m.id] || []).forEach(entry => { if (entry.files) { Object.entries(entry.files).forEach(([cat, fileList]) => { (fileList || []).forEach(file => { docs.push({ ...file, module: m.name, location: entry.location, entryDate: entry.timestamp?.split('T')[0], enteredBy: entry.enteredBy, category: cat }); }); }); } }); });
+    return docs;
+  };
+
+  const currentColors = MODULE_COLORS[activeModule];
+
   if (!currentUser) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4">
@@ -542,7 +544,6 @@ const askAI = async () => {
     );
   }
 
-  // ========== LOCATION SELECTOR ==========
   if (!isAdmin && !selectedLocation && currentUser.locations.length > 1) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4">
@@ -574,13 +575,11 @@ const askAI = async () => {
   const entries = getModuleEntries(activeModule);
   const allDocs = getAllDocuments();
 
-  // ========== MAIN APP ==========
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-slate-100 flex">
       <FileViewer file={viewingFile} onClose={() => setViewingFile(null)} />
       <FloatingChat messages={chatMessages} input={chatInput} setInput={setChatInput} onSend={askAI} loading={aiLoading} isAdmin={isAdmin} />
 
-      {/* Sidebar */}
       <div className={`fixed inset-y-0 left-0 z-40 w-72 bg-white shadow-xl transform transition-transform lg:relative lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className={`p-5 ${isAdmin ? 'bg-gradient-to-r from-purple-600 to-indigo-600' : 'bg-gradient-to-r from-blue-600 to-indigo-600'}`}>
           <div className="flex items-center gap-3">
@@ -660,9 +659,8 @@ const askAI = async () => {
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="flex-1 flex flex-col min-h-screen">
-        <header className={`bg-white shadow-sm border-b sticky top-0 z-30`}>
+        <header className="bg-white shadow-sm border-b sticky top-0 z-30">
           <div className="flex items-center justify-between px-4 py-4">
             <div className="flex items-center gap-3">
               <button onClick={() => setSidebarOpen(!sidebarOpen)} className="lg:hidden p-2 hover:bg-gray-100 rounded-xl"><Menu className="w-5 h-5" /></button>
@@ -693,7 +691,6 @@ const askAI = async () => {
         {message && <div className="mx-4 mt-4 p-4 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 text-emerald-700 rounded-xl text-center font-medium shadow-sm">{message}</div>}
 
         <main className="flex-1 p-4 max-w-4xl mx-auto w-full pb-24">
-          {/* ADMIN: Users */}
           {isAdmin && adminView === 'users' && (
             <div className="space-y-4">
               <div className="flex justify-between items-center">
@@ -743,7 +740,6 @@ const askAI = async () => {
             </div>
           )}
 
-          {/* ADMIN: Documents */}
           {isAdmin && adminView === 'documents' && (
             <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
               <h2 className="font-semibold mb-4 flex items-center gap-2 text-gray-800"><FolderOpen className="w-5 h-5 text-amber-500" />Document Storage <span className="text-sm font-normal text-gray-500">({allDocs.length} files)</span></h2>
@@ -761,7 +757,6 @@ const askAI = async () => {
             </div>
           )}
 
-          {/* ADMIN: Export */}
           {isAdmin && adminView === 'export' && (
             <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
               <div className="flex items-center gap-3 mb-6">
@@ -777,7 +772,6 @@ const askAI = async () => {
             </div>
           )}
 
-          {/* ADMIN: Settings */}
           {isAdmin && adminView === 'settings' && (
             <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
               <div className="flex items-center gap-3 mb-6">
@@ -793,7 +787,6 @@ const askAI = async () => {
             </div>
           )}
 
-          {/* ADMIN: Records */}
           {isAdmin && adminView === 'records' && (
             <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
               <div className="flex items-center justify-between mb-4">
@@ -830,7 +823,6 @@ const askAI = async () => {
             </div>
           )}
 
-          {/* STAFF: Settings */}
           {!isAdmin && view === 'settings' && (
             <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
               <div className="flex items-center gap-3 mb-6">
@@ -846,7 +838,6 @@ const askAI = async () => {
             </div>
           )}
 
-          {/* STAFF: Entry Forms */}
           {!isAdmin && view === 'entry' && (
             <div className="space-y-4">
               {activeModule === 'daily-recon' && (<>
@@ -977,13 +968,12 @@ const askAI = async () => {
                 <div className="bg-white rounded-2xl shadow-lg p-6"><FileUpload label="Documentation" files={files['it-requests'].documentation} onFilesChange={f => updateFiles('it-requests', 'documentation', f)} onViewFile={setViewingFile} /></div>
               </>)}
 
-              <button onClick={() => saveEntry(activeModule)} disabled={saving} className={`w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl text-lg font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50`}>
+              <button onClick={() => saveEntry(activeModule)} disabled={saving} className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl text-lg font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50">
                 {saving ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Save Entry'}
               </button>
             </div>
           )}
 
-          {/* STAFF: History */}
           {!isAdmin && view === 'history' && (
             <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
               <h2 className="font-semibold mb-4 text-gray-800">Your Entries <span className="text-sm font-normal text-gray-500">({entries.length})</span></h2>
@@ -998,7 +988,6 @@ const askAI = async () => {
             </div>
           )}
 
-          {/* STAFF: Export */}
           {!isAdmin && view === 'export' && (
             <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
               <div className="flex items-center gap-3 mb-6">
