@@ -1118,8 +1118,8 @@ if (moduleId === 'daily-recon') {
             <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-500/30">
               <Building2 className="w-10 h-10 text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-800">Clinic Tracking System</h1>
-            <p className="text-gray-500 text-sm mt-1">KidShine Hawaii</p>
+            <h1 className="text-2xl font-bold text-gray-800">CMS - KidShine Hawaii</h1>
+            <p className="text-gray-500 text-sm mt-1">Clinic Management Portal</p>
           </div>
 
           {message.text && (
