@@ -1512,7 +1512,7 @@ if (!currentUser) {
               onClick={() => setRememberMe(!rememberMe)}
               className="text-sm text-gray-600 cursor-pointer select-none"
             >
-              Stay logged in for 30 days
+              Stay logged in /*SEASION ONLY FOR 30DAYS*/
             </label>
           </div>
           
