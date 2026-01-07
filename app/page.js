@@ -2182,4 +2182,12 @@ const updateReconForm = (entryId, field, value) => {
       </div>
     )}
   </div>
+
+</main>
+      </div>
+
+      {sidebarOpen && <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-30 lg:hidden" onClick={() => setSidebarOpen(false)} />}
+    </div>
+  );
+}
 )}
