@@ -346,6 +346,7 @@ const [nameForm, setNameForm] = useState('');
   const [editingStaffEntry, setEditingStaffEntry] = useState(null);
 const [staffEditForm, setStaffEditForm] = useState({});
   const [viewingUserSessions, setViewingUserSessions] = useState(null);
+  const [userSearch, setUserSearch] = useState('');
 const [userSessionsData, setUserSessionsData] = useState([]);
 const [loadingUserSessions, setLoadingUserSessions] = useState(false);
   const [staffRecordSearch, setStaffRecordSearch] = useState('');
@@ -1996,11 +1997,35 @@ if (!currentUser) {
           {/* ADMIN: User Management */}
           {isAdmin && adminView === 'users' && (
             <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h2 className="text-lg font-semibold text-gray-700">{users.length} Users</h2>
-                <button onClick={() => setShowAddUser(true)} className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl shadow-lg hover:shadow-xl transition-all">
-                  <Plus className="w-4 h-4" />Add User
-                </button>
+<div className="flex flex-col gap-4">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-lg font-semibold text-gray-700">{users.filter(u => {
+                    if (!userSearch.trim()) return true;
+                    const search = userSearch.toLowerCase();
+                    return u.name?.toLowerCase().includes(search) || 
+                           u.username?.toLowerCase().includes(search) || 
+                           u.email?.toLowerCase().includes(search) ||
+                           u.role?.toLowerCase().includes(search);
+                  }).length} Users</h2>
+                  <button onClick={() => setShowAddUser(true)} className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl shadow-lg hover:shadow-xl transition-all">
+                    <Plus className="w-4 h-4" />Add User
+                  </button>
+                </div>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="text"
+                    value={userSearch}
+                    onChange={e => setUserSearch(e.target.value)}
+                    placeholder="Search by name, username, email, or role..."
+                    className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-200 rounded-xl text-sm focus:border-purple-400 outline-none transition-all"
+                  />
+                  {userSearch && (
+                    <button onClick={() => setUserSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
               </div>
 
               {(showAddUser || editingUser) && (
@@ -2040,7 +2065,14 @@ if (!currentUser) {
 
 <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
   <div className="divide-y">
-    {users.map(u => (
+    {users.filter(u => {
+                    if (!userSearch.trim()) return true;
+                    const search = userSearch.toLowerCase();
+                    return u.name?.toLowerCase().includes(search) || 
+                           u.username?.toLowerCase().includes(search) || 
+                           u.email?.toLowerCase().includes(search) ||
+                           u.role?.toLowerCase().includes(search);
+                  }).map(u => (
       <div key={u.id}>
         <div className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
           <div className="flex items-center gap-3">
