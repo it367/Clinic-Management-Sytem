@@ -345,6 +345,10 @@ const [currentPage, setCurrentPage] = useState(1);
 const [nameForm, setNameForm] = useState('');
   const [editingStaffEntry, setEditingStaffEntry] = useState(null);
 const [staffEditForm, setStaffEditForm] = useState({});
+  const [staffRecordSearch, setStaffRecordSearch] = useState('');
+const [staffSortOrder, setStaffSortOrder] = useState('desc');
+const [staffRecordsPerPage, setStaffRecordsPerPage] = useState(20);
+const [staffCurrentPage, setStaffCurrentPage] = useState(1);
 
   const [showAddUser, setShowAddUser] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
@@ -491,7 +495,8 @@ useEffect(() => { if (currentUser) setNameForm(currentUser.name || ''); }, [curr
     }
   }, [currentUser, selectedLocation, activeModule, adminLocation]);
 
-useEffect(() => { setCurrentPage(1); setRecordSearch(''); }, [activeModule, adminLocation]);  
+useEffect(() => { setCurrentPage(1); setRecordSearch(''); }, [activeModule, adminLocation]);
+  useEffect(() => { setStaffCurrentPage(1); setStaffRecordSearch(''); setEditingStaffEntry(null); }, [activeModule, selectedLocation]);
   
   const isAdmin = currentUser?.role === 'super_admin' || currentUser?.role === 'finance_admin';
   const isSuperAdmin = currentUser?.role === 'super_admin';
@@ -1618,6 +1623,45 @@ const saveStaffEntryUpdate = async () => {
   setStaffEditForm({});
   loadModuleData(activeModule);
   setSaving(false);
+};
+
+  const getStaffEntries = () => {
+  let data = moduleData[activeModule] || [];
+  
+  if (staffRecordSearch.trim()) {
+    const search = staffRecordSearch.toLowerCase();
+    data = data.filter(e => {
+      const searchableFields = [
+        e.recon_date, e.patient_name, e.vendor, e.chart_number,
+        e.parent_name, e.description, e.description_of_issue,
+        e.invoice_number, e.requester_name, e.device_system,
+        e.notes, e.result, e.status, e.ticket_number?.toString(),
+        e.inquiry_type, e.type, e.urgency
+      ];
+      return searchableFields.some(field => field?.toLowerCase()?.includes(search));
+    });
+  }
+  
+  data = [...data].sort((a, b) => {
+    const dateA = new Date(a.created_at);
+    const dateB = new Date(b.created_at);
+    return staffSortOrder === 'desc' ? dateB - dateA : dateA - dateB;
+  });
+  
+  return data;
+};
+
+const getStaffPaginatedEntries = () => {
+  const allEntries = getStaffEntries();
+  if (staffRecordsPerPage === 'all') return allEntries;
+  const startIndex = (staffCurrentPage - 1) * staffRecordsPerPage;
+  return allEntries.slice(startIndex, startIndex + staffRecordsPerPage);
+};
+
+const getStaffTotalPages = () => {
+  const allEntries = getStaffEntries();
+  if (staffRecordsPerPage === 'all') return 1;
+  return Math.ceil(allEntries.length / staffRecordsPerPage);
 };
   
   const currentColors = MODULE_COLORS[activeModule];
@@ -2781,191 +2825,276 @@ if (!currentUser) {
 
 {/* History View - Staff */}
 {!isAdmin && view === 'history' && (
-  <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
-    <h2 className="font-semibold mb-4 text-gray-800">Your Entries <span className="text-sm font-normal text-gray-500">({entries.length})</span></h2>
-    {loading ? (
-      <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-gray-400" /></div>
-    ) : entries.length === 0 ? (
-      <p className="text-gray-500 text-center py-8">No entries yet</p>
-    ) : (
-      <div className="space-y-3">
-        {entries.slice(0, 30).map(e => {
-          const canEdit = canEditRecord(e.created_at);
-          const isEditing = editingStaffEntry === e.id;
-          const docKey = `${activeModule}-${e.id}`;
-          const docs = entryDocuments[docKey] || [];
-          
-          if (!entryDocuments[docKey]) {
-            loadEntryDocuments(activeModule, e.id);
-          }
-
-          let bgClass = `${currentColors?.bg} border ${currentColors?.border}`;
-          if (activeModule === 'daily-recon') {
-            if (e.status === 'Accounted') bgClass = 'bg-emerald-50 border-2 border-emerald-300';
-            else if (e.status === 'Rejected') bgClass = 'bg-red-50 border-2 border-red-300';
-            else bgClass = 'bg-amber-50 border-2 border-amber-300';
-          }
-          
-          return (
-            <div key={e.id} className={`p-4 rounded-xl ${bgClass}`}>
-              {isEditing ? (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-semibold text-gray-800 flex items-center gap-2">
-                      <Edit3 className="w-4 h-4" /> Edit Entry
-                    </h4>
-                    <button onClick={() => { setEditingStaffEntry(null); setStaffEditForm({}); }} className="text-gray-400 hover:text-gray-600">
-                      <X className="w-5 h-5" />
-                    </button>
-                  </div>
-                  
-                  {activeModule === 'daily-recon' && (
-                    <div className="grid grid-cols-2 gap-3">
-                      <InputField label="Date" type="date" value={staffEditForm.recon_date} onChange={ev => updateStaffEditForm('recon_date', ev.target.value)} />
-                      <InputField label="Cash" prefix="$" value={staffEditForm.cash} onChange={ev => updateStaffEditForm('cash', ev.target.value)} />
-                      <InputField label="Credit Card" prefix="$" value={staffEditForm.credit_card} onChange={ev => updateStaffEditForm('credit_card', ev.target.value)} />
-                      <InputField label="Checks OTC" prefix="$" value={staffEditForm.checks_otc} onChange={ev => updateStaffEditForm('checks_otc', ev.target.value)} />
-                      <InputField label="Insurance Checks" prefix="$" value={staffEditForm.insurance_checks} onChange={ev => updateStaffEditForm('insurance_checks', ev.target.value)} />
-                      <InputField label="Care Credit" prefix="$" value={staffEditForm.care_credit} onChange={ev => updateStaffEditForm('care_credit', ev.target.value)} />
-                      <InputField label="VCC" prefix="$" value={staffEditForm.vcc} onChange={ev => updateStaffEditForm('vcc', ev.target.value)} />
-                      <InputField label="EFTs" prefix="$" value={staffEditForm.efts} onChange={ev => updateStaffEditForm('efts', ev.target.value)} />
-                      <div className="col-span-2">
-                        <InputField label="Notes" value={staffEditForm.notes} onChange={ev => updateStaffEditForm('notes', ev.target.value)} />
-                      </div>
-                    </div>
-                  )}
-                  
-                  {activeModule === 'billing-inquiry' && (
-                    <div className="grid grid-cols-2 gap-3">
-                      <InputField label="Patient Name" value={staffEditForm.patient_name} onChange={ev => updateStaffEditForm('patient_name', ev.target.value)} />
-                      <InputField label="Chart Number" value={staffEditForm.chart_number} onChange={ev => updateStaffEditForm('chart_number', ev.target.value)} />
-                      <InputField label="Parent Name" value={staffEditForm.parent_name} onChange={ev => updateStaffEditForm('parent_name', ev.target.value)} />
-                      <InputField label="Date of Request" type="date" value={staffEditForm.date_of_request} onChange={ev => updateStaffEditForm('date_of_request', ev.target.value)} />
-                      <InputField label="Type of Inquiry" value={staffEditForm.inquiry_type} onChange={ev => updateStaffEditForm('inquiry_type', ev.target.value)} options={INQUIRY_TYPES} />
-                      <InputField label="Amount in Question" prefix="$" value={staffEditForm.amount_in_question} onChange={ev => updateStaffEditForm('amount_in_question', ev.target.value)} />
-                      <InputField label="Contact Method" value={staffEditForm.best_contact_method} onChange={ev => updateStaffEditForm('best_contact_method', ev.target.value)} options={CONTACT_METHODS} />
-                      <InputField label="Best Time to Contact" value={staffEditForm.best_contact_time} onChange={ev => updateStaffEditForm('best_contact_time', ev.target.value)} />
-                      <div className="col-span-2">
-                        <InputField label="Description" large value={staffEditForm.description} onChange={ev => updateStaffEditForm('description', ev.target.value)} />
-                      </div>
-                    </div>
-                  )}
-                  
-                  {activeModule === 'bills-payment' && (
-                    <div className="grid grid-cols-2 gap-3">
-                      <InputField label="Bill Status" value={staffEditForm.bill_status} onChange={ev => updateStaffEditForm('bill_status', ev.target.value)} options={['Pending', 'Approved', 'Paid']} />
-                      <InputField label="Date" type="date" value={staffEditForm.bill_date} onChange={ev => updateStaffEditForm('bill_date', ev.target.value)} />
-                      <InputField label="Vendor" value={staffEditForm.vendor} onChange={ev => updateStaffEditForm('vendor', ev.target.value)} />
-                      <InputField label="Amount" prefix="$" value={staffEditForm.amount} onChange={ev => updateStaffEditForm('amount', ev.target.value)} />
-                      <InputField label="Due Date" type="date" value={staffEditForm.due_date} onChange={ev => updateStaffEditForm('due_date', ev.target.value)} />
-                      <InputField label="Manager Initials" value={staffEditForm.manager_initials} onChange={ev => updateStaffEditForm('manager_initials', ev.target.value)} />
-                      <div className="col-span-2">
-                        <InputField label="Description" large value={staffEditForm.description} onChange={ev => updateStaffEditForm('description', ev.target.value)} />
-                      </div>
-                    </div>
-                  )}
-                  
-                  {activeModule === 'order-requests' && (
-                    <div className="grid grid-cols-2 gap-3">
-                      <InputField label="Date Entered" type="date" value={staffEditForm.date_entered} onChange={ev => updateStaffEditForm('date_entered', ev.target.value)} />
-                      <InputField label="Vendor" value={staffEditForm.vendor} onChange={ev => updateStaffEditForm('vendor', ev.target.value)} />
-                      <InputField label="Invoice Number" value={staffEditForm.invoice_number} onChange={ev => updateStaffEditForm('invoice_number', ev.target.value)} />
-                      <InputField label="Invoice Date" type="date" value={staffEditForm.invoice_date} onChange={ev => updateStaffEditForm('invoice_date', ev.target.value)} />
-                      <InputField label="Due Date" type="date" value={staffEditForm.due_date} onChange={ev => updateStaffEditForm('due_date', ev.target.value)} />
-                      <InputField label="Amount" prefix="$" value={staffEditForm.amount} onChange={ev => updateStaffEditForm('amount', ev.target.value)} />
-                      <div className="col-span-2">
-                        <InputField label="Notes" large value={staffEditForm.notes} onChange={ev => updateStaffEditForm('notes', ev.target.value)} />
-                      </div>
-                    </div>
-                  )}
-                  
-                  {activeModule === 'refund-requests' && (
-                    <div className="grid grid-cols-2 gap-3">
-                      <InputField label="Patient Name" value={staffEditForm.patient_name} onChange={ev => updateStaffEditForm('patient_name', ev.target.value)} />
-                      <InputField label="Chart Number" value={staffEditForm.chart_number} onChange={ev => updateStaffEditForm('chart_number', ev.target.value)} />
-                      <InputField label="Parent Name" value={staffEditForm.parent_name} onChange={ev => updateStaffEditForm('parent_name', ev.target.value)} />
-                      <InputField label="RP Address" value={staffEditForm.rp_address} onChange={ev => updateStaffEditForm('rp_address', ev.target.value)} />
-                      <InputField label="Date of Request" type="date" value={staffEditForm.date_of_request} onChange={ev => updateStaffEditForm('date_of_request', ev.target.value)} />
-                      <InputField label="Type" value={staffEditForm.type} onChange={ev => updateStaffEditForm('type', ev.target.value)} options={REFUND_TYPES} />
-                      <InputField label="Amount Requested" prefix="$" value={staffEditForm.amount_requested} onChange={ev => updateStaffEditForm('amount_requested', ev.target.value)} />
-                      <InputField label="Contact Method" value={staffEditForm.best_contact_method} onChange={ev => updateStaffEditForm('best_contact_method', ev.target.value)} options={CONTACT_METHODS} />
-                      <div className="col-span-2">
-                        <InputField label="Description" large value={staffEditForm.description} onChange={ev => updateStaffEditForm('description', ev.target.value)} />
-                      </div>
-                    </div>
-                  )}
-                  
-                  {activeModule === 'it-requests' && (
-                    <div className="grid grid-cols-2 gap-3">
-                      <InputField label="Date Reported" type="date" value={staffEditForm.date_reported} onChange={ev => updateStaffEditForm('date_reported', ev.target.value)} />
-                      <InputField label="Urgency" value={staffEditForm.urgency} onChange={ev => updateStaffEditForm('urgency', ev.target.value)} options={['Low', 'Medium', 'High', 'Critical']} />
-                      <InputField label="Requester Name" value={staffEditForm.requester_name} onChange={ev => updateStaffEditForm('requester_name', ev.target.value)} />
-                      <InputField label="Device/System" value={staffEditForm.device_system} onChange={ev => updateStaffEditForm('device_system', ev.target.value)} />
-                      <InputField label="Contact Method" value={staffEditForm.best_contact_method} onChange={ev => updateStaffEditForm('best_contact_method', ev.target.value)} options={['Phone', 'Email', 'Text']} />
-                      <InputField label="Best Contact Time" value={staffEditForm.best_contact_time} onChange={ev => updateStaffEditForm('best_contact_time', ev.target.value)} />
-                      <div className="col-span-2">
-                        <InputField label="Description of Issue" large value={staffEditForm.description_of_issue} onChange={ev => updateStaffEditForm('description_of_issue', ev.target.value)} />
-                      </div>
-                    </div>
-                  )}
-                  
-                  <div className="flex gap-2 pt-2">
-                    <button onClick={saveStaffEntryUpdate} disabled={saving} className="flex-1 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-medium hover:shadow-lg transition-all disabled:opacity-50">
-                      {saving ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Save Changes'}
-                    </button>
-                    <button onClick={() => { setEditingStaffEntry(null); setStaffEditForm({}); }} className="px-4 py-2.5 bg-gray-200 rounded-xl font-medium hover:bg-gray-300 transition-all">
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium text-gray-800">
-                        {e.ticket_number ? `IT-${e.ticket_number}` : e.patient_name || e.vendor || e.recon_date || new Date(e.created_at).toLocaleDateString()}
-                      </p>
-                      <StatusBadge status={e.status || (activeModule === 'daily-recon' ? 'Pending' : e.status)} />
-                      {!canEdit && <Lock className="w-4 h-4 text-gray-400" title="Locked (past Friday cutoff)" />}
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">{new Date(e.created_at).toLocaleDateString()}</p>
-                    
-                    {activeModule === 'daily-recon' && e.total_collected && (
-                      <p className="text-lg font-bold text-emerald-600 mt-2">${Number(e.total_collected).toFixed(2)}</p>
-                    )}
-                    
-                    {activeModule !== 'daily-recon' && (e.amount || e.amount_requested || e.amount_in_question) && (
-                      <p className="text-lg font-bold text-emerald-600 mt-2">${Number(e.amount || e.amount_requested || e.amount_in_question).toFixed(2)}</p>
-                    )}
-                    
-                    {docs.length > 0 && (
-                      <div className="mt-3 space-y-1">
-                        <p className="text-xs font-medium text-gray-500">Attached Files:</p>
-                        {docs.map(doc => (
-                          <div key={doc.id} className="flex items-center gap-2 text-sm">
-                            <File className="w-3 h-3 text-gray-400" />
-                            <span className="text-gray-600 truncate">{doc.file_name}</span>
-                            <button onClick={() => viewDocument(doc)} className="p-1 text-blue-500 hover:bg-blue-100 rounded transition-colors" title="Preview">
-                              <Eye className="w-3 h-3" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  
-                  {canEdit && (
-                    <button onClick={() => startEditingStaffEntry(e)} className="px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-100 rounded-lg transition-colors flex items-center gap-1">
-                      <Edit3 className="w-4 h-4" /> Edit
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          );
-        })}
+  <div className="space-y-4">
+    {/* Sorting Controls */}
+    <div className="bg-white rounded-2xl shadow-lg p-4 border border-gray-100">
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="flex-1 min-w-[200px]">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              value={staffRecordSearch}
+              onChange={e => { setStaffRecordSearch(e.target.value); setStaffCurrentPage(1); }}
+              placeholder="Search records..."
+              className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-200 rounded-xl text-sm focus:border-blue-400 outline-none transition-all"
+            />
+            {staffRecordSearch && (
+              <button onClick={() => setStaffRecordSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-500 font-medium">Sort:</span>
+          <select
+            value={staffSortOrder}
+            onChange={e => setStaffSortOrder(e.target.value)}
+            className="px-3 py-2.5 border-2 border-gray-200 rounded-xl text-sm focus:border-blue-400 outline-none bg-white"
+          >
+            <option value="desc">Newest First</option>
+            <option value="asc">Oldest First</option>
+          </select>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-500 font-medium">Show:</span>
+          <select
+            value={staffRecordsPerPage}
+            onChange={e => { setStaffRecordsPerPage(e.target.value === 'all' ? 'all' : parseInt(e.target.value)); setStaffCurrentPage(1); }}
+            className="px-3 py-2.5 border-2 border-gray-200 rounded-xl text-sm focus:border-blue-400 outline-none bg-white"
+          >
+            <option value={5}>5</option>
+            <option value={10}>10</option>
+            <option value={20}>20</option>
+            <option value={50}>50</option>
+            <option value="all">All</option>
+          </select>
+        </div>
       </div>
-    )}
+      
+      <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+        <p className="text-sm text-gray-500">
+          Showing <span className="font-semibold text-gray-700">{getStaffPaginatedEntries().length}</span> of <span className="font-semibold text-gray-700">{getStaffEntries().length}</span> records
+          {staffRecordSearch && <span className="text-blue-600"> (filtered)</span>}
+        </p>
+        <span className={`text-sm font-medium px-3 py-1 rounded-lg ${currentColors?.light} ${currentColors?.text}`}>
+          {currentModule?.name}
+        </span>
+      </div>
+    </div>
+
+    {/* Records List */}
+    <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+      <h2 className="font-semibold mb-4 text-gray-800">Your Entries</h2>
+      {loading ? (
+        <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-gray-400" /></div>
+      ) : getStaffEntries().length === 0 ? (
+        <div className="text-center py-12">
+          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <FileText className="w-8 h-8 text-gray-400" />
+          </div>
+          <p className="text-gray-500">{staffRecordSearch ? 'No records match your search' : 'No entries yet'}</p>
+          {staffRecordSearch && (
+            <button onClick={() => setStaffRecordSearch('')} className="mt-2 text-blue-600 text-sm font-medium hover:underline">Clear search</button>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {getStaffPaginatedEntries().map(e => {
+            const canEdit = canEditRecord(e.created_at);
+            const isEditing = editingStaffEntry === e.id;
+            const docKey = `${activeModule}-${e.id}`;
+            const docs = entryDocuments[docKey] || [];
+            
+            if (!entryDocuments[docKey]) {
+              loadEntryDocuments(activeModule, e.id);
+            }
+
+            let bgClass = `${currentColors?.bg} border ${currentColors?.border}`;
+            if (activeModule === 'daily-recon') {
+              if (e.status === 'Accounted') bgClass = 'bg-emerald-50 border-2 border-emerald-300';
+              else if (e.status === 'Rejected') bgClass = 'bg-red-50 border-2 border-red-300';
+              else bgClass = 'bg-amber-50 border-2 border-amber-300';
+            }
+            
+            return (
+              <div key={e.id} className={`p-4 rounded-xl ${bgClass}`}>
+                {isEditing ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-semibold text-gray-800 flex items-center gap-2">
+                        <Edit3 className="w-4 h-4" /> Edit Entry
+                      </h4>
+                      <button onClick={() => { setEditingStaffEntry(null); setStaffEditForm({}); }} className="text-gray-400 hover:text-gray-600">
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+                    
+                    {activeModule === 'daily-recon' && (
+                      <div className="grid grid-cols-2 gap-3">
+                        <InputField label="Date" type="date" value={staffEditForm.recon_date} onChange={ev => updateStaffEditForm('recon_date', ev.target.value)} />
+                        <InputField label="Cash" prefix="$" value={staffEditForm.cash} onChange={ev => updateStaffEditForm('cash', ev.target.value)} />
+                        <InputField label="Credit Card" prefix="$" value={staffEditForm.credit_card} onChange={ev => updateStaffEditForm('credit_card', ev.target.value)} />
+                        <InputField label="Checks OTC" prefix="$" value={staffEditForm.checks_otc} onChange={ev => updateStaffEditForm('checks_otc', ev.target.value)} />
+                        <InputField label="Insurance Checks" prefix="$" value={staffEditForm.insurance_checks} onChange={ev => updateStaffEditForm('insurance_checks', ev.target.value)} />
+                        <InputField label="Care Credit" prefix="$" value={staffEditForm.care_credit} onChange={ev => updateStaffEditForm('care_credit', ev.target.value)} />
+                        <InputField label="VCC" prefix="$" value={staffEditForm.vcc} onChange={ev => updateStaffEditForm('vcc', ev.target.value)} />
+                        <InputField label="EFTs" prefix="$" value={staffEditForm.efts} onChange={ev => updateStaffEditForm('efts', ev.target.value)} />
+                        <div className="col-span-2">
+                          <InputField label="Notes" value={staffEditForm.notes} onChange={ev => updateStaffEditForm('notes', ev.target.value)} />
+                        </div>
+                      </div>
+                    )}
+                    
+                    {activeModule === 'billing-inquiry' && (
+                      <div className="grid grid-cols-2 gap-3">
+                        <InputField label="Patient Name" value={staffEditForm.patient_name} onChange={ev => updateStaffEditForm('patient_name', ev.target.value)} />
+                        <InputField label="Chart Number" value={staffEditForm.chart_number} onChange={ev => updateStaffEditForm('chart_number', ev.target.value)} />
+                        <InputField label="Parent Name" value={staffEditForm.parent_name} onChange={ev => updateStaffEditForm('parent_name', ev.target.value)} />
+                        <InputField label="Date of Request" type="date" value={staffEditForm.date_of_request} onChange={ev => updateStaffEditForm('date_of_request', ev.target.value)} />
+                        <InputField label="Type of Inquiry" value={staffEditForm.inquiry_type} onChange={ev => updateStaffEditForm('inquiry_type', ev.target.value)} options={INQUIRY_TYPES} />
+                        <InputField label="Amount in Question" prefix="$" value={staffEditForm.amount_in_question} onChange={ev => updateStaffEditForm('amount_in_question', ev.target.value)} />
+                        <InputField label="Contact Method" value={staffEditForm.best_contact_method} onChange={ev => updateStaffEditForm('best_contact_method', ev.target.value)} options={CONTACT_METHODS} />
+                        <InputField label="Best Time to Contact" value={staffEditForm.best_contact_time} onChange={ev => updateStaffEditForm('best_contact_time', ev.target.value)} />
+                        <div className="col-span-2">
+                          <InputField label="Description" large value={staffEditForm.description} onChange={ev => updateStaffEditForm('description', ev.target.value)} />
+                        </div>
+                      </div>
+                    )}
+                    
+                    {activeModule === 'bills-payment' && (
+                      <div className="grid grid-cols-2 gap-3">
+                        <InputField label="Bill Status" value={staffEditForm.bill_status} onChange={ev => updateStaffEditForm('bill_status', ev.target.value)} options={['Pending', 'Approved', 'Paid']} />
+                        <InputField label="Date" type="date" value={staffEditForm.bill_date} onChange={ev => updateStaffEditForm('bill_date', ev.target.value)} />
+                        <InputField label="Vendor" value={staffEditForm.vendor} onChange={ev => updateStaffEditForm('vendor', ev.target.value)} />
+                        <InputField label="Amount" prefix="$" value={staffEditForm.amount} onChange={ev => updateStaffEditForm('amount', ev.target.value)} />
+                        <InputField label="Due Date" type="date" value={staffEditForm.due_date} onChange={ev => updateStaffEditForm('due_date', ev.target.value)} />
+                        <InputField label="Manager Initials" value={staffEditForm.manager_initials} onChange={ev => updateStaffEditForm('manager_initials', ev.target.value)} />
+                        <div className="col-span-2">
+                          <InputField label="Description" large value={staffEditForm.description} onChange={ev => updateStaffEditForm('description', ev.target.value)} />
+                        </div>
+                      </div>
+                    )}
+                    
+                    {activeModule === 'order-requests' && (
+                      <div className="grid grid-cols-2 gap-3">
+                        <InputField label="Date Entered" type="date" value={staffEditForm.date_entered} onChange={ev => updateStaffEditForm('date_entered', ev.target.value)} />
+                        <InputField label="Vendor" value={staffEditForm.vendor} onChange={ev => updateStaffEditForm('vendor', ev.target.value)} />
+                        <InputField label="Invoice Number" value={staffEditForm.invoice_number} onChange={ev => updateStaffEditForm('invoice_number', ev.target.value)} />
+                        <InputField label="Invoice Date" type="date" value={staffEditForm.invoice_date} onChange={ev => updateStaffEditForm('invoice_date', ev.target.value)} />
+                        <InputField label="Due Date" type="date" value={staffEditForm.due_date} onChange={ev => updateStaffEditForm('due_date', ev.target.value)} />
+                        <InputField label="Amount" prefix="$" value={staffEditForm.amount} onChange={ev => updateStaffEditForm('amount', ev.target.value)} />
+                        <div className="col-span-2">
+                          <InputField label="Notes" large value={staffEditForm.notes} onChange={ev => updateStaffEditForm('notes', ev.target.value)} />
+                        </div>
+                      </div>
+                    )}
+                    
+                    {activeModule === 'refund-requests' && (
+                      <div className="grid grid-cols-2 gap-3">
+                        <InputField label="Patient Name" value={staffEditForm.patient_name} onChange={ev => updateStaffEditForm('patient_name', ev.target.value)} />
+                        <InputField label="Chart Number" value={staffEditForm.chart_number} onChange={ev => updateStaffEditForm('chart_number', ev.target.value)} />
+                        <InputField label="Parent Name" value={staffEditForm.parent_name} onChange={ev => updateStaffEditForm('parent_name', ev.target.value)} />
+                        <InputField label="RP Address" value={staffEditForm.rp_address} onChange={ev => updateStaffEditForm('rp_address', ev.target.value)} />
+                        <InputField label="Date of Request" type="date" value={staffEditForm.date_of_request} onChange={ev => updateStaffEditForm('date_of_request', ev.target.value)} />
+                        <InputField label="Type" value={staffEditForm.type} onChange={ev => updateStaffEditForm('type', ev.target.value)} options={REFUND_TYPES} />
+                        <InputField label="Amount Requested" prefix="$" value={staffEditForm.amount_requested} onChange={ev => updateStaffEditForm('amount_requested', ev.target.value)} />
+                        <InputField label="Contact Method" value={staffEditForm.best_contact_method} onChange={ev => updateStaffEditForm('best_contact_method', ev.target.value)} options={CONTACT_METHODS} />
+                        <div className="col-span-2">
+                          <InputField label="Description" large value={staffEditForm.description} onChange={ev => updateStaffEditForm('description', ev.target.value)} />
+                        </div>
+                      </div>
+                    )}
+                    
+                    {activeModule === 'it-requests' && (
+                      <div className="grid grid-cols-2 gap-3">
+                        <InputField label="Date Reported" type="date" value={staffEditForm.date_reported} onChange={ev => updateStaffEditForm('date_reported', ev.target.value)} />
+                        <InputField label="Urgency" value={staffEditForm.urgency} onChange={ev => updateStaffEditForm('urgency', ev.target.value)} options={['Low', 'Medium', 'High', 'Critical']} />
+                        <InputField label="Requester Name" value={staffEditForm.requester_name} onChange={ev => updateStaffEditForm('requester_name', ev.target.value)} />
+                        <InputField label="Device/System" value={staffEditForm.device_system} onChange={ev => updateStaffEditForm('device_system', ev.target.value)} />
+                        <InputField label="Contact Method" value={staffEditForm.best_contact_method} onChange={ev => updateStaffEditForm('best_contact_method', ev.target.value)} options={['Phone', 'Email', 'Text']} />
+                        <InputField label="Best Contact Time" value={staffEditForm.best_contact_time} onChange={ev => updateStaffEditForm('best_contact_time', ev.target.value)} />
+                        <div className="col-span-2">
+                          <InputField label="Description of Issue" large value={staffEditForm.description_of_issue} onChange={ev => updateStaffEditForm('description_of_issue', ev.target.value)} />
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="flex gap-2 pt-2">
+                      <button onClick={saveStaffEntryUpdate} disabled={saving} className="flex-1 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-medium hover:shadow-lg transition-all disabled:opacity-50">
+                        {saving ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Save Changes'}
+                      </button>
+                      <button onClick={() => { setEditingStaffEntry(null); setStaffEditForm({}); }} className="px-4 py-2.5 bg-gray-200 rounded-xl font-medium hover:bg-gray-300 transition-all">
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-gray-800">
+                          {e.ticket_number ? `IT-${e.ticket_number}` : e.patient_name || e.vendor || e.recon_date || new Date(e.created_at).toLocaleDateString()}
+                        </p>
+                        <StatusBadge status={e.status || (activeModule === 'daily-recon' ? 'Pending' : e.status)} />
+                        {!canEdit && <Lock className="w-4 h-4 text-gray-400" title="Locked (past Friday cutoff)" />}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">{new Date(e.created_at).toLocaleDateString()}</p>
+                      
+                      {activeModule === 'daily-recon' && e.total_collected && (
+                        <p className="text-lg font-bold text-emerald-600 mt-2">${Number(e.total_collected).toFixed(2)}</p>
+                      )}
+                      
+                      {activeModule !== 'daily-recon' && (e.amount || e.amount_requested || e.amount_in_question) && (
+                        <p className="text-lg font-bold text-emerald-600 mt-2">${Number(e.amount || e.amount_requested || e.amount_in_question).toFixed(2)}</p>
+                      )}
+                      
+                      {docs.length > 0 && (
+                        <div className="mt-3 space-y-1">
+                          <p className="text-xs font-medium text-gray-500">Attached Files:</p>
+                          {docs.map(doc => (
+                            <div key={doc.id} className="flex items-center gap-2 text-sm">
+                              <File className="w-3 h-3 text-gray-400" />
+                              <span className="text-gray-600 truncate">{doc.file_name}</span>
+                              <button onClick={() => viewDocument(doc)} className="p-1 text-blue-500 hover:bg-blue-100 rounded transition-colors" title="Preview">
+                                <Eye className="w-3 h-3" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    
+                    {canEdit && (
+                      <button onClick={() => startEditingStaffEntry(e)} className="px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-100 rounded-lg transition-colors flex items-center gap-1">
+                        <Edit3 className="w-4 h-4" /> Edit
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+      
+      {/* Pagination */}
+      {!loading && getStaffEntries().length > 0 && staffRecordsPerPage !== 'all' && getStaffTotalPages() > 1 && (
+        <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-100">
+          <p className="text-sm text-gray-500">Page {staffCurrentPage} of {getStaffTotalPages()}</p>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setStaffCurrentPage(1)} disabled={staffCurrentPage === 1} className="px-3 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed">First</button>
+            <button onClick={() => setStaffCurrentPage(p => Math.max(p - 1, 1))} disabled={staffCurrentPage === 1} className="px-3 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed">Previous</button>
+            <span className="px-3 py-2 text-sm font-semibold text-blue-600 bg-blue-50 rounded-lg">{staffCurrentPage}</span>
+            <button onClick={() => setStaffCurrentPage(p => Math.min(p + 1, getStaffTotalPages()))} disabled={staffCurrentPage === getStaffTotalPages()} className="px-3 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed">Next</button>
+            <button onClick={() => setStaffCurrentPage(getStaffTotalPages())} disabled={staffCurrentPage === getStaffTotalPages()} className="px-3 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed">Last</button>
+          </div>
+        </div>
+      )}
+    </div>
   </div>
 )}
 
