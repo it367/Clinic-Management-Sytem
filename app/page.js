@@ -601,9 +601,10 @@ useEffect(() => {
           setSelectedLocation(sessionData.selectedLocation);
         }
         setLastLogin(sessionData.lastLogin);
-        // Load users if admin
+// Load users if admin and set default view
         if (sessionData.user.role === 'super_admin' || sessionData.user.role === 'finance_admin') {
           loadUsers();
+          setAdminView('analytics'); // Default to analytics for admins
         }
       }
     } catch (e) {
@@ -669,7 +670,14 @@ useEffect(() => { if (currentUser) setNameForm(currentUser.name || ''); }, [curr
 
 useEffect(() => { setCurrentPage(1); setRecordSearch(''); }, [activeModule, adminLocation]);
   useEffect(() => { setStaffCurrentPage(1); setStaffRecordSearch(''); setEditingStaffEntry(null); }, [activeModule, selectedLocation]);
-  
+  // Load data when analytics module changes
+useEffect(() => {
+  if (isAdmin && adminView === 'analytics' && analyticsModule) {
+    if (!moduleData[analyticsModule]) {
+      loadModuleData(analyticsModule);
+    }
+  }
+}, [analyticsModule, adminView, isAdmin]);
   const isAdmin = currentUser?.role === 'super_admin' || currentUser?.role === 'finance_admin';
   const isSuperAdmin = currentUser?.role === 'super_admin';
 
@@ -996,7 +1004,7 @@ const handleLogin = async () => {
     // Save session (with or without "Remember Me")
     saveSession(user, locationsList, selectedLoc, previousLogin, rememberMe);
 
-    setCurrentUser(user);
+setCurrentUser(user);
     setUserLocations(locationsList);
 
     if (selectedLoc) {
@@ -1006,6 +1014,7 @@ const handleLogin = async () => {
     if (user.role === 'super_admin' || user.role === 'finance_admin') {
       loadUsers();
       loadLoginHistory(user.id);
+      setAdminView('analytics'); // Default to analytics for admins
     }
 
     showMessage('success', '✓ Login successful!');
@@ -2420,14 +2429,19 @@ if (!currentUser) {
       </div>
     </div>
 
-    {/* Analytics Content */}
+{/* Analytics Content */}
     {(() => {
-      // Load data for selected analytics module if not loaded
-      if (!moduleData[analyticsModule]) {
-        loadModuleData(analyticsModule);
-      }
-      
       let data = moduleData[analyticsModule] || [];
+      
+      // Show loading if no data yet
+      if (!moduleData[analyticsModule]) {
+        return (
+          <div className="bg-white rounded-2xl shadow-lg p-12 border border-gray-100 text-center">
+            <Loader2 className="w-8 h-8 animate-spin text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-500">Loading data...</p>
+          </div>
+        );
+      }
       
       // Filter by location
       if (adminLocation !== 'all') {
