@@ -2483,8 +2483,27 @@ if (!currentUser) {
       
       // Daily Recon Analytics
       if (analyticsModule === 'daily-recon') {
-        const totalCollected = filteredData.reduce((sum, r) => sum + (parseFloat(r.total_collected) || 0), 0);
-        const totalDeposited = filteredData.reduce((sum, r) => sum + (parseFloat(r.total_deposit) || 0), 0);
+const totalCollected = filteredData.reduce((sum, r) => {
+  return sum + 
+    (parseFloat(r.cash) || 0) +
+    (parseFloat(r.credit_card) || 0) +
+    (parseFloat(r.checks_otc) || 0) +
+    (parseFloat(r.insurance_checks) || 0) +
+    (parseFloat(r.care_credit) || 0) +
+    (parseFloat(r.vcc) || 0) +
+    (parseFloat(r.efts) || 0);
+}, 0);
+
+const totalDeposited = filteredData.reduce((sum, r) => {
+  return sum + 
+    (parseFloat(r.deposit_cash) || 0) +
+    (parseFloat(r.deposit_credit_card) || 0) +
+    (parseFloat(r.deposit_checks) || 0) +
+    (parseFloat(r.deposit_insurance) || 0) +
+    (parseFloat(r.deposit_care_credit) || 0) +
+    (parseFloat(r.deposit_vcc) || 0) +
+    (parseFloat(r.deposit_efts) || 0);
+}, 0);
         const pendingCount = filteredData.filter(r => r.status === 'Pending' || !r.status).length;
         const accountedCount = filteredData.filter(r => r.status === 'Accounted').length;
         const rejectedCount = filteredData.filter(r => r.status === 'Rejected').length;
