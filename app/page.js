@@ -531,6 +531,7 @@ const [staffCurrentPage, setStaffCurrentPage] = useState(1);
   const [exportLocation, setExportLocation] = useState('all');
   const [exportRange, setExportRange] = useState('This Month');
 const [analyticsRange, setAnalyticsRange] = useState('This Month');
+const [analyticsModule, setAnalyticsModule] = useState('daily-recon');
   const [chatMessages, setChatMessages] = useState([{
     role: 'assistant',
     content: "👋 Hi! I'm your AI assistant. I can help with:\n\n• Data summaries & reports\n• Weekly comparisons\n• Location analytics\n• IT request status\n\nWhat would you like to know?"
@@ -2053,6 +2054,22 @@ if (!currentUser) {
 
         {/* Navigation */}
         <nav className="p-4 space-y-1.5 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 280px)' }}>
+          {/* Analytics - Admin Only */}
+          {isAdmin && (
+            <>
+              <button
+                onClick={() => { setAdminView('analytics'); setSidebarOpen(false); }}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${adminView === 'analytics' ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-lg' : 'text-gray-600 hover:bg-gray-50'}`}
+              >
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${adminView === 'analytics' ? 'bg-white/20' : 'bg-gray-100'}`}>
+                  <BarChart3 className={`w-4 h-4 ${adminView === 'analytics' ? 'text-white' : 'text-gray-500'}`} />
+                </div>
+                <span className="text-sm font-medium">Analytics</span>
+              </button>
+              <div className="border-t my-3"></div>
+            </>
+          )}
+          
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">Modules</p>
           {MODULES.map(m => {
             const colors = MODULE_COLORS[m.id];
@@ -2131,8 +2148,8 @@ if (!currentUser) {
             <div className="flex items-center gap-3">
               <button onClick={() => setSidebarOpen(!sidebarOpen)} className="lg:hidden p-2 hover:bg-gray-100 rounded-xl"><Menu className="w-5 h-5" /></button>
               <div>
-                <h1 className="font-bold text-gray-800 text-lg">
-                  {isAdmin ? (adminView === 'users' ? 'User Management' : adminView === 'export' ? 'Export Data' : adminView === 'documents' ? 'All Documents' : adminView === 'settings' ? 'Settings' : currentModule?.name) : (view === 'settings' ? 'Settings' : currentModule?.name)}
+<h1 className="font-bold text-gray-800 text-lg">
+                  {isAdmin ? (adminView === 'users' ? 'User Management' : adminView === 'export' ? 'Export Data' : adminView === 'documents' ? 'All Documents' : adminView === 'settings' ? 'Settings' : adminView === 'analytics' ? 'Analytics' : currentModule?.name) : (view === 'settings' ? 'Settings' : currentModule?.name)}
                 </h1>
                 <p className="text-sm text-gray-500">{isAdmin ? (adminLocation === 'all' ? 'All Locations' : adminLocation) : selectedLocation}</p>
               </div>
@@ -2142,22 +2159,7 @@ if (!currentUser) {
 
 {/* Tabs */}
           <div className="flex gap-2 px-4 pb-3 overflow-x-auto">
-            {isAdmin && (adminView === 'records' || adminView === 'analytics') && activeModule !== 'it-requests' ? (
-              <>
-                <button 
-                  onClick={() => setAdminView('records')}
-                  className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap flex items-center gap-2 transition-all ${adminView === 'records' ? `${currentColors?.accent} text-white shadow-lg` : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-                >
-                  <FileText className="w-4 h-4" />Records
-                </button>
-                <button 
-                  onClick={() => setAdminView('analytics')}
-                  className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap flex items-center gap-2 transition-all ${adminView === 'analytics' ? `${currentColors?.accent} text-white shadow-lg` : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-                >
-                  <TrendingUp className="w-4 h-4" />Analytics
-                </button>
-              </>
-            ) : isAdmin && adminView === 'records' && activeModule === 'it-requests' ? (
+            {isAdmin && adminView === 'records' ? (
               <button className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap flex items-center gap-2 transition-all ${currentColors?.accent} text-white shadow-lg`}>
                 <FileText className="w-4 h-4" />Records
               </button>
@@ -2353,41 +2355,84 @@ if (!currentUser) {
           )}
 
 {/* ADMIN: Analytics */}
-{isAdmin && adminView === 'analytics' && activeModule !== 'it-requests' && (
+{isAdmin && adminView === 'analytics' && (
   <div className="space-y-6">
-    {/* Date Range Filter */}
+    {/* Module Selector */}
+    <div className="bg-white rounded-2xl shadow-lg p-4 border border-gray-100">
+      <div className="flex flex-wrap items-center gap-2">
+        {MODULES.map(m => {
+          const colors = MODULE_COLORS[m.id];
+          const isActive = analyticsModule === m.id;
+          return (
+            <button
+              key={m.id}
+              onClick={() => setAnalyticsModule(m.id)}
+              className={`px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 transition-all ${isActive ? `${colors.accent} text-white shadow-lg` : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+            >
+              <m.icon className="w-4 h-4" />
+              {m.name}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+
+    {/* Date Range & Location Filter */}
     <div className="bg-white rounded-2xl shadow-lg p-4 border border-gray-100">
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${currentColors?.light}`}>
-            <BarChart3 className={`w-5 h-5 ${currentColors?.text}`} />
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${MODULE_COLORS[analyticsModule]?.light}`}>
+            <BarChart3 className={`w-5 h-5 ${MODULE_COLORS[analyticsModule]?.text}`} />
           </div>
           <div>
-            <h2 className="font-semibold text-gray-800">{currentModule?.name} Analytics</h2>
+            <h2 className="font-semibold text-gray-800">{ALL_MODULES.find(m => m.id === analyticsModule)?.name} Analytics</h2>
             <p className="text-sm text-gray-500">{adminLocation === 'all' ? 'All Locations' : adminLocation}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Calendar className="w-4 h-4 text-gray-400" />
-          <select
-            value={analyticsRange}
-            onChange={e => setAnalyticsRange(e.target.value)}
-            className="px-3 py-2 border-2 border-gray-200 rounded-xl text-sm focus:border-blue-400 outline-none bg-white"
-          >
-            <option value="This Week">This Week</option>
-            <option value="Last 2 Weeks">Last 2 Weeks</option>
-            <option value="This Month">This Month</option>
-            <option value="Last Month">Last Month</option>
-            <option value="This Quarter">This Quarter</option>
-            <option value="This Year">This Year</option>
-          </select>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Building2 className="w-4 h-4 text-gray-400" />
+            <select
+              value={adminLocation}
+              onChange={e => setAdminLocation(e.target.value)}
+              className="px-3 py-2 border-2 border-gray-200 rounded-xl text-sm focus:border-blue-400 outline-none bg-white"
+            >
+              <option value="all">All Locations</option>
+              {locations.map(l => <option key={l.id} value={l.name}>{l.name}</option>)}
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-gray-400" />
+            <select
+              value={analyticsRange}
+              onChange={e => setAnalyticsRange(e.target.value)}
+              className="px-3 py-2 border-2 border-gray-200 rounded-xl text-sm focus:border-blue-400 outline-none bg-white"
+            >
+              <option value="This Week">This Week</option>
+              <option value="Last 2 Weeks">Last 2 Weeks</option>
+              <option value="This Month">This Month</option>
+              <option value="Last Month">Last Month</option>
+              <option value="This Quarter">This Quarter</option>
+              <option value="This Year">This Year</option>
+            </select>
+          </div>
         </div>
       </div>
     </div>
 
     {/* Analytics Content */}
     {(() => {
-      const data = moduleData[activeModule] || [];
+      // Load data for selected analytics module if not loaded
+      if (!moduleData[analyticsModule]) {
+        loadModuleData(analyticsModule);
+      }
+      
+      let data = moduleData[analyticsModule] || [];
+      
+      // Filter by location
+      if (adminLocation !== 'all') {
+        data = data.filter(r => r.locations?.name === adminLocation);
+      }
       
       // Filter by date range
       const now = new Date();
@@ -2409,8 +2454,20 @@ if (!currentUser) {
       
       const filteredData = filterByRange(data);
       
+      if (filteredData.length === 0) {
+        return (
+          <div className="bg-white rounded-2xl shadow-lg p-12 border border-gray-100 text-center">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <BarChart3 className="w-8 h-8 text-gray-400" />
+            </div>
+            <p className="text-gray-500 text-lg">No data available for this period</p>
+            <p className="text-gray-400 text-sm mt-1">Try selecting a different date range or location</p>
+          </div>
+        );
+      }
+      
       // Daily Recon Analytics
-      if (activeModule === 'daily-recon') {
+      if (analyticsModule === 'daily-recon') {
         const totalCollected = filteredData.reduce((sum, r) => sum + (parseFloat(r.total_collected) || 0), 0);
         const totalDeposited = filteredData.reduce((sum, r) => sum + (parseFloat(r.total_deposit) || 0), 0);
         const pendingCount = filteredData.filter(r => r.status === 'Pending' || !r.status).length;
@@ -2588,7 +2645,7 @@ if (!currentUser) {
       }
       
       // Billing Inquiry Analytics
-      if (activeModule === 'billing-inquiry') {
+      if (analyticsModule === 'billing-inquiry') {
         const totalAmount = filteredData.reduce((sum, r) => sum + (parseFloat(r.amount_in_question) || 0), 0);
         const avgAmount = filteredData.length > 0 ? totalAmount / filteredData.length : 0;
         const pendingCount = filteredData.filter(r => r.status === 'Pending' || !r.status).length;
@@ -2699,7 +2756,7 @@ if (!currentUser) {
       }
       
       // Bills Payment Analytics
-      if (activeModule === 'bills-payment') {
+      if (analyticsModule === 'bills-payment') {
         const totalAmount = filteredData.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
         const paidTotal = filteredData.filter(r => r.paid === 'Yes').reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
         const pendingTotal = filteredData.filter(r => r.paid !== 'Yes').reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
@@ -2803,7 +2860,7 @@ if (!currentUser) {
       }
       
       // Order Requests Analytics
-      if (activeModule === 'order-requests') {
+      if (analyticsModule === 'order-requests') {
         const totalAmount = filteredData.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
         const avgOrder = filteredData.length > 0 ? totalAmount / filteredData.length : 0;
         
@@ -2907,7 +2964,7 @@ if (!currentUser) {
       }
       
       // Refund Requests Analytics
-      if (activeModule === 'refund-requests') {
+      if (analyticsModule === 'refund-requests') {
         const totalAmount = filteredData.reduce((sum, r) => sum + (parseFloat(r.amount_requested) || 0), 0);
         const avgRefund = filteredData.length > 0 ? totalAmount / filteredData.length : 0;
         const pendingCount = filteredData.filter(r => r.status === 'Pending' || !r.status).length;
@@ -2983,20 +3040,22 @@ if (!currentUser) {
             </div>
 
             {/* By Type */}
-            <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
-              <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                <PieChart className="w-5 h-5 text-rose-500" /> By Type
-              </h3>
-              <div className="grid grid-cols-3 gap-4">
-                {Object.entries(byType).map(([type, stats]) => (
-                  <div key={type} className="p-4 rounded-xl bg-rose-50 border border-rose-100">
-                    <p className="font-medium text-gray-800">{type}</p>
-                    <p className="text-2xl font-bold text-rose-600 mt-1">{stats.count}</p>
-                    <p className="text-sm text-gray-500">${stats.amount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
-                  </div>
-                ))}
+            {Object.keys(byType).length > 0 && (
+              <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+                <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                  <PieChart className="w-5 h-5 text-rose-500" /> By Type
+                </h3>
+                <div className="grid grid-cols-3 gap-4">
+                  {Object.entries(byType).filter(([_, s]) => s.count > 0).map(([type, stats]) => (
+                    <div key={type} className="p-4 rounded-xl bg-rose-50 border border-rose-100">
+                      <p className="font-medium text-gray-800">{type}</p>
+                      <p className="text-2xl font-bold text-rose-600 mt-1">{stats.count}</p>
+                      <p className="text-sm text-gray-500">${stats.amount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* By Location */}
             {Object.keys(byLocation).length > 1 && (
@@ -3021,7 +3080,7 @@ if (!currentUser) {
         );
       }
       
-      return <p className="text-gray-500 text-center py-12">No analytics available for this module.</p>;
+      return <p className="text-gray-500 text-center py-12">Select a module to view analytics.</p>;
     })()}
   </div>
 )}
