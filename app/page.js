@@ -670,14 +670,15 @@ useEffect(() => { if (currentUser) setNameForm(currentUser.name || ''); }, [curr
 
 useEffect(() => { setCurrentPage(1); setRecordSearch(''); }, [activeModule, adminLocation]);
   useEffect(() => { setStaffCurrentPage(1); setStaffRecordSearch(''); setEditingStaffEntry(null); }, [activeModule, selectedLocation]);
-  // Load data when analytics module changes
+// Load data when analytics module changes
 useEffect(() => {
-  if (isAdmin && adminView === 'analytics' && analyticsModule) {
+  const userIsAdmin = currentUser?.role === 'super_admin' || currentUser?.role === 'finance_admin';
+  if (userIsAdmin && adminView === 'analytics' && analyticsModule) {
     if (!moduleData[analyticsModule]) {
       loadModuleData(analyticsModule);
     }
   }
-}, [analyticsModule, adminView, isAdmin]);
+}, [analyticsModule, adminView, currentUser, moduleData]);
   const isAdmin = currentUser?.role === 'super_admin' || currentUser?.role === 'finance_admin';
   const isSuperAdmin = currentUser?.role === 'super_admin';
 
