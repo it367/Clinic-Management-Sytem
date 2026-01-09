@@ -3,7 +3,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import { DollarSign, FileText, Building2, Bot, Send, Loader2, LogOut, User, Upload, X, File, Shield, Receipt, CreditCard, Package, RefreshCw, Monitor, Menu, Eye, EyeOff, FolderOpen, Edit3, Users, Plus, Trash2, Lock, Download, Settings, MessageCircle, Sparkles, AlertCircle, Maximize2, Minimize2, Headphones, Search } from 'lucide-react';
+import { DollarSign, FileText, Building2, Bot, Send, Loader2, LogOut, User, Upload, X, File, Shield, Receipt, CreditCard, Package, RefreshCw, Monitor, Menu, Eye, EyeOff, FolderOpen, Edit3, Users, Plus, Trash2, Lock, Download, Settings, MessageCircle, Sparkles, AlertCircle, Maximize2, Minimize2, Headphones, Search, TrendingUp, TrendingDown, Calendar, PieChart, BarChart3 } from 'lucide-react';
 const MODULES = [
   { id: 'daily-recon', name: 'Daily Recon', icon: DollarSign, color: 'emerald', table: 'daily_recon' },
   { id: 'billing-inquiry', name: 'Billing Inquiry', icon: Receipt, color: 'blue', table: 'billing_inquiries' },
@@ -530,7 +530,7 @@ const [staffCurrentPage, setStaffCurrentPage] = useState(1);
   const [exportModule, setExportModule] = useState('daily-recon');
   const [exportLocation, setExportLocation] = useState('all');
   const [exportRange, setExportRange] = useState('This Month');
-
+const [analyticsRange, setAnalyticsRange] = useState('This Month');
   const [chatMessages, setChatMessages] = useState([{
     role: 'assistant',
     content: "👋 Hi! I'm your AI assistant. I can help with:\n\n• Data summaries & reports\n• Weekly comparisons\n• Location analytics\n• IT request status\n\nWhat would you like to know?"
@@ -2140,9 +2140,24 @@ if (!currentUser) {
             {loading && <Loader2 className="w-5 h-5 animate-spin text-gray-400" />}
           </div>
 
-          {/* Tabs */}
+{/* Tabs */}
           <div className="flex gap-2 px-4 pb-3 overflow-x-auto">
-            {isAdmin && adminView === 'records' ? (
+            {isAdmin && (adminView === 'records' || adminView === 'analytics') && activeModule !== 'it-requests' ? (
+              <>
+                <button 
+                  onClick={() => setAdminView('records')}
+                  className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap flex items-center gap-2 transition-all ${adminView === 'records' ? `${currentColors?.accent} text-white shadow-lg` : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                >
+                  <FileText className="w-4 h-4" />Records
+                </button>
+                <button 
+                  onClick={() => setAdminView('analytics')}
+                  className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap flex items-center gap-2 transition-all ${adminView === 'analytics' ? `${currentColors?.accent} text-white shadow-lg` : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                >
+                  <TrendingUp className="w-4 h-4" />Analytics
+                </button>
+              </>
+            ) : isAdmin && adminView === 'records' && activeModule === 'it-requests' ? (
               <button className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap flex items-center gap-2 transition-all ${currentColors?.accent} text-white shadow-lg`}>
                 <FileText className="w-4 h-4" />Records
               </button>
@@ -2336,6 +2351,680 @@ if (!currentUser) {
     </div>
             </div>
           )}
+
+{/* ADMIN: Analytics */}
+{isAdmin && adminView === 'analytics' && activeModule !== 'it-requests' && (
+  <div className="space-y-6">
+    {/* Date Range Filter */}
+    <div className="bg-white rounded-2xl shadow-lg p-4 border border-gray-100">
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div className="flex items-center gap-3">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${currentColors?.light}`}>
+            <BarChart3 className={`w-5 h-5 ${currentColors?.text}`} />
+          </div>
+          <div>
+            <h2 className="font-semibold text-gray-800">{currentModule?.name} Analytics</h2>
+            <p className="text-sm text-gray-500">{adminLocation === 'all' ? 'All Locations' : adminLocation}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Calendar className="w-4 h-4 text-gray-400" />
+          <select
+            value={analyticsRange}
+            onChange={e => setAnalyticsRange(e.target.value)}
+            className="px-3 py-2 border-2 border-gray-200 rounded-xl text-sm focus:border-blue-400 outline-none bg-white"
+          >
+            <option value="This Week">This Week</option>
+            <option value="Last 2 Weeks">Last 2 Weeks</option>
+            <option value="This Month">This Month</option>
+            <option value="Last Month">Last Month</option>
+            <option value="This Quarter">This Quarter</option>
+            <option value="This Year">This Year</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    {/* Analytics Content */}
+    {(() => {
+      const data = moduleData[activeModule] || [];
+      
+      // Filter by date range
+      const now = new Date();
+      const filterByRange = (records) => {
+        return records.filter(r => {
+          const date = new Date(r.created_at);
+          const diffDays = (now - date) / (1000 * 60 * 60 * 24);
+          switch(analyticsRange) {
+            case 'This Week': return diffDays <= 7;
+            case 'Last 2 Weeks': return diffDays <= 14;
+            case 'This Month': return diffDays <= 30;
+            case 'Last Month': return diffDays <= 60;
+            case 'This Quarter': return diffDays <= 90;
+            case 'This Year': return diffDays <= 365;
+            default: return true;
+          }
+        });
+      };
+      
+      const filteredData = filterByRange(data);
+      
+      // Daily Recon Analytics
+      if (activeModule === 'daily-recon') {
+        const totalCollected = filteredData.reduce((sum, r) => sum + (parseFloat(r.total_collected) || 0), 0);
+        const totalDeposited = filteredData.reduce((sum, r) => sum + (parseFloat(r.total_deposit) || 0), 0);
+        const pendingCount = filteredData.filter(r => r.status === 'Pending' || !r.status).length;
+        const accountedCount = filteredData.filter(r => r.status === 'Accounted').length;
+        const rejectedCount = filteredData.filter(r => r.status === 'Rejected').length;
+        
+        const cashTotal = filteredData.reduce((sum, r) => sum + (parseFloat(r.cash) || 0), 0);
+        const creditTotal = filteredData.reduce((sum, r) => sum + (parseFloat(r.credit_card) || 0), 0);
+        const checksTotal = filteredData.reduce((sum, r) => sum + (parseFloat(r.checks_otc) || 0), 0);
+        const insuranceTotal = filteredData.reduce((sum, r) => sum + (parseFloat(r.insurance_checks) || 0), 0);
+        const careCreditTotal = filteredData.reduce((sum, r) => sum + (parseFloat(r.care_credit) || 0), 0);
+        const vccTotal = filteredData.reduce((sum, r) => sum + (parseFloat(r.vcc) || 0), 0);
+        const eftsTotal = filteredData.reduce((sum, r) => sum + (parseFloat(r.efts) || 0), 0);
+        
+        // Group by location
+        const byLocation = {};
+        filteredData.forEach(r => {
+          const loc = r.locations?.name || 'Unknown';
+          if (!byLocation[loc]) byLocation[loc] = { collected: 0, deposited: 0, count: 0 };
+          byLocation[loc].collected += parseFloat(r.total_collected) || 0;
+          byLocation[loc].deposited += parseFloat(r.total_deposit) || 0;
+          byLocation[loc].count += 1;
+        });
+        
+        // Group by week
+        const byWeek = {};
+        filteredData.forEach(r => {
+          const date = new Date(r.recon_date || r.created_at);
+          const weekStart = new Date(date);
+          weekStart.setDate(date.getDate() - date.getDay());
+          const weekKey = weekStart.toISOString().split('T')[0];
+          if (!byWeek[weekKey]) byWeek[weekKey] = { collected: 0, deposited: 0 };
+          byWeek[weekKey].collected += parseFloat(r.total_collected) || 0;
+          byWeek[weekKey].deposited += parseFloat(r.total_deposit) || 0;
+        });
+        
+        const variance = totalCollected - totalDeposited;
+        
+        return (
+          <>
+            {/* KPI Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-4 text-white shadow-lg">
+                <p className="text-emerald-100 text-sm font-medium">Total Collected</p>
+                <p className="text-2xl font-bold mt-1">${totalCollected.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                <p className="text-emerald-200 text-xs mt-2">{filteredData.length} entries</p>
+              </div>
+              <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-4 text-white shadow-lg">
+                <p className="text-blue-100 text-sm font-medium">Total Deposited</p>
+                <p className="text-2xl font-bold mt-1">${totalDeposited.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                <p className="text-blue-200 text-xs mt-2">{accountedCount} accounted</p>
+              </div>
+              <div className={`bg-gradient-to-br ${variance > 0 ? 'from-amber-500 to-orange-600' : 'from-gray-500 to-gray-600'} rounded-2xl p-4 text-white shadow-lg`}>
+                <p className="text-amber-100 text-sm font-medium">Variance</p>
+                <p className="text-2xl font-bold mt-1 flex items-center gap-1">
+                  {variance > 0 ? <TrendingUp className="w-5 h-5" /> : variance < 0 ? <TrendingDown className="w-5 h-5" /> : null}
+                  ${Math.abs(variance).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                </p>
+                <p className="text-amber-200 text-xs mt-2">{variance > 0 ? 'Pending deposit' : variance < 0 ? 'Over deposited' : 'Balanced'}</p>
+              </div>
+              <div className="bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl p-4 text-white shadow-lg">
+                <p className="text-purple-100 text-sm font-medium">Review Status</p>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <p className="text-2xl font-bold">{pendingCount}</p>
+                  <p className="text-purple-200 text-sm">pending</p>
+                </div>
+                <p className="text-purple-200 text-xs mt-2">{rejectedCount} rejected</p>
+              </div>
+            </div>
+
+            {/* Payment Method Breakdown */}
+            <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+              <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <PieChart className="w-5 h-5 text-emerald-500" /> Payment Method Breakdown
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {[
+                  { label: 'Cash', value: cashTotal, color: 'bg-emerald-500' },
+                  { label: 'Credit Card', value: creditTotal, color: 'bg-blue-500' },
+                  { label: 'Checks OTC', value: checksTotal, color: 'bg-violet-500' },
+                  { label: 'Insurance', value: insuranceTotal, color: 'bg-amber-500' },
+                  { label: 'Care Credit', value: careCreditTotal, color: 'bg-rose-500' },
+                  { label: 'VCC', value: vccTotal, color: 'bg-cyan-500' },
+                  { label: 'EFTs', value: eftsTotal, color: 'bg-indigo-500' },
+                ].map(item => (
+                  <div key={item.label} className="p-3 rounded-xl bg-gray-50 border border-gray-100">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className={`w-3 h-3 rounded-full ${item.color}`}></div>
+                      <span className="text-sm text-gray-600">{item.label}</span>
+                    </div>
+                    <p className="text-lg font-bold text-gray-800">${item.value.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                    <div className="mt-2 h-2 bg-gray-200 rounded-full overflow-hidden">
+                      <div className={`h-full ${item.color} rounded-full`} style={{width: `${totalCollected > 0 ? (item.value / totalCollected * 100) : 0}%`}}></div>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">{totalCollected > 0 ? (item.value / totalCollected * 100).toFixed(1) : 0}%</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Location Performance */}
+            {Object.keys(byLocation).length > 1 && (
+              <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+                <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                  <Building2 className="w-5 h-5 text-blue-500" /> Location Performance
+                </h3>
+                <div className="space-y-3">
+                  {Object.entries(byLocation).sort((a, b) => b[1].collected - a[1].collected).map(([loc, stats]) => (
+                    <div key={loc} className="p-4 rounded-xl bg-gray-50 border border-gray-100">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="font-medium text-gray-800">{loc}</span>
+                        <span className="text-sm text-gray-500">{stats.count} entries</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-xs text-gray-500">Collected</p>
+                          <p className="text-lg font-bold text-emerald-600">${stats.collected.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500">Deposited</p>
+                          <p className="text-lg font-bold text-blue-600">${stats.deposited.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                        </div>
+                      </div>
+                      <div className="mt-2 h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div className="h-full bg-emerald-500 rounded-full" style={{width: `${totalCollected > 0 ? (stats.collected / totalCollected * 100) : 0}%`}}></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Weekly Trend */}
+            {Object.keys(byWeek).length > 1 && (
+              <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+                <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-emerald-500" /> Weekly Trend
+                </h3>
+                <div className="space-y-2">
+                  {Object.entries(byWeek).sort((a, b) => a[0].localeCompare(b[0])).slice(-8).map(([week, stats]) => {
+                    const maxVal = Math.max(...Object.values(byWeek).map(w => w.collected));
+                    return (
+                      <div key={week} className="flex items-center gap-3">
+                        <span className="text-xs text-gray-500 w-24 flex-shrink-0">Week of {new Date(week).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                        <div className="flex-1 h-8 bg-gray-100 rounded-lg overflow-hidden flex">
+                          <div className="h-full bg-emerald-500 flex items-center justify-end pr-2" style={{width: `${maxVal > 0 ? (stats.collected / maxVal * 100) : 0}%`}}>
+                            <span className="text-xs text-white font-medium">${(stats.collected / 1000).toFixed(1)}k</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Status Breakdown */}
+            <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+              <h3 className="font-semibold text-gray-800 mb-4">Status Overview</h3>
+              <div className="flex items-center gap-4">
+                <div className="flex-1 h-4 bg-gray-200 rounded-full overflow-hidden flex">
+                  {accountedCount > 0 && <div className="h-full bg-emerald-500" style={{width: `${accountedCount / filteredData.length * 100}%`}}></div>}
+                  {pendingCount > 0 && <div className="h-full bg-amber-500" style={{width: `${pendingCount / filteredData.length * 100}%`}}></div>}
+                  {rejectedCount > 0 && <div className="h-full bg-red-500" style={{width: `${rejectedCount / filteredData.length * 100}%`}}></div>}
+                </div>
+              </div>
+              <div className="flex gap-6 mt-3">
+                <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-emerald-500"></div><span className="text-sm text-gray-600">Accounted ({accountedCount})</span></div>
+                <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-amber-500"></div><span className="text-sm text-gray-600">Pending ({pendingCount})</span></div>
+                <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-red-500"></div><span className="text-sm text-gray-600">Rejected ({rejectedCount})</span></div>
+              </div>
+            </div>
+          </>
+        );
+      }
+      
+      // Billing Inquiry Analytics
+      if (activeModule === 'billing-inquiry') {
+        const totalAmount = filteredData.reduce((sum, r) => sum + (parseFloat(r.amount_in_question) || 0), 0);
+        const avgAmount = filteredData.length > 0 ? totalAmount / filteredData.length : 0;
+        const pendingCount = filteredData.filter(r => r.status === 'Pending' || !r.status).length;
+        const resolvedCount = filteredData.filter(r => r.status === 'Resolved').length;
+        const inProgressCount = filteredData.filter(r => r.status === 'In Progress').length;
+        
+        // By inquiry type
+        const byType = {};
+        INQUIRY_TYPES.forEach(t => byType[t] = { count: 0, amount: 0 });
+        filteredData.forEach(r => {
+          const type = r.inquiry_type || 'Other';
+          if (!byType[type]) byType[type] = { count: 0, amount: 0 };
+          byType[type].count += 1;
+          byType[type].amount += parseFloat(r.amount_in_question) || 0;
+        });
+        
+        // By location
+        const byLocation = {};
+        filteredData.forEach(r => {
+          const loc = r.locations?.name || 'Unknown';
+          if (!byLocation[loc]) byLocation[loc] = { count: 0, amount: 0 };
+          byLocation[loc].count += 1;
+          byLocation[loc].amount += parseFloat(r.amount_in_question) || 0;
+        });
+        
+        return (
+          <>
+            {/* KPI Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-4 text-white shadow-lg">
+                <p className="text-blue-100 text-sm font-medium">Total Inquiries</p>
+                <p className="text-2xl font-bold mt-1">{filteredData.length}</p>
+                <p className="text-blue-200 text-xs mt-2">{analyticsRange}</p>
+              </div>
+              <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-4 text-white shadow-lg">
+                <p className="text-emerald-100 text-sm font-medium">Total Amount</p>
+                <p className="text-2xl font-bold mt-1">${totalAmount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                <p className="text-emerald-200 text-xs mt-2">In question</p>
+              </div>
+              <div className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl p-4 text-white shadow-lg">
+                <p className="text-violet-100 text-sm font-medium">Avg. Amount</p>
+                <p className="text-2xl font-bold mt-1">${avgAmount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                <p className="text-violet-200 text-xs mt-2">Per inquiry</p>
+              </div>
+              <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-4 text-white shadow-lg">
+                <p className="text-amber-100 text-sm font-medium">Resolution Rate</p>
+                <p className="text-2xl font-bold mt-1">{filteredData.length > 0 ? ((resolvedCount / filteredData.length) * 100).toFixed(0) : 0}%</p>
+                <p className="text-amber-200 text-xs mt-2">{resolvedCount} resolved</p>
+              </div>
+            </div>
+
+            {/* Inquiry Type Breakdown */}
+            <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+              <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <PieChart className="w-5 h-5 text-blue-500" /> Inquiry Types
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {Object.entries(byType).filter(([_, stats]) => stats.count > 0).map(([type, stats]) => (
+                  <div key={type} className="p-4 rounded-xl bg-blue-50 border border-blue-100">
+                    <p className="font-medium text-gray-800">{type}</p>
+                    <p className="text-2xl font-bold text-blue-600 mt-1">{stats.count}</p>
+                    <p className="text-sm text-gray-500">${stats.amount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Status Overview */}
+            <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+              <h3 className="font-semibold text-gray-800 mb-4">Status Distribution</h3>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-center">
+                  <p className="text-3xl font-bold text-amber-600">{pendingCount}</p>
+                  <p className="text-sm text-gray-600 mt-1">Pending</p>
+                </div>
+                <div className="p-4 rounded-xl bg-blue-50 border border-blue-200 text-center">
+                  <p className="text-3xl font-bold text-blue-600">{inProgressCount}</p>
+                  <p className="text-sm text-gray-600 mt-1">In Progress</p>
+                </div>
+                <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-center">
+                  <p className="text-3xl font-bold text-emerald-600">{resolvedCount}</p>
+                  <p className="text-sm text-gray-600 mt-1">Resolved</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Location Breakdown */}
+            {Object.keys(byLocation).length > 1 && (
+              <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+                <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                  <Building2 className="w-5 h-5 text-blue-500" /> By Location
+                </h3>
+                <div className="space-y-3">
+                  {Object.entries(byLocation).sort((a, b) => b[1].count - a[1].count).map(([loc, stats]) => (
+                    <div key={loc} className="flex items-center justify-between p-3 rounded-xl bg-gray-50">
+                      <span className="font-medium text-gray-800">{loc}</span>
+                      <div className="text-right">
+                        <p className="font-bold text-blue-600">{stats.count} inquiries</p>
+                        <p className="text-sm text-gray-500">${stats.amount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        );
+      }
+      
+      // Bills Payment Analytics
+      if (activeModule === 'bills-payment') {
+        const totalAmount = filteredData.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
+        const paidTotal = filteredData.filter(r => r.paid === 'Yes').reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
+        const pendingTotal = filteredData.filter(r => r.paid !== 'Yes').reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
+        const paidCount = filteredData.filter(r => r.paid === 'Yes').length;
+        
+        // By vendor
+        const byVendor = {};
+        filteredData.forEach(r => {
+          const vendor = r.vendor || 'Unknown';
+          if (!byVendor[vendor]) byVendor[vendor] = { count: 0, amount: 0, paid: 0 };
+          byVendor[vendor].count += 1;
+          byVendor[vendor].amount += parseFloat(r.amount) || 0;
+          if (r.paid === 'Yes') byVendor[vendor].paid += parseFloat(r.amount) || 0;
+        });
+        
+        // Upcoming due
+        const upcoming = filteredData.filter(r => {
+          if (r.paid === 'Yes' || !r.due_date) return false;
+          const due = new Date(r.due_date);
+          const diff = (due - now) / (1000 * 60 * 60 * 24);
+          return diff >= 0 && diff <= 7;
+        });
+        
+        const overdue = filteredData.filter(r => {
+          if (r.paid === 'Yes' || !r.due_date) return false;
+          const due = new Date(r.due_date);
+          return due < now;
+        });
+        
+        return (
+          <>
+            {/* KPI Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl p-4 text-white shadow-lg">
+                <p className="text-violet-100 text-sm font-medium">Total Bills</p>
+                <p className="text-2xl font-bold mt-1">${totalAmount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                <p className="text-violet-200 text-xs mt-2">{filteredData.length} bills</p>
+              </div>
+              <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-4 text-white shadow-lg">
+                <p className="text-emerald-100 text-sm font-medium">Paid</p>
+                <p className="text-2xl font-bold mt-1">${paidTotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                <p className="text-emerald-200 text-xs mt-2">{paidCount} bills paid</p>
+              </div>
+              <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-4 text-white shadow-lg">
+                <p className="text-amber-100 text-sm font-medium">Pending</p>
+                <p className="text-2xl font-bold mt-1">${pendingTotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                <p className="text-amber-200 text-xs mt-2">{filteredData.length - paidCount} unpaid</p>
+              </div>
+              <div className={`bg-gradient-to-br ${overdue.length > 0 ? 'from-red-500 to-rose-600' : 'from-gray-500 to-gray-600'} rounded-2xl p-4 text-white shadow-lg`}>
+                <p className="text-red-100 text-sm font-medium">Overdue</p>
+                <p className="text-2xl font-bold mt-1">{overdue.length}</p>
+                <p className="text-red-200 text-xs mt-2">${overdue.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+              </div>
+            </div>
+
+            {/* Upcoming Bills */}
+            {upcoming.length > 0 && (
+              <div className="bg-white rounded-2xl shadow-lg p-6 border border-amber-200 border-l-4">
+                <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                  <AlertCircle className="w-5 h-5 text-amber-500" /> Due This Week ({upcoming.length})
+                </h3>
+                <div className="space-y-2">
+                  {upcoming.slice(0, 5).map(bill => (
+                    <div key={bill.id} className="flex items-center justify-between p-3 rounded-xl bg-amber-50">
+                      <div>
+                        <p className="font-medium text-gray-800">{bill.vendor}</p>
+                        <p className="text-sm text-gray-500">Due: {new Date(bill.due_date).toLocaleDateString()}</p>
+                      </div>
+                      <p className="font-bold text-amber-600">${parseFloat(bill.amount).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Top Vendors */}
+            <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+              <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <BarChart3 className="w-5 h-5 text-violet-500" /> Top Vendors
+              </h3>
+              <div className="space-y-3">
+                {Object.entries(byVendor).sort((a, b) => b[1].amount - a[1].amount).slice(0, 10).map(([vendor, stats]) => {
+                  const maxAmount = Math.max(...Object.values(byVendor).map(v => v.amount));
+                  return (
+                    <div key={vendor}>
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="font-medium text-gray-800 truncate">{vendor}</span>
+                        <span className="font-bold text-violet-600">${stats.amount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                      </div>
+                      <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-violet-500 rounded-full" style={{width: `${(stats.amount / maxAmount) * 100}%`}}></div>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">{stats.count} bills • ${stats.paid.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} paid</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        );
+      }
+      
+      // Order Requests Analytics
+      if (activeModule === 'order-requests') {
+        const totalAmount = filteredData.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
+        const avgOrder = filteredData.length > 0 ? totalAmount / filteredData.length : 0;
+        
+        // By vendor
+        const byVendor = {};
+        filteredData.forEach(r => {
+          const vendor = r.vendor || 'Unknown';
+          if (!byVendor[vendor]) byVendor[vendor] = { count: 0, amount: 0 };
+          byVendor[vendor].count += 1;
+          byVendor[vendor].amount += parseFloat(r.amount) || 0;
+        });
+        
+        // By month
+        const byMonth = {};
+        filteredData.forEach(r => {
+          const date = new Date(r.date_entered || r.created_at);
+          const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+          if (!byMonth[monthKey]) byMonth[monthKey] = { count: 0, amount: 0 };
+          byMonth[monthKey].count += 1;
+          byMonth[monthKey].amount += parseFloat(r.amount) || 0;
+        });
+        
+        return (
+          <>
+            {/* KPI Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-4 text-white shadow-lg">
+                <p className="text-amber-100 text-sm font-medium">Total Orders</p>
+                <p className="text-2xl font-bold mt-1">{filteredData.length}</p>
+                <p className="text-amber-200 text-xs mt-2">{analyticsRange}</p>
+              </div>
+              <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-4 text-white shadow-lg">
+                <p className="text-emerald-100 text-sm font-medium">Total Value</p>
+                <p className="text-2xl font-bold mt-1">${totalAmount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                <p className="text-emerald-200 text-xs mt-2">All orders</p>
+              </div>
+              <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-4 text-white shadow-lg">
+                <p className="text-blue-100 text-sm font-medium">Avg. Order</p>
+                <p className="text-2xl font-bold mt-1">${avgOrder.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                <p className="text-blue-200 text-xs mt-2">Per order</p>
+              </div>
+              <div className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl p-4 text-white shadow-lg">
+                <p className="text-violet-100 text-sm font-medium">Vendors</p>
+                <p className="text-2xl font-bold mt-1">{Object.keys(byVendor).length}</p>
+                <p className="text-violet-200 text-xs mt-2">Unique vendors</p>
+              </div>
+            </div>
+
+            {/* Vendor Spending */}
+            <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+              <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <BarChart3 className="w-5 h-5 text-amber-500" /> Vendor Spending
+              </h3>
+              <div className="space-y-3">
+                {Object.entries(byVendor).sort((a, b) => b[1].amount - a[1].amount).slice(0, 10).map(([vendor, stats]) => {
+                  const maxAmount = Math.max(...Object.values(byVendor).map(v => v.amount));
+                  return (
+                    <div key={vendor}>
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="font-medium text-gray-800 truncate">{vendor}</span>
+                        <span className="font-bold text-amber-600">${stats.amount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                      </div>
+                      <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-amber-500 rounded-full" style={{width: `${(stats.amount / maxAmount) * 100}%`}}></div>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">{stats.count} orders</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Monthly Trend */}
+            {Object.keys(byMonth).length > 1 && (
+              <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+                <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-amber-500" /> Monthly Trend
+                </h3>
+                <div className="space-y-2">
+                  {Object.entries(byMonth).sort((a, b) => a[0].localeCompare(b[0])).slice(-6).map(([month, stats]) => {
+                    const maxVal = Math.max(...Object.values(byMonth).map(m => m.amount));
+                    const [year, m] = month.split('-');
+                    const monthName = new Date(year, parseInt(m) - 1).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                    return (
+                      <div key={month} className="flex items-center gap-3">
+                        <span className="text-xs text-gray-500 w-20 flex-shrink-0">{monthName}</span>
+                        <div className="flex-1 h-8 bg-gray-100 rounded-lg overflow-hidden flex">
+                          <div className="h-full bg-amber-500 flex items-center justify-end pr-2" style={{width: `${maxVal > 0 ? (stats.amount / maxVal * 100) : 0}%`}}>
+                            <span className="text-xs text-white font-medium">${(stats.amount / 1000).toFixed(1)}k</span>
+                          </div>
+                        </div>
+                        <span className="text-xs text-gray-500 w-16 text-right">{stats.count} orders</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </>
+        );
+      }
+      
+      // Refund Requests Analytics
+      if (activeModule === 'refund-requests') {
+        const totalAmount = filteredData.reduce((sum, r) => sum + (parseFloat(r.amount_requested) || 0), 0);
+        const avgRefund = filteredData.length > 0 ? totalAmount / filteredData.length : 0;
+        const pendingCount = filteredData.filter(r => r.status === 'Pending' || !r.status).length;
+        const approvedCount = filteredData.filter(r => r.status === 'Approved').length;
+        const completedCount = filteredData.filter(r => r.status === 'Completed').length;
+        const deniedCount = filteredData.filter(r => r.status === 'Denied').length;
+        
+        // By type
+        const byType = {};
+        filteredData.forEach(r => {
+          const type = r.type || 'Other';
+          if (!byType[type]) byType[type] = { count: 0, amount: 0 };
+          byType[type].count += 1;
+          byType[type].amount += parseFloat(r.amount_requested) || 0;
+        });
+        
+        // By location
+        const byLocation = {};
+        filteredData.forEach(r => {
+          const loc = r.locations?.name || 'Unknown';
+          if (!byLocation[loc]) byLocation[loc] = { count: 0, amount: 0 };
+          byLocation[loc].count += 1;
+          byLocation[loc].amount += parseFloat(r.amount_requested) || 0;
+        });
+        
+        return (
+          <>
+            {/* KPI Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-gradient-to-br from-rose-500 to-pink-600 rounded-2xl p-4 text-white shadow-lg">
+                <p className="text-rose-100 text-sm font-medium">Total Requests</p>
+                <p className="text-2xl font-bold mt-1">{filteredData.length}</p>
+                <p className="text-rose-200 text-xs mt-2">{analyticsRange}</p>
+              </div>
+              <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-4 text-white shadow-lg">
+                <p className="text-emerald-100 text-sm font-medium">Total Amount</p>
+                <p className="text-2xl font-bold mt-1">${totalAmount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                <p className="text-emerald-200 text-xs mt-2">Requested</p>
+              </div>
+              <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-4 text-white shadow-lg">
+                <p className="text-blue-100 text-sm font-medium">Avg. Refund</p>
+                <p className="text-2xl font-bold mt-1">${avgRefund.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                <p className="text-blue-200 text-xs mt-2">Per request</p>
+              </div>
+              <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-4 text-white shadow-lg">
+                <p className="text-amber-100 text-sm font-medium">Pending</p>
+                <p className="text-2xl font-bold mt-1">{pendingCount}</p>
+                <p className="text-amber-200 text-xs mt-2">Awaiting review</p>
+              </div>
+            </div>
+
+            {/* Status Distribution */}
+            <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+              <h3 className="font-semibold text-gray-800 mb-4">Status Distribution</h3>
+              <div className="grid grid-cols-4 gap-4">
+                <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-center">
+                  <p className="text-3xl font-bold text-amber-600">{pendingCount}</p>
+                  <p className="text-sm text-gray-600 mt-1">Pending</p>
+                </div>
+                <div className="p-4 rounded-xl bg-blue-50 border border-blue-200 text-center">
+                  <p className="text-3xl font-bold text-blue-600">{approvedCount}</p>
+                  <p className="text-sm text-gray-600 mt-1">Approved</p>
+                </div>
+                <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-center">
+                  <p className="text-3xl font-bold text-emerald-600">{completedCount}</p>
+                  <p className="text-sm text-gray-600 mt-1">Completed</p>
+                </div>
+                <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-center">
+                  <p className="text-3xl font-bold text-red-600">{deniedCount}</p>
+                  <p className="text-sm text-gray-600 mt-1">Denied</p>
+                </div>
+              </div>
+            </div>
+
+            {/* By Type */}
+            <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+              <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <PieChart className="w-5 h-5 text-rose-500" /> By Type
+              </h3>
+              <div className="grid grid-cols-3 gap-4">
+                {Object.entries(byType).map(([type, stats]) => (
+                  <div key={type} className="p-4 rounded-xl bg-rose-50 border border-rose-100">
+                    <p className="font-medium text-gray-800">{type}</p>
+                    <p className="text-2xl font-bold text-rose-600 mt-1">{stats.count}</p>
+                    <p className="text-sm text-gray-500">${stats.amount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* By Location */}
+            {Object.keys(byLocation).length > 1 && (
+              <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+                <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                  <Building2 className="w-5 h-5 text-rose-500" /> By Location
+                </h3>
+                <div className="space-y-3">
+                  {Object.entries(byLocation).sort((a, b) => b[1].amount - a[1].amount).map(([loc, stats]) => (
+                    <div key={loc} className="flex items-center justify-between p-3 rounded-xl bg-gray-50">
+                      <span className="font-medium text-gray-800">{loc}</span>
+                      <div className="text-right">
+                        <p className="font-bold text-rose-600">{stats.count} requests</p>
+                        <p className="text-sm text-gray-500">${stats.amount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        );
+      }
+      
+      return <p className="text-gray-500 text-center py-12">No analytics available for this module.</p>;
+    })()}
+  </div>
+)}
 
 {/* ADMIN: Documents */}
 {isAdmin && adminView === 'documents' && (
