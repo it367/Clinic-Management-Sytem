@@ -193,6 +193,172 @@ function FileViewer({ file, onClose }) {
   );
 }
 
+function EntryPreview({ entry, module, onClose, colors, onViewDocument }) {
+  if (!entry) return null;
+  
+  const formatDate = (date) => date ? new Date(date).toLocaleDateString() : '-';
+  const formatCurrency = (val) => val ? `$${Number(val).toFixed(2)}` : '$0.00';
+  const formatDateTime = (date) => date ? new Date(date).toLocaleString() : '-';
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl max-w-2xl max-h-[90vh] w-full overflow-auto shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className={`flex justify-between items-center p-4 border-b sticky top-0 ${colors?.bg || 'bg-gray-50'}`}>
+          <div>
+            <h3 className="font-semibold text-gray-800">Entry Details</h3>
+            <p className="text-sm text-gray-500">{module?.name}</p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-white/50 rounded-xl transition-colors"><X className="w-5 h-5" /></button>
+        </div>
+        
+        <div className="p-6 space-y-4">
+          {/* Status and Meta */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <StatusBadge status={entry.status || 'Pending'} />
+            <span className="text-sm text-gray-500">Created: {formatDateTime(entry.created_at)}</span>
+            {entry.updated_at !== entry.created_at && (
+              <span className="text-sm text-gray-500">Updated: {formatDateTime(entry.updated_at)}</span>
+            )}
+          </div>
+          
+          {entry.locations?.name && (
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium">
+              <Building2 className="w-4 h-4" /> {entry.locations.name}
+            </div>
+          )}
+
+          {/* Daily Recon */}
+          {module?.id === 'daily-recon' && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4 p-4 bg-emerald-50 rounded-xl border border-emerald-200">
+                <h4 className="col-span-2 font-semibold text-emerald-800 flex items-center gap-2"><DollarSign className="w-4 h-4" /> Cash Can Entries</h4>
+                <div><span className="text-gray-600 text-sm">Date:</span> <span className="font-medium">{entry.recon_date}</span></div>
+                <div><span className="text-gray-600 text-sm">Cash:</span> <span className="font-medium">{formatCurrency(entry.cash)}</span></div>
+                <div><span className="text-gray-600 text-sm">Credit Card:</span> <span className="font-medium">{formatCurrency(entry.credit_card)}</span></div>
+                <div><span className="text-gray-600 text-sm">Checks OTC:</span> <span className="font-medium">{formatCurrency(entry.checks_otc)}</span></div>
+                <div><span className="text-gray-600 text-sm">Insurance:</span> <span className="font-medium">{formatCurrency(entry.insurance_checks)}</span></div>
+                <div><span className="text-gray-600 text-sm">Care Credit:</span> <span className="font-medium">{formatCurrency(entry.care_credit)}</span></div>
+                <div><span className="text-gray-600 text-sm">VCC:</span> <span className="font-medium">{formatCurrency(entry.vcc)}</span></div>
+                <div><span className="text-gray-600 text-sm">EFTs:</span> <span className="font-medium">{formatCurrency(entry.efts)}</span></div>
+                <div className="col-span-2 pt-2 border-t border-emerald-200">
+                  <span className="text-gray-600 text-sm">Total Collected:</span> <span className="font-bold text-emerald-700 text-lg">{formatCurrency(entry.total_collected)}</span>
+                </div>
+              </div>
+              {(entry.deposit_cash > 0 || entry.status === 'Accounted') && (
+                <div className="grid grid-cols-2 gap-4 p-4 bg-blue-50 rounded-xl border border-blue-200">
+                  <h4 className="col-span-2 font-semibold text-blue-800 flex items-center gap-2"><Building2 className="w-4 h-4" /> Bank Deposit</h4>
+                  <div><span className="text-gray-600 text-sm">Cash:</span> <span className="font-medium">{formatCurrency(entry.deposit_cash)}</span></div>
+                  <div><span className="text-gray-600 text-sm">Credit Card:</span> <span className="font-medium">{formatCurrency(entry.deposit_credit_card)}</span></div>
+                  <div><span className="text-gray-600 text-sm">Checks:</span> <span className="font-medium">{formatCurrency(entry.deposit_checks)}</span></div>
+                  <div><span className="text-gray-600 text-sm">Insurance:</span> <span className="font-medium">{formatCurrency(entry.deposit_insurance)}</span></div>
+                  <div><span className="text-gray-600 text-sm">Care Credit:</span> <span className="font-medium">{formatCurrency(entry.deposit_care_credit)}</span></div>
+                  <div><span className="text-gray-600 text-sm">VCC:</span> <span className="font-medium">{formatCurrency(entry.deposit_vcc)}</span></div>
+                  <div><span className="text-gray-600 text-sm">EFTs:</span> <span className="font-medium">{formatCurrency(entry.deposit_efts)}</span></div>
+                  <div className="col-span-2 pt-2 border-t border-blue-200">
+                    <span className="text-gray-600 text-sm">Total Deposit:</span> <span className="font-bold text-blue-700 text-lg">{formatCurrency(entry.total_deposit)}</span>
+                  </div>
+                </div>
+              )}
+              {entry.notes && <div className="p-4 bg-gray-50 rounded-xl"><span className="text-gray-600 text-sm block mb-1">Notes:</span><p className="text-gray-800">{entry.notes}</p></div>}
+            </div>
+          )}
+
+          {/* Billing Inquiry */}
+          {module?.id === 'billing-inquiry' && (
+            <div className="grid grid-cols-2 gap-4">
+              <div><span className="text-gray-600 text-sm block">Patient Name</span><span className="font-medium">{entry.patient_name || '-'}</span></div>
+              <div><span className="text-gray-600 text-sm block">Chart Number</span><span className="font-medium">{entry.chart_number || '-'}</span></div>
+              <div><span className="text-gray-600 text-sm block">Parent Name</span><span className="font-medium">{entry.parent_name || '-'}</span></div>
+              <div><span className="text-gray-600 text-sm block">Date of Request</span><span className="font-medium">{formatDate(entry.date_of_request)}</span></div>
+              <div><span className="text-gray-600 text-sm block">Inquiry Type</span><span className="font-medium">{entry.inquiry_type || '-'}</span></div>
+              <div><span className="text-gray-600 text-sm block">Amount in Question</span><span className="font-medium text-emerald-600">{formatCurrency(entry.amount_in_question)}</span></div>
+              <div><span className="text-gray-600 text-sm block">Contact Method</span><span className="font-medium">{entry.best_contact_method || '-'}</span></div>
+              <div><span className="text-gray-600 text-sm block">Best Time to Contact</span><span className="font-medium">{entry.best_contact_time || '-'}</span></div>
+              <div><span className="text-gray-600 text-sm block">Billing Team Reviewed</span><span className="font-medium">{entry.billing_team_reviewed || '-'}</span></div>
+              <div><span className="text-gray-600 text-sm block">Date Reviewed</span><span className="font-medium">{formatDate(entry.date_reviewed)}</span></div>
+              <div><span className="text-gray-600 text-sm block">Result</span><span className="font-medium">{entry.result || '-'}</span></div>
+              <div className="col-span-2"><span className="text-gray-600 text-sm block">Description</span><p className="font-medium bg-gray-50 p-3 rounded-lg mt-1">{entry.description || '-'}</p></div>
+            </div>
+          )}
+
+          {/* Bills Payment */}
+          {module?.id === 'bills-payment' && (
+            <div className="grid grid-cols-2 gap-4">
+              <div><span className="text-gray-600 text-sm block">Bill Date</span><span className="font-medium">{formatDate(entry.bill_date)}</span></div>
+              <div><span className="text-gray-600 text-sm block">Vendor</span><span className="font-medium">{entry.vendor || '-'}</span></div>
+              <div><span className="text-gray-600 text-sm block">Amount</span><span className="font-medium text-emerald-600">{formatCurrency(entry.amount)}</span></div>
+              <div><span className="text-gray-600 text-sm block">Due Date</span><span className="font-medium">{formatDate(entry.due_date)}</span></div>
+              <div><span className="text-gray-600 text-sm block">Bill Status</span><span className="font-medium">{entry.bill_status || '-'}</span></div>
+              <div><span className="text-gray-600 text-sm block">Manager Initials</span><span className="font-medium">{entry.manager_initials || '-'}</span></div>
+              <div><span className="text-gray-600 text-sm block">AP Reviewed</span><span className="font-medium">{entry.ap_reviewed || '-'}</span></div>
+              <div><span className="text-gray-600 text-sm block">Date Reviewed</span><span className="font-medium">{formatDate(entry.date_reviewed)}</span></div>
+              <div><span className="text-gray-600 text-sm block">Paid</span><span className="font-medium">{entry.paid || '-'}</span></div>
+              <div className="col-span-2"><span className="text-gray-600 text-sm block">Description</span><p className="font-medium bg-gray-50 p-3 rounded-lg mt-1">{entry.description || '-'}</p></div>
+            </div>
+          )}
+
+          {/* Order Requests */}
+          {module?.id === 'order-requests' && (
+            <div className="grid grid-cols-2 gap-4">
+              <div><span className="text-gray-600 text-sm block">Date Entered</span><span className="font-medium">{formatDate(entry.date_entered)}</span></div>
+              <div><span className="text-gray-600 text-sm block">Vendor</span><span className="font-medium">{entry.vendor || '-'}</span></div>
+              <div><span className="text-gray-600 text-sm block">Invoice Number</span><span className="font-medium">{entry.invoice_number || '-'}</span></div>
+              <div><span className="text-gray-600 text-sm block">Invoice Date</span><span className="font-medium">{formatDate(entry.invoice_date)}</span></div>
+              <div><span className="text-gray-600 text-sm block">Due Date</span><span className="font-medium">{formatDate(entry.due_date)}</span></div>
+              <div><span className="text-gray-600 text-sm block">Amount</span><span className="font-medium text-emerald-600">{formatCurrency(entry.amount)}</span></div>
+              <div><span className="text-gray-600 text-sm block">Entered By</span><span className="font-medium">{entry.entered_by || '-'}</span></div>
+              <div className="col-span-2"><span className="text-gray-600 text-sm block">Notes</span><p className="font-medium bg-gray-50 p-3 rounded-lg mt-1">{entry.notes || '-'}</p></div>
+            </div>
+          )}
+
+          {/* Refund Requests */}
+          {module?.id === 'refund-requests' && (
+            <div className="grid grid-cols-2 gap-4">
+              <div><span className="text-gray-600 text-sm block">Patient Name</span><span className="font-medium">{entry.patient_name || '-'}</span></div>
+              <div><span className="text-gray-600 text-sm block">Chart Number</span><span className="font-medium">{entry.chart_number || '-'}</span></div>
+              <div><span className="text-gray-600 text-sm block">Parent Name</span><span className="font-medium">{entry.parent_name || '-'}</span></div>
+              <div><span className="text-gray-600 text-sm block">RP Address</span><span className="font-medium">{entry.rp_address || '-'}</span></div>
+              <div><span className="text-gray-600 text-sm block">Date of Request</span><span className="font-medium">{formatDate(entry.date_of_request)}</span></div>
+              <div><span className="text-gray-600 text-sm block">Type</span><span className="font-medium">{entry.type || '-'}</span></div>
+              <div><span className="text-gray-600 text-sm block">Amount Requested</span><span className="font-medium text-emerald-600">{formatCurrency(entry.amount_requested)}</span></div>
+              <div><span className="text-gray-600 text-sm block">Contact Method</span><span className="font-medium">{entry.best_contact_method || '-'}</span></div>
+              <div><span className="text-gray-600 text-sm block">eAssist Audited</span><span className="font-medium">{entry.eassist_audited === true ? 'Yes' : entry.eassist_audited === false ? 'No' : '-'}</span></div>
+              <div className="col-span-2"><span className="text-gray-600 text-sm block">Description</span><p className="font-medium bg-gray-50 p-3 rounded-lg mt-1">{entry.description || '-'}</p></div>
+            </div>
+          )}
+
+          {/* IT Requests */}
+          {module?.id === 'it-requests' && (
+            <div className="grid grid-cols-2 gap-4">
+              <div><span className="text-gray-600 text-sm block">Ticket Number</span><span className="font-medium text-cyan-600">IT-{entry.ticket_number}</span></div>
+              <div><span className="text-gray-600 text-sm block">Date Reported</span><span className="font-medium">{formatDate(entry.date_reported)}</span></div>
+              <div><span className="text-gray-600 text-sm block">Urgency</span><span className={`font-medium ${entry.urgency === 'Critical' ? 'text-red-600' : entry.urgency === 'High' ? 'text-orange-600' : ''}`}>{entry.urgency || '-'}</span></div>
+              <div><span className="text-gray-600 text-sm block">Requester Name</span><span className="font-medium">{entry.requester_name || '-'}</span></div>
+              <div><span className="text-gray-600 text-sm block">Device / System</span><span className="font-medium">{entry.device_system || '-'}</span></div>
+              <div><span className="text-gray-600 text-sm block">Contact Method</span><span className="font-medium">{entry.best_contact_method || '-'}</span></div>
+              <div><span className="text-gray-600 text-sm block">Best Contact Time</span><span className="font-medium">{entry.best_contact_time || '-'}</span></div>
+              <div><span className="text-gray-600 text-sm block">Assigned To</span><span className="font-medium">{entry.assigned_to || '-'}</span></div>
+              <div className="col-span-2"><span className="text-gray-600 text-sm block">Description of Issue</span><p className="font-medium bg-gray-50 p-3 rounded-lg mt-1">{entry.description_of_issue || '-'}</p></div>
+              {entry.resolution_notes && <div className="col-span-2"><span className="text-gray-600 text-sm block">Resolution Notes</span><p className="font-medium bg-emerald-50 p-3 rounded-lg mt-1 text-emerald-800">{entry.resolution_notes}</p></div>}
+              {entry.resolved_at && <div><span className="text-gray-600 text-sm block">Resolved At</span><span className="font-medium">{formatDateTime(entry.resolved_at)}</span></div>}
+            </div>
+          )}
+
+          {/* Creator/Updater Info */}
+          <div className="pt-4 border-t border-gray-200 flex flex-wrap gap-4 text-sm text-gray-500">
+            {entry.creator?.name && <span>Created by: <span className="font-medium text-gray-700">{entry.creator.name}</span></span>}
+            {entry.updater?.name && entry.updater.name !== entry.creator?.name && <span>Updated by: <span className="font-medium text-gray-700">{entry.updater.name}</span></span>}
+          </div>
+        </div>
+
+        <div className="p-4 border-t bg-gray-50 sticky bottom-0">
+          <button onClick={onClose} className="w-full py-3 bg-gray-200 hover:bg-gray-300 rounded-xl font-medium transition-all">Close</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function StatusBadge({ status }) {
   const colors = {
     'Open': 'bg-red-100 text-red-700 border-red-200',
@@ -347,6 +513,7 @@ const [nameForm, setNameForm] = useState('');
 const [staffEditForm, setStaffEditForm] = useState({});
   const [viewingUserSessions, setViewingUserSessions] = useState(null);
   const [userSearch, setUserSearch] = useState('');
+  const [viewingEntry, setViewingEntry] = useState(null);
 const [userSessionsData, setUserSessionsData] = useState([]);
 const [loadingUserSessions, setLoadingUserSessions] = useState(false);
   const [staffRecordSearch, setStaffRecordSearch] = useState('');
@@ -1846,6 +2013,7 @@ if (!currentUser) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-slate-100 flex">
       <FileViewer file={viewingFile} onClose={() => setViewingFile(null)} />
+    <EntryPreview entry={viewingEntry} module={currentModule} onClose={() => setViewingEntry(null)} colors={currentColors} onViewDocument={viewDocument} />
       <FloatingChat messages={chatMessages} input={chatInput} setInput={setChatInput} onSend={askAI} loading={aiLoading} userRole={currentUser?.role} />
 
       {/* Sidebar */}
@@ -2513,13 +2681,18 @@ if (!currentUser) {
                         {e.locations?.name} • {e.creator?.name || 'Unknown'} • {new Date(e.created_at).toLocaleDateString()}
                       </p>
                     </div>
-                    {!isEditing && (
-                      <button
-                        onClick={() => startEditingRecon(e)}
-                        className="px-3 py-1.5 text-sm font-medium text-purple-600 hover:bg-purple-100 rounded-lg transition-colors flex items-center gap-1"
-                      >
-                        <Edit3 className="w-4 h-4" /> Review
-                      </button>
+{!isEditing && (
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => setViewingEntry(e)} className="p-2 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors" title="Preview">
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => startEditingRecon(e)}
+                          className="px-3 py-1.5 text-sm font-medium text-purple-600 hover:bg-purple-100 rounded-lg transition-colors flex items-center gap-1"
+                        >
+                          <Edit3 className="w-4 h-4" /> Review
+                        </button>
+                      </div>
                     )}
                   </div>
 
@@ -2696,6 +2869,12 @@ if (!currentUser) {
                     )}
                   </div>
 
+{activeModule !== 'it-requests' && (
+                    <button onClick={() => setViewingEntry(e)} className="p-2 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors" title="Preview">
+                      <Eye className="w-4 h-4" />
+                    </button>
+                  )}
+
                   {activeModule === 'it-requests' && (
                     <div>
                       {editingStatus === e.id ? (
@@ -2714,11 +2893,16 @@ if (!currentUser) {
                             <button onClick={() => setEditingStatus(null)} className="px-3 py-2 bg-gray-200 rounded-lg text-xs">Cancel</button>
                           </div>
                         </div>
-                      ) : (
-                        <button onClick={() => setEditingStatus(e.id)} className="text-xs text-purple-600 flex items-center gap-1 font-medium hover:underline">
-                          <Edit3 className="w-3 h-3" />Update
-                        </button>
-                      )}
+) : (
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => setViewingEntry(e)} className="p-1.5 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors" title="Preview">
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => setEditingStatus(e.id)} className="text-xs text-purple-600 flex items-center gap-1 font-medium hover:underline">
+                            <Edit3 className="w-3 h-3" />Update
+                          </button>
+                        </div>
+                      )})}
                     </div>
                   )}
                 </div>
@@ -3204,11 +3388,16 @@ if (!currentUser) {
                       )}
                     </div>
                     
-                    {canEdit && (
-                      <button onClick={() => startEditingStaffEntry(e)} className="px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-100 rounded-lg transition-colors flex items-center gap-1">
-                        <Edit3 className="w-4 h-4" /> Edit
+<div className="flex items-center gap-1">
+                      <button onClick={() => setViewingEntry(e)} className="p-2 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors" title="Preview">
+                        <Eye className="w-4 h-4" />
                       </button>
-                    )}
+                      {canEdit && (
+                        <button onClick={() => startEditingStaffEntry(e)} className="px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-100 rounded-lg transition-colors flex items-center gap-1">
+                          <Edit3 className="w-4 h-4" /> Edit
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
