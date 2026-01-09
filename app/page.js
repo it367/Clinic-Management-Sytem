@@ -1977,7 +1977,7 @@ if (!currentUser) {
             {loginLoading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Login →'}
           </button>
           
-          <p className="text-xs text-center text-gray-400">BETA Version 0.24</p>
+          <p className="text-xs text-center text-gray-400">BETA Version 0.34</p>
         </div>
       </div>
     </div>
