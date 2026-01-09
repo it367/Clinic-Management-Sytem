@@ -2902,7 +2902,7 @@ if (!currentUser) {
                             <Edit3 className="w-3 h-3" />Update
                           </button>
                         </div>
-                      )})}
+                      )}
                     </div>
                   )}
                 </div>
