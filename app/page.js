@@ -685,8 +685,8 @@ useEffect(() => {
     }
   }
 }, [analyticsModule, adminView, currentUser, moduleData]);
-  const isAdmin = currentUser?.role === 'super_admin' || currentUser?.role === 'finance_admin';
-  const isSuperAdmin = currentUser?.role === 'super_admin';
+const isAdmin = currentUser?.role === 'super_admin' || currentUser?.role === 'finance_admin' || currentUser?.role === 'it';
+const isSuperAdmin = currentUser?.role === 'super_admin' || currentUser?.role === 'it';
 
 const showConfirm = (title, message, confirmText = 'Confirm', confirmColor = 'blue') => {
   return new Promise((resolve) => {
@@ -718,11 +718,11 @@ const showConfirm = (title, message, confirmText = 'Confirm', confirmColor = 'bl
     if (data) setLocations(data);
   };
 
-  const loadItUsers = async () => {
+const loadItUsers = async () => {
   const { data } = await supabase
     .from('users')
     .select('id, name')
-    .eq('role', 'super_admin')
+    .in('role', ['super_admin', 'it'])
     .eq('is_active', true)
     .order('name');
   if (data) setItUsers(data);
@@ -2128,16 +2128,16 @@ return (
 
       {/* Sidebar */}
 <div className={`fixed inset-y-0 left-0 z-40 w-72 bg-white shadow-xl flex flex-col transform transition-transform lg:relative lg:translate-x-0 lg:h-screen lg:sticky lg:top-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className={`p-5 flex-shrink-0 ${isSuperAdmin ? 'bg-gradient-to-r from-rose-600 to-pink-600' : isAdmin ? 'bg-gradient-to-r from-purple-600 to-indigo-600' : 'bg-gradient-to-r from-blue-600 to-indigo-600'}`}>
+<div className={`p-5 flex-shrink-0 ${currentUser?.role === 'it' ? 'bg-gradient-to-r from-cyan-600 to-teal-600' : isSuperAdmin ? 'bg-gradient-to-r from-rose-600 to-pink-600' : isAdmin ? 'bg-gradient-to-r from-purple-600 to-indigo-600' : 'bg-gradient-to-r from-blue-600 to-indigo-600'}`}>        <div className={`p-5 flex-shrink-0 ${isSuperAdmin ? 'bg-gradient-to-r from-rose-600 to-pink-600' : isAdmin ? 'bg-gradient-to-r from-purple-600 to-indigo-600' : 'bg-gradient-to-r from-blue-600 to-indigo-600'}`}>
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-              {isSuperAdmin ? <Shield className="w-6 h-6 text-white" /> : isAdmin ? <Shield className="w-6 h-6 text-white" /> : <User className="w-6 h-6 text-white" />}
+              {currentUser?.role === 'it' ? <Monitor className="w-6 h-6 text-white" /> : isSuperAdmin ? <Shield className="w-6 h-6 text-white" /> : isAdmin ? <Shield className="w-6 h-6 text-white" /> : <User className="w-6 h-6 text-white" />}
             </div>
             <div className="text-white">
               <p className="font-semibold">{currentUser.name}</p>
-              <p className="text-sm text-white/80">
-                {isSuperAdmin ? 'Super Admin' : isAdmin ? 'Finance Admin' : selectedLocation}
-              </p>
+<p className="text-sm text-white/80">
+  {currentUser?.role === 'it' ? 'IT Admin' : isSuperAdmin ? 'Super Admin' : isAdmin ? 'Finance Admin' : selectedLocation}
+</p>
             </div>
           </div>
         </div>
@@ -2330,7 +2330,7 @@ return (
                     <InputField label="Username *" value={editingUser ? (editingUser.username || '') : newUser.username} onChange={e => editingUser ? setEditingUser({...editingUser, username: e.target.value}) : setNewUser({...newUser, username: e.target.value})} placeholder="Login username" />
                     <InputField label="Email *" value={editingUser ? editingUser.email : newUser.email} onChange={e => editingUser ? setEditingUser({...editingUser, email: e.target.value}) : setNewUser({...newUser, email: e.target.value})} />
                     <PasswordField label={editingUser ? "New Password" : "Password *"} value={editingUser ? (editingUser.newPassword || '') : newUser.password} onChange={e => editingUser ? setEditingUser({...editingUser, newPassword: e.target.value}) : setNewUser({...newUser, password: e.target.value})} placeholder={editingUser ? "Leave blank to keep current" : ""} />
-                    <InputField label="Role" value={editingUser ? editingUser.role : newUser.role} onChange={e => editingUser ? setEditingUser({...editingUser, role: e.target.value}) : setNewUser({...newUser, role: e.target.value})} options={isSuperAdmin ? ['staff', 'finance_admin', 'super_admin'] : ['staff', 'finance_admin']} />
+                    <InputField label="Role" value={editingUser ? editingUser.role : newUser.role} onChange={e => editingUser ? setEditingUser({...editingUser, role: e.target.value}) : setNewUser({...newUser, role: e.target.value})} options={isSuperAdmin ? ['staff', 'finance_admin', 'it', 'super_admin'] : ['staff', 'finance_admin']} />
                   </div>
                   {((editingUser ? editingUser.role : newUser.role) === 'staff') && (
                     <div className="mt-4">
@@ -2370,7 +2370,7 @@ return (
       <div key={u.id}>
         <div className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
           <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-semibold ${u.role === 'super_admin' ? 'bg-gradient-to-br from-rose-500 to-pink-500' : u.role === 'finance_admin' ? 'bg-gradient-to-br from-purple-500 to-indigo-500' : 'bg-gradient-to-br from-blue-500 to-indigo-500'}`}>
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-semibold ${u.role === 'super_admin' ? 'bg-gradient-to-br from-rose-500 to-pink-500' : u.role === 'it' ? 'bg-gradient-to-br from-cyan-500 to-teal-500' : u.role === 'finance_admin' ? 'bg-gradient-to-br from-purple-500 to-indigo-500' : 'bg-gradient-to-br from-blue-500 to-indigo-500'}`}>
               {u.name.charAt(0)}
             </div>
             <div>
@@ -2383,9 +2383,9 @@ return (
                   ))}
                 </div>
               )}
-              {(u.role === 'finance_admin' || u.role === 'super_admin') && (
-                <span className="text-xs text-purple-600 font-medium">All locations access</span>
-              )}
+{(u.role === 'finance_admin' || u.role === 'super_admin' || u.role === 'it') && (
+  <span className={`text-xs font-medium ${u.role === 'it' ? 'text-cyan-600' : 'text-purple-600'}`}>All locations access</span>
+)}
             </div>
           </div>
           <div className="flex gap-1">
