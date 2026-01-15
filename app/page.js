@@ -1224,8 +1224,6 @@ const changePassword = async () => {
   
 const changeName = async () => {
   if (!nameForm.trim()) {
-    showMessage('erconst changeName = async () => {
-  if (!nameForm.trim()) {
     showMessage('error', 'Name cannot be empty');
     return;
   }
