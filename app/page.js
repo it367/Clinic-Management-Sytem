@@ -1055,6 +1055,10 @@ const addUser = async () => {
       showMessage('error', 'Please fill all required fields');
       return;
     }
+    if (!window.confirm(`Are you sure you want to create user "${newUser.name}"?`)) return;
+      showMessage('error', 'Please fill all required fields');
+      return;
+    }
 
     // Check if username already exists
     const { data: existingUser } = await supabase
@@ -1106,6 +1110,7 @@ const updateUser = async () => {
       showMessage('error', 'Please fill all required fields');
       return;
     }
+    if (!window.confirm(`Are you sure you want to update user "${editingUser.name}"?`)) return;
 
     // Check if username is taken by another user (if username provided)
     if (editingUser.username) {
@@ -1188,7 +1193,8 @@ const deleteUser = async (id) => {
     }
   };
 
-  const changePassword = async () => {
+const changePassword = async () => {
+    if (!window.confirm('Are you sure you want to change your password?')) return;
     if (pwdForm.current !== currentUser.password_hash) {
       showMessage('error', 'Current password is incorrect');
       return;
@@ -1220,6 +1226,8 @@ const changeName = async () => {
   if (!nameForm.trim()) {
     showMessage('error', 'Name cannot be empty');
     return;
+  }
+  if (!window.confirm('Are you sure you want to update your display name?')) return;
   }
   const { error } = await supabase
     .from('users')
@@ -1291,7 +1299,8 @@ const changeName = async () => {
     return uploadedFiles;
   };
 
-  const saveEntry = async (moduleId) => {
+const saveEntry = async (moduleId) => {
+    if (!window.confirm('Are you sure you want to submit this entry?')) return;
     setSaving(true);
     const module = ALL_MODULES.find(m => m.id === moduleId);
     const form = forms[moduleId];
@@ -1428,8 +1437,9 @@ if (moduleId === 'daily-recon') {
     setSaving(false);
   };
 
-  const updateDailyRecon = async (entryId) => {
+const updateDailyRecon = async (entryId) => {
   if (!reconForm[entryId]) return;
+  if (!window.confirm('Are you sure you want to update this Daily Recon entry?')) return;
   
   const form = reconForm[entryId];
   const updateData = {
@@ -1493,7 +1503,8 @@ const updateReconForm = (entryId, field, value) => {
   }));
 };
   
-  const updateEntryStatus = async (moduleId, entryId, newStatus, additionalFields = {}) => {
+const updateEntryStatus = async (moduleId, entryId, newStatus, additionalFields = {}) => {
+    if (!window.confirm(`Are you sure you want to update the status to "${newStatus}"?`)) return;
     const module = ALL_MODULES.find(m => m.id === moduleId);
 
     const updateData = {
@@ -1766,6 +1777,7 @@ const updateStaffEditForm = (field, value) => {
 
 const saveStaffEntryUpdate = async () => {
   if (!editingStaffEntry) return;
+  if (!window.confirm('Are you sure you want to save these changes?')) return;
   setSaving(true);
   
   const module = ALL_MODULES.find(m => m.id === activeModule);
