@@ -1,4 +1,4 @@
-//Clinic Management System v0.34
+//Clinic Management System v0.35
 // Devoloper: Mark Murillo 
 // Company: Kidshine Hawaii
 
@@ -2030,7 +2030,7 @@ if (!currentUser) {
       <FloatingChat messages={chatMessages} input={chatInput} setInput={setChatInput} onSend={askAI} loading={aiLoading} userRole={currentUser?.role} />
 
       {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-40 w-72 bg-white shadow-xl transform transition-transform lg:relative lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+<div className={`fixed inset-y-0 left-0 z-40 w-72 bg-white shadow-xl flex flex-col transform transition-transform lg:relative lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className={`p-5 ${isSuperAdmin ? 'bg-gradient-to-r from-rose-600 to-pink-600' : isAdmin ? 'bg-gradient-to-r from-purple-600 to-indigo-600' : 'bg-gradient-to-r from-blue-600 to-indigo-600'}`}>
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
@@ -2046,7 +2046,7 @@ if (!currentUser) {
         </div>
 
         {isAdmin && (
-          <div className="p-4 border-b bg-purple-50">
+            <div className="p-4 border-b bg-purple-50 flex-shrink-0">>
             <label className="text-xs font-medium text-purple-700 mb-1.5 block">Filter by Location</label>
             <select value={adminLocation} onChange={e => setAdminLocation(e.target.value)} className="w-full p-2.5 border-2 border-purple-200 rounded-xl text-sm focus:border-purple-400 outline-none bg-white">
               <option value="all">📍 All Locations</option>
@@ -2056,7 +2056,7 @@ if (!currentUser) {
         )}
 
         {!isAdmin && userLocations.length > 1 && (
-          <div className="p-4 border-b bg-blue-50">
+  <div className="p-4 border-b bg-blue-50 flex-shrink-0">
             <label className="text-xs font-medium text-blue-700 mb-1.5 block">Switch Location</label>
             <select value={selectedLocation} onChange={e => setSelectedLocation(e.target.value)} className="w-full p-2.5 border-2 border-blue-200 rounded-xl text-sm focus:border-blue-400 outline-none bg-white">
               {userLocations.map(l => <option key={l.id} value={l.name}>{l.name}</option>)}
@@ -2065,7 +2065,7 @@ if (!currentUser) {
         )}
 
         {/* Navigation */}
-        <nav className="p-4 space-y-1.5 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 280px)' }}>
+        <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto">
           {/* Analytics - Admin Only */}
           {isAdmin && (
             <>
@@ -2140,7 +2140,7 @@ if (!currentUser) {
         </nav>
 
         {/* Bottom buttons */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t bg-gray-50">
+        <div className="flex-shrink-0 p-4 border-t bg-gray-50">
           <button
             onClick={() => { isAdmin ? setAdminView('settings') : setView('settings'); setSidebarOpen(false); }}
             className={`w-full flex items-center justify-center gap-2 py-2.5 mb-2 rounded-xl transition-all ${(isAdmin ? adminView : view) === 'settings' ? (isAdmin ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700') : 'text-gray-500 hover:bg-gray-200'}`}
