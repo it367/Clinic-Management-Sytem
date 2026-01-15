@@ -3755,7 +3755,7 @@ const totalDeposited = filteredData.reduce((sum, r) => {
                     <button onClick={() => setViewingEntry(e)} className="p-2 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors" title="Preview">
                       <Eye className="w-4 h-4" />
                     </button>
-                  )}
+               
             </div>
           );
 }
