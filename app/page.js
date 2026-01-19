@@ -1370,7 +1370,15 @@ if (user.role === 'super_admin' || user.role === 'finance_admin') {
   setLoginLoading(false);
 };
 
-  const handleLogout = () => {
+const handleLogout = async () => {
+  const confirmed = await showConfirm(
+    'Logout', 
+    'Are you sure you want to logout?', 
+    'Logout', 
+    'blue'
+  );
+  if (!confirmed) return;
+
   clearSession();
   setCurrentUser(null);
   setUserLocations([]);
