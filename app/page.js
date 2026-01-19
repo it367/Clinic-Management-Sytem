@@ -4983,8 +4983,8 @@ if (activeModule === 'it-requests') {
 {sidebarOpen && <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-30 lg:hidden" onClick={() => setSidebarOpen(false)} />}
       
 {/* Version Footer */}
-      <div className="fixed bottom-6 left-4 lg:left-[300px] z-20 pointer-events-none">
-        <p className="text-xs text-gray-400 opacity-60">CMS v0.46</p>
+      <div className="fixed bottom-6 left-4 lg:left-[310px] z-20 pointer-events-none">
+        <p className="text-xs text-gray-400 opacity-70">CMS v0.46</p>
       </div>
     </div>
   );
