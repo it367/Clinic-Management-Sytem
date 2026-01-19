@@ -2431,10 +2431,7 @@ if (!currentUser) {
           <div className="w-24 h-24 mx-auto mb-4">
             <img src="/kidshine.png" alt="KidShine Hawaii" className="w-full h-full object-contain" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-800">CMS - KidShine Hawaii</h1>
-          <p className="text-gray-500 text-sm mt-1">Clinic Management Portal</p>
-        </div>
-          <h1 className="text-2xl font-bold text-gray-800">CMS - KidShine Hawaii</h1>
+<h1 className="text-2xl font-bold text-gray-800">CMS - KidShine Hawaii</h1>
           <p className="text-gray-500 text-sm mt-1">Clinic Management Portal</p>
         </div>
 
