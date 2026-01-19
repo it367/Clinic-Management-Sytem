@@ -1,4 +1,4 @@
-//Clinic Management System v0.41
+//Clinic Management System v0.43
 // Devoloper: Mark Murillo 
 // Company: Kidshine Hawaii
 
@@ -204,7 +204,7 @@ function FileViewer({ file, onClose }) {
   );
 }
 
-function EntryPreview({ entry, module, onClose, colors, onViewDocument, currentUser, itUsers, onUpdateStatus }) {
+function EntryPreview({ entry, module, onClose, colors, onViewDocument, currentUser, itUsers, onUpdateStatus, onDelete }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({
     status: entry?.status || 'For Review',
@@ -463,8 +463,13 @@ function EntryPreview({ entry, module, onClose, colors, onViewDocument, currentU
           </div>
         </div>
 
-        <div className="p-4 border-t bg-gray-50 sticky bottom-0">
-          <button onClick={onClose} className="w-full py-3 bg-gray-200 hover:bg-gray-300 rounded-xl font-medium transition-all">Close</button>
+<div className="p-4 border-t bg-gray-50 sticky bottom-0 flex gap-2">
+          <button onClick={onClose} className="flex-1 py-3 bg-gray-200 hover:bg-gray-300 rounded-xl font-medium transition-all">Close</button>
+          {onDelete && (
+            <button onClick={() => onDelete(entry.id)} className="px-6 py-3 bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white rounded-xl font-medium transition-all flex items-center gap-2">
+              <Trash2 className="w-4 h-4" /> Delete
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -710,6 +715,11 @@ const [staffRecordsPerPage, setStaffRecordsPerPage] = useState(20);
 const [staffCurrentPage, setStaffCurrentPage] = useState(1);
   const [itUsers, setItUsers] = useState([]);
 const [confirmDialog, setConfirmDialog] = useState({ open: false, title: '', message: '', onConfirm: null, onCancel: null, confirmText: 'Confirm', confirmColor: 'blue' });
+const [passwordDialog, setPasswordDialog] = useState({ open: false, title: '', message: '', onConfirm: null, onCancel: null, password: '', error: '' });
+const [selectedRecords, setSelectedRecords] = useState([]);
+const [selectAll, setSelectAll] = useState(false);
+const [selectedRecords, setSelectedRecords] = useState([]);
+const [selectAll, setSelectAll] = useState(false);
   const [showAddUser, setShowAddUser] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [newUser, setNewUser] = useState({ name: '', username: '', email: '', password: '', role: 'staff', locations: [] });
@@ -860,7 +870,7 @@ useEffect(() => { if (currentUser) setNameForm(currentUser.name || ''); }, [curr
 
 useEffect(() => { setCurrentPage(1); setRecordSearch(''); }, [activeModule, adminLocation]);
   useEffect(() => { setStaffCurrentPage(1); setStaffRecordSearch(''); setEditingStaffEntry(null); }, [activeModule, selectedLocation]);
-
+useEffect(() => { setSelectedRecords([]); setSelectAll(false); }, [activeModule, adminLocation, currentPage, recordSearch]);
   useEffect(() => {
   if (viewingEntry && activeModule === 'it-requests') {
     loadItUsers();
@@ -898,12 +908,109 @@ const showConfirm = (title, message, confirmText = 'Confirm', confirmColor = 'bl
     });
   });
 };
+
+const showPasswordConfirm = (title, message) => {
+  return new Promise((resolve) => {
+    setPasswordDialog({
+      open: true,
+      title,
+      message,
+      password: '',
+      error: '',
+      onConfirm: (enteredPassword) => {
+        if (enteredPassword === currentUser.password_hash) {
+          setPasswordDialog(prev => ({ ...prev, open: false, password: '', error: '' }));
+          resolve(true);
+        } else {
+          setPasswordDialog(prev => ({ ...prev, error: 'Incorrect password' }));
+          resolve(false);
+        }
+      },
+      onCancel: () => {
+        setPasswordDialog(prev => ({ ...prev, open: false, password: '', error: '' }));
+        resolve(null);
+      }
+    });
+  });
+};
   
   const showMessage = (type, text) => {
     setMessage({ type, text });
     setTimeout(() => setMessage({ type: '', text: '' }), 4000);
   };
 
+const deleteRecord = async (moduleId, recordId) => {
+  const confirmed = await showConfirm('Delete Record', 'Are you sure you want to delete this record? This action cannot be undone.', 'Delete', 'red');
+  if (!confirmed) return false;
+
+  const passwordValid = await showPasswordConfirm('Confirm Password', 'Enter your password to confirm deletion');
+  if (!passwordValid) {
+    if (passwordValid === false) showMessage('error', 'Incorrect password');
+    return false;
+  }
+
+  const module = ALL_MODULES.find(m => m.id === moduleId);
+  if (!module) return false;
+
+  const { data: docs } = await supabase.from('documents').select('storage_path').eq('record_type', moduleId).eq('record_id', recordId);
+  if (docs && docs.length > 0) {
+    await supabase.storage.from('clinic-documents').remove(docs.map(d => d.storage_path));
+    await supabase.from('documents').delete().eq('record_type', moduleId).eq('record_id', recordId);
+  }
+
+  const { error } = await supabase.from(module.table).delete().eq('id', recordId);
+  if (error) {
+    showMessage('error', 'Failed to delete record: ' + error.message);
+    return false;
+  }
+
+  showMessage('success', '✓ Record deleted successfully');
+  loadModuleData(moduleId);
+  return true;
+};
+
+const deleteSelectedRecords = async () => {
+  if (selectedRecords.length === 0) { showMessage('error', 'No records selected'); return; }
+
+  const confirmed = await showConfirm('Delete Selected Records', `Are you sure you want to delete ${selectedRecords.length} record(s)? This action cannot be undone.`, 'Delete All', 'red');
+  if (!confirmed) return;
+
+  const passwordValid = await showPasswordConfirm('Confirm Password', `Enter your password to delete ${selectedRecords.length} record(s)`);
+  if (!passwordValid) {
+    if (passwordValid === false) showMessage('error', 'Incorrect password');
+    return;
+  }
+
+  const module = ALL_MODULES.find(m => m.id === activeModule);
+  if (!module) return;
+
+  let successCount = 0, errorCount = 0;
+
+  for (const recordId of selectedRecords) {
+    const { data: docs } = await supabase.from('documents').select('storage_path').eq('record_type', activeModule).eq('record_id', recordId);
+    if (docs && docs.length > 0) {
+      await supabase.storage.from('clinic-documents').remove(docs.map(d => d.storage_path));
+      await supabase.from('documents').delete().eq('record_type', activeModule).eq('record_id', recordId);
+    }
+    const { error } = await supabase.from(module.table).delete().eq('id', recordId);
+    if (error) errorCount++; else successCount++;
+  }
+
+  setSelectedRecords([]);
+  setSelectAll(false);
+  showMessage(errorCount > 0 ? 'error' : 'success', errorCount > 0 ? `Deleted ${successCount} records. ${errorCount} failed.` : `✓ ${successCount} record(s) deleted successfully`);
+  loadModuleData(activeModule);
+};
+
+const toggleRecordSelection = (recordId) => {
+  setSelectedRecords(prev => prev.includes(recordId) ? prev.filter(id => id !== recordId) : [...prev, recordId]);
+};
+
+const toggleSelectAll = () => {
+  if (selectAll) { setSelectedRecords([]); setSelectAll(false); }
+  else { setSelectedRecords(getPaginatedEntries().map(e => e.id)); setSelectAll(true); }
+};
+  
   const loadLocations = async () => {
     const { data, error } = await supabase.from('locations').select('*').eq('is_active', true).order('name');
     if (data) setLocations(data);
@@ -2235,7 +2342,7 @@ if (!currentUser) {
             {loginLoading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Login →'}
           </button>
           
-          <p className="text-xs text-center text-gray-400">BETA Version 0.41</p>
+          <p className="text-xs text-center text-gray-400">BETA Version 0.43</p>
         </div>
       </div>
     </div>
@@ -2319,6 +2426,40 @@ return (
           </div>
         </div>
       )}
+
+        {passwordDialog.open && (
+  <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[70] p-4" onClick={passwordDialog.onCancel}>
+    <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+      <div className="p-6">
+        <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4 bg-red-100">
+          <Lock className="w-7 h-7 text-red-600" />
+        </div>
+        <h3 className="text-xl font-bold text-center text-gray-800 mb-2">{passwordDialog.title}</h3>
+        <p className="text-center text-gray-600 mb-4">{passwordDialog.message}</p>
+        <div className="space-y-3">
+          <input
+            type="password"
+            value={passwordDialog.password}
+            onChange={e => setPasswordDialog(prev => ({ ...prev, password: e.target.value, error: '' }))}
+            onKeyDown={e => e.key === 'Enter' && passwordDialog.onConfirm(passwordDialog.password)}
+            placeholder="Enter your password"
+            className={`w-full p-3 border-2 rounded-xl outline-none transition-all ${passwordDialog.error ? 'border-red-400 bg-red-50' : 'border-gray-200 focus:border-red-400'}`}
+            autoFocus
+          />
+          {passwordDialog.error && (
+            <p className="text-sm text-red-600 text-center flex items-center justify-center gap-1">
+              <AlertCircle className="w-4 h-4" /> {passwordDialog.error}
+            </p>
+          )}
+        </div>
+      </div>
+      <div className="flex border-t border-gray-200">
+        <button onClick={passwordDialog.onCancel} className="flex-1 py-4 text-gray-600 font-semibold hover:bg-gray-50 transition-colors">Cancel</button>
+        <button onClick={() => passwordDialog.onConfirm(passwordDialog.password)} className="flex-1 py-4 text-white font-semibold bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 transition-all">Confirm Delete</button>
+      </div>
+    </div>
+  </div>
+)}
       <FileViewer file={viewingFile} onClose={() => setViewingFile(null)} />
 
         
@@ -2333,6 +2474,10 @@ return (
   onUpdateStatus={(entryId, newStatus, additionalFields) => {
     updateEntryStatus('it-requests', entryId, newStatus, additionalFields);
     setViewingEntry(null);
+  }}
+  onDelete={async (recordId) => {
+    const deleted = await deleteRecord(activeModule, recordId);
+    if (deleted) setViewingEntry(null);
   }}
 />
       <FloatingChat messages={chatMessages} input={chatInput} setInput={setChatInput} onSend={askAI} loading={aiLoading} userRole={currentUser?.role} />
@@ -3727,13 +3872,31 @@ const totalDeposited = filteredData.reduce((sum, r) => {
           {recordSearch && <span className="text-blue-600"> (filtered)</span>}
         </p>
         <span className={`text-sm font-medium px-3 py-1 rounded-lg ${currentColors?.light} ${currentColors?.text}`}>
-          {currentModule?.name}
-        </span>
-      </div>
-    </div>
+{currentModule?.name}
+          </span>
+        </div>
 
-    {/* Records List */}
-    <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+        {/* Mass Selection Controls */}
+        <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+          <div className="flex items-center gap-3">
+            <button onClick={toggleSelectAll} className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${selectAll ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+              <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${selectAll ? 'bg-purple-600 border-purple-600' : 'border-gray-300'}`}>
+                {selectAll && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+              </div>
+              {selectAll ? 'Deselect All' : 'Select All'}
+            </button>
+            {selectedRecords.length > 0 && <span className="text-sm text-purple-600 font-medium">{selectedRecords.length} selected</span>}
+          </div>
+          {selectedRecords.length > 0 && (
+            <button onClick={deleteSelectedRecords} className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-lg text-sm font-medium hover:shadow-lg transition-all">
+              <Trash2 className="w-4 h-4" /> Delete Selected ({selectedRecords.length})
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Records List */}
+      <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
       {loading ? (
         <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-gray-400" /></div>
       ) : getModuleEntries().length === 0 ? (
@@ -3761,10 +3924,14 @@ const totalDeposited = filteredData.reduce((sum, r) => {
               const isEditing = editingRecon === e.id;
               const form = reconForm[e.id] || {};
               
-              return (
-                <div key={e.id} className={`p-4 rounded-xl border-2 ${e.status === 'Accounted' ? 'border-emerald-200 bg-emerald-50' : e.status === 'Rejected' ? 'border-red-200 bg-red-50' : 'border-amber-200 bg-amber-50'} hover:shadow-md transition-all`}>
+return (
+                <div key={e.id} className={`p-4 rounded-xl border-2 ${e.status === 'Accounted' ? 'border-emerald-200 bg-emerald-50' : e.status === 'Rejected' ? 'border-red-200 bg-red-50' : 'border-amber-200 bg-amber-50'} hover:shadow-md transition-all ${selectedRecords.includes(e.id) ? 'ring-2 ring-purple-500' : ''}`}>
                   <div className="flex justify-between items-start gap-4 mb-4">
-                    <div className="flex-1">
+                    <div className="flex items-start gap-3 flex-1">
+                      <button onClick={() => toggleRecordSelection(e.id)} className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 mt-1 transition-all ${selectedRecords.includes(e.id) ? 'bg-purple-600 border-purple-600' : 'border-gray-300 hover:border-purple-400'}`}>
+                        {selectedRecords.includes(e.id) && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                      </button>
+                      <div className="flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="font-semibold text-gray-800">{e.recon_date}</p>
                         <StatusBadge status={e.status || 'Pending'} />
@@ -3773,17 +3940,11 @@ const totalDeposited = filteredData.reduce((sum, r) => {
                         {e.locations?.name} • {e.creator?.name || 'Unknown'} • {new Date(e.created_at).toLocaleDateString()}
                       </p>
                     </div>
-                    {!isEditing && (
+{!isEditing && (
                       <div className="flex items-center gap-1">
-                        <button onClick={() => setViewingEntry(e)} className="text-sm font-medium text-gray-500 hover:text-purple-600 flex items-center gap-1">
-                          <Eye className="w-4 h-4" /> Preview
-                        </button>
-                        <button
-                          onClick={() => startEditingRecon(e)}
-                          className="px-3 py-1.5 text-sm font-medium text-purple-600 hover:bg-purple-100 rounded-lg transition-colors flex items-center gap-1"
-                        >
-                          <Edit3 className="w-4 h-4" /> Review
-                        </button>
+                        <button onClick={() => setViewingEntry(e)} className="p-2 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors" title="Preview"><Eye className="w-4 h-4" /></button>
+                        <button onClick={() => startEditingRecon(e)} className="p-2 text-purple-600 hover:bg-purple-100 rounded-lg transition-colors" title="Review"><Edit3 className="w-4 h-4" /></button>
+                        <button onClick={() => deleteRecord(activeModule, e.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
                       </div>
                     )}
                   </div>
@@ -3922,13 +4083,13 @@ const totalDeposited = filteredData.reduce((sum, r) => {
 // IT Requests - clickable card
 if (activeModule === 'it-requests') {
   return (
-    <div 
-      key={e.id}
-      className={`p-4 rounded-xl border-2 ${currentColors?.border} ${currentColors?.bg} hover:shadow-md transition-all cursor-pointer`}
-      onClick={() => setViewingEntry(e)}
-    >
+    <div key={e.id} className={`p-4 rounded-xl border-2 ${currentColors?.border} ${currentColors?.bg} hover:shadow-md transition-all ${selectedRecords.includes(e.id) ? 'ring-2 ring-purple-500' : ''}`}>
       <div className="flex justify-between items-start gap-4">
-        <div className="flex-1">
+        <div className="flex items-start gap-3 flex-1">
+          <button onClick={() => toggleRecordSelection(e.id)} className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 mt-1 transition-all ${selectedRecords.includes(e.id) ? 'bg-purple-600 border-purple-600' : 'border-gray-300 hover:border-purple-400'}`}>
+            {selectedRecords.includes(e.id) && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+          </button>
+          <div className="flex-1 cursor-pointer" onClick={() => setViewingEntry(e)}>
           <div className="flex items-center gap-2 flex-wrap mb-2">
             <span className="font-bold text-cyan-600">IT-{e.ticket_number}</span>
             <span className="text-xs text-gray-500">Status:</span>
@@ -3966,20 +4127,29 @@ if (activeModule === 'it-requests') {
                     <Download className="w-3 h-3" />
                   </button>
                 </div>
-              ))}
+))}
             </div>
           )}
+          </div>
+        </div>
+        <div className="flex items-center gap-1">
+          <button onClick={() => setViewingEntry(e)} className="p-2 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors" title="Preview"><Eye className="w-4 h-4" /></button>
+          <button onClick={() => deleteRecord(activeModule, e.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
         </div>
       </div>
     </div>
   );
 }
 
-            // Default handling for other modules
+// Default handling for other modules
             return (
-              <div key={e.id} className={`p-4 rounded-xl border-2 ${currentColors?.border} ${currentColors?.bg} hover:shadow-md transition-all`}>
+              <div key={e.id} className={`p-4 rounded-xl border-2 ${currentColors?.border} ${currentColors?.bg} hover:shadow-md transition-all ${selectedRecords.includes(e.id) ? 'ring-2 ring-purple-500' : ''}`}>
                 <div className="flex justify-between items-start gap-4">
-                  <div className="flex-1">
+                  <div className="flex items-start gap-3 flex-1">
+                    <button onClick={() => toggleRecordSelection(e.id)} className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 mt-1 transition-all ${selectedRecords.includes(e.id) ? 'bg-purple-600 border-purple-600' : 'border-gray-300 hover:border-purple-400'}`}>
+                      {selectedRecords.includes(e.id) && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                    </button>
+                    <div className="flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-semibold text-gray-800">
                         {e.patient_name || e.vendor || e.created_at?.split('T')[0]}
@@ -4014,9 +4184,10 @@ if (activeModule === 'it-requests') {
                     )}
                   </div>
 
-                  <button onClick={() => setViewingEntry(e)} className="p-2 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors" title="Preview">
-                    <Eye className="w-4 h-4" />
-                  </button>
+<div className="flex items-center gap-1">
+                    <button onClick={() => setViewingEntry(e)} className="p-2 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors" title="Preview"><Eye className="w-4 h-4" /></button>
+                    <button onClick={() => deleteRecord(activeModule, e.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
+                  </div>
                 </div>
               </div>
             );
@@ -4501,14 +4672,11 @@ if (activeModule === 'it-requests') {
                     </div>
                     
 <div className="flex items-center gap-1">
-                      <button onClick={() => setViewingEntry(e)} className="text-sm font-medium text-gray-500 hover:text-purple-600 flex items-center gap-1">
-                        <Eye className="w-4 h-4" /> Preview
-                      </button>
+                      <button onClick={() => setViewingEntry(e)} className="p-2 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors" title="Preview"><Eye className="w-4 h-4" /></button>
                       {canEdit && (
-                        <button onClick={() => startEditingStaffEntry(e)} className="px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-100 rounded-lg transition-colors flex items-center gap-1">
-                          <Edit3 className="w-4 h-4" /> Edit
-                        </button>
+                        <button onClick={() => startEditingStaffEntry(e)} className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors" title="Edit"><Edit3 className="w-4 h-4" /></button>
                       )}
+                      <button onClick={() => deleteRecord(activeModule, e.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
                     </div>
                   </div>
                 )}
