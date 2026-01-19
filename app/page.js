@@ -2770,7 +2770,7 @@ return (
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-h-screen">
 <header className="bg-white shadow-sm border-b sticky top-0 z-30">
-          <div className="flex items-center justify-between px-4 py-4">
+          <div className="flex items-center justify-between px-4 py-3 min-h-[60px]">
             <div className="flex items-center gap-3">
               <button onClick={() => setSidebarOpen(!sidebarOpen)} className="lg:hidden p-2 hover:bg-gray-100 rounded-xl"><Menu className="w-5 h-5" /></button>
               <div>
