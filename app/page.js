@@ -2770,7 +2770,7 @@ return (
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-h-screen">
 <header className="bg-white shadow-sm border-b sticky top-0 z-30">
-        <div className="flex items-center justify-between px-4 py-2 min-h-[70px]">
+        <div className="flex items-center justify-between px-4 py-2 min-h-[90px]">
             <div className="flex items-center gap-3">
               <button onClick={() => setSidebarOpen(!sidebarOpen)} className="lg:hidden p-2 hover:bg-gray-100 rounded-xl"><Menu className="w-5 h-5" /></button>
               <div>
@@ -4983,7 +4983,7 @@ if (activeModule === 'it-requests') {
 {sidebarOpen && <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-30 lg:hidden" onClick={() => setSidebarOpen(false)} />}
       
 {/* Version Footer */}
-      <div className="fixed bottom-8 right-24 z-20 pointer-events-none">
+      <div className="fixed bottom-8 left-15 z-20 pointer-events-none">
         <p className="text-xs text-gray-400 opacity-60">CMS v0.46</p>
       </div>
     </div>
