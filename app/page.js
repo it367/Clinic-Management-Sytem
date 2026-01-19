@@ -2427,12 +2427,13 @@ const getStaffTotalPages = () => {
 // LOGIN SCREEN
 if (!currentUser) {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4">
-      <div className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl p-8 w-full max-w-sm border border-white/20">
-        <div className="text-center mb-8">
-          <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-500/30">
-            <Building2 className="w-10 h-10 text-white" />
+<div className="text-center mb-8">
+          <div className="w-24 h-24 mx-auto mb-4">
+            <img src="/kidshine.png" alt="KidShine Hawaii" className="w-full h-full object-contain" />
           </div>
+          <h1 className="text-2xl font-bold text-gray-800">CMS - KidShine Hawaii</h1>
+          <p className="text-gray-500 text-sm mt-1">Clinic Management Portal</p>
+        </div>
           <h1 className="text-2xl font-bold text-gray-800">CMS - KidShine Hawaii</h1>
           <p className="text-gray-500 text-sm mt-1">Clinic Management Portal</p>
         </div>
@@ -2768,7 +2769,7 @@ return (
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-h-screen">
-        <header className="bg-white shadow-sm border-b sticky top-0 z-30">
+<header className="bg-white shadow-sm border-b sticky top-0 z-30">
           <div className="flex items-center justify-between px-4 py-4">
             <div className="flex items-center gap-3">
               <button onClick={() => setSidebarOpen(!sidebarOpen)} className="lg:hidden p-2 hover:bg-gray-100 rounded-xl"><Menu className="w-5 h-5" /></button>
@@ -2778,8 +2779,11 @@ return (
                 </h1>
                 <p className="text-sm text-gray-500">{isAdmin ? (adminLocation === 'all' ? 'All Locations' : adminLocation) : selectedLocation}</p>
               </div>
+</div>
+            <div className="flex items-center gap-4">
+              {loading && <Loader2 className="w-5 h-5 animate-spin text-gray-400" />}
+              <img src="/kidshine.png" alt="KidShine Hawaii" className="h-10 w-auto hidden sm:block" />
             </div>
-            {loading && <Loader2 className="w-5 h-5 animate-spin text-gray-400" />}
           </div>
 
 {/* Tabs */}
@@ -4976,7 +4980,12 @@ if (activeModule === 'it-requests') {
 </main>
       </div>
 
-      {sidebarOpen && <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-30 lg:hidden" onClick={() => setSidebarOpen(false)} />}
+{sidebarOpen && <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-30 lg:hidden" onClick={() => setSidebarOpen(false)} />}
+      
+      {/* Version Footer */}
+      <div className="fixed bottom-2 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
+        <p className="text-xs text-gray-400 opacity-60">CMS Version 0.46</p>
+      </div>
     </div>
   );
 }
