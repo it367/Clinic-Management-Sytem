@@ -507,11 +507,25 @@ function renderMarkdown(text) {
     // Convert *italic* to <em>
     processedLine = processedLine.replace(/\*(.+?)\*/g, '<em>$1</em>');
     
+    // Check for headers
+    const h2Match = line.match(/^##\s+(.+)$/);
+    const h3Match = line.match(/^###\s+(.+)$/);
+    
     // Check if line is a bullet point
     const bulletMatch = line.match(/^(\s*)-\s+(.+)$/);
     const numberMatch = line.match(/^(\s*)(\d+)\.\s+(.+)$/);
     
-    if (bulletMatch) {
+    if (h3Match) {
+      const content = h3Match[1].replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      elements.push(
+        <div key={key++} className="font-semibold text-gray-800 mt-2" dangerouslySetInnerHTML={{ __html: content }} />
+      );
+    } else if (h2Match) {
+      const content = h2Match[1].replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      elements.push(
+        <div key={key++} className="font-bold text-gray-900 mt-3 mb-1" dangerouslySetInnerHTML={{ __html: content }} />
+      );
+    } else if (bulletMatch) {
       const indent = bulletMatch[1].length;
       const content = bulletMatch[2]
         .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
