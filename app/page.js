@@ -4981,11 +4981,11 @@ if (activeModule === 'it-requests') {
       </div>
 
 {sidebarOpen && <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-30 lg:hidden" onClick={() => setSidebarOpen(false)} />}
-    </div>
-    
-    {/* Version Footer - Outside main container */}
-    <div className="fixed bottom-4 left-4 lg:left-[310px] z-50 pointer-events-none">
-      <p className="text-xs text-gray-500 bg-white/80 px-2 py-0.5 rounded">CMS v0.46</p>
+      
+      {/* Version Footer */}
+      <div className="fixed bottom-4 left-4 lg:left-[310px] z-50 pointer-events-none">
+        <p className="text-xs text-gray-500 bg-white/80 px-2 py-0.5 rounded">CMS v0.46</p>
+      </div>
     </div>
   );
 }
