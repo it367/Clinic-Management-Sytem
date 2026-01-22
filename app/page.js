@@ -4870,7 +4870,7 @@ if (activeModule === 'it-requests') {
                       </button>
                       <div className="flex-1 cursor-pointer" onClick={() => setViewingEntry(e)}>
                         <div className="flex items-center gap-2 flex-wrap mb-1">
-                          {e.invoice_number && <span className="font-bold text-amber-600">Invoice #: {e.invoice_number}</span>}
+                          {e.invoice_number && <span className="font-bold text-amber-600">Invoice Number: {e.invoice_number}</span>}
                           <StatusBadge status={e.status} />
                         </div>
                         <p className="font-medium text-gray-800">{e.vendor || 'No Vendor'}</p>
