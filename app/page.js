@@ -205,7 +205,7 @@ function FileViewer({ file, onClose }) {
   );
 }
 
-function EntryPreview({ entry, module, onClose, colors, onViewDocument, currentUser, itUsers, financeAdminUsers, onUpdateStatus, onDelete, onUpdateBillingInquiry, onUpdateBillsPayment, onUpdateOrderRequest }) {
+function EntryPreview({ entry, module, onClose, colors, onViewDocument, currentUser, itUsers, financeAdminUsers, onUpdateStatus, onDelete, onUpdateBillingInquiry, onUpdateBillsPayment, onUpdateOrderRequest, onUpdateRefundRequest }) {
 const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({
     status: entry?.status || 'For Review',
@@ -219,7 +219,12 @@ const [billingEditForm, setBillingEditForm] = useState({
     result: entry?.result || '',
     paid: entry?.paid ?? null
   });
-  const [orderEditForm, setOrderEditForm] = useState({
+const [orderEditForm, setOrderEditForm] = useState({
+    status: entry?.status || 'Pending',
+    reviewed_by: entry?.reviewed_by || '',
+    reviewed_at: entry?.reviewed_at || ''
+  });
+  const [refundEditForm, setRefundEditForm] = useState({
     status: entry?.status || 'Pending',
     reviewed_by: entry?.reviewed_by || '',
     reviewed_at: entry?.reviewed_at || ''
@@ -239,7 +244,12 @@ setBillingEditForm({
         result: entry.result || '',
         paid: entry.paid ?? null
       });
-      setOrderEditForm({
+setOrderEditForm({
+        status: entry.status || 'Pending',
+        reviewed_by: entry.reviewed_by || '',
+        reviewed_at: entry.reviewed_at || ''
+      });
+      setRefundEditForm({
         status: entry.status || 'Pending',
         reviewed_by: entry.reviewed_by || '',
         reviewed_at: entry.reviewed_at || ''
@@ -260,7 +270,9 @@ const isBillingInquiry = module?.id === 'billing-inquiry';
   const isOrderRequest = module?.id === 'order-requests';
   const canEditIT = isITRequest && currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'it');
   const canEditBilling = (isBillingInquiry || isBillsPayment) && currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'finance_admin');
-  const canEditOrders = isOrderRequest && currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'finance_admin');
+const canEditOrders = isOrderRequest && currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'finance_admin');
+  const isRefundRequest = module?.id === 'refund-requests';
+  const canEditRefunds = isRefundRequest && currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'finance_admin');
 
 const handleSave = () => {
     if (onUpdateStatus) {
@@ -289,9 +301,17 @@ const handleBillsPaymentSave = () => {
     onClose();
   };
 
-  const handleOrderSave = () => {
+const handleOrderSave = () => {
     if (onUpdateOrderRequest) {
       onUpdateOrderRequest(entry.id, orderEditForm);
+    }
+    setIsEditing(false);
+    onClose();
+  };
+
+  const handleRefundSave = () => {
+    if (onUpdateRefundRequest) {
+      onUpdateRefundRequest(entry.id, refundEditForm);
     }
     setIsEditing(false);
     onClose();
@@ -674,19 +694,101 @@ const handleBillsPaymentSave = () => {
             </div>
           )}
 
-          {/* Refund Requests */}
+{/* Refund Requests */}
           {module?.id === 'refund-requests' && (
-            <div className="grid grid-cols-2 gap-4">
-              <div><span className="text-gray-600 text-sm block">Patient Name</span><span className="font-medium">{entry.patient_name || '-'}</span></div>
-              <div><span className="text-gray-600 text-sm block">Chart Number</span><span className="font-medium">{entry.chart_number || '-'}</span></div>
-              <div><span className="text-gray-600 text-sm block">Parent Name</span><span className="font-medium">{entry.parent_name || '-'}</span></div>
-              <div><span className="text-gray-600 text-sm block">RP Address</span><span className="font-medium">{entry.rp_address || '-'}</span></div>
-              <div><span className="text-gray-600 text-sm block">Date of Request</span><span className="font-medium">{formatDate(entry.date_of_request)}</span></div>
-              <div><span className="text-gray-600 text-sm block">Type</span><span className="font-medium">{entry.type || '-'}</span></div>
-              <div><span className="text-gray-600 text-sm block">Amount Requested</span><span className="font-medium text-emerald-600">{formatCurrency(entry.amount_requested)}</span></div>
-              <div><span className="text-gray-600 text-sm block">Contact Method</span><span className="font-medium">{entry.best_contact_method || '-'}</span></div>
-              <div><span className="text-gray-600 text-sm block">eAssist Audited</span><span className="font-medium">{entry.eassist_audited === true ? 'Yes' : entry.eassist_audited === false ? 'No' : '-'}</span></div>
-              <div className="col-span-2"><span className="text-gray-600 text-sm block">Description</span><p className="font-medium bg-gray-50 p-3 rounded-lg mt-1">{entry.description || '-'}</p></div>
+            <div className="space-y-4">
+              {/* Chart Number Header */}
+              {entry.chart_number && (
+                <div className="flex items-center gap-2 p-3 bg-rose-100 rounded-xl border border-rose-200">
+                  <FileText className="w-5 h-5 text-rose-600" />
+                  <span className="text-sm text-rose-600">Chart Number:</span>
+                  <span className="font-bold text-rose-700 text-lg">{entry.chart_number}</span>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-4">
+                <div><span className="text-gray-600 text-sm block">Patient Name</span><span className="font-medium">{entry.patient_name || '-'}</span></div>
+                <div><span className="text-gray-600 text-sm block">Parent Name</span><span className="font-medium">{entry.parent_name || '-'}</span></div>
+                <div><span className="text-gray-600 text-sm block">RP Address</span><span className="font-medium">{entry.rp_address || '-'}</span></div>
+                <div><span className="text-gray-600 text-sm block">Date of Request</span><span className="font-medium">{formatDate(entry.date_of_request)}</span></div>
+                <div><span className="text-gray-600 text-sm block">Type</span><span className="font-medium">{entry.type || '-'}</span></div>
+                <div><span className="text-gray-600 text-sm block">Amount Requested</span><span className="font-medium text-emerald-600">{formatCurrency(entry.amount_requested)}</span></div>
+                <div><span className="text-gray-600 text-sm block">Contact Method</span><span className="font-medium">{entry.best_contact_method || '-'}</span></div>
+                <div><span className="text-gray-600 text-sm block">Contact Info</span><span className="font-medium">{entry.contact_info || '-'}</span></div>
+                <div><span className="text-gray-600 text-sm block">eAssist Audited</span><span className="font-medium">{entry.eassist_audited === true ? 'Yes' : entry.eassist_audited === false ? 'No' : '-'}</span></div>
+                <div className="col-span-2"><span className="text-gray-600 text-sm block">Description</span><p className="font-medium bg-gray-50 p-3 rounded-lg mt-1">{entry.description || '-'}</p></div>
+              </div>
+
+              {/* Review Section - Read Only */}
+              {!isEditing && entry.status === 'Reviewed' && (
+                <div className="p-4 bg-rose-50 rounded-xl border border-rose-200">
+                  <h4 className="font-semibold text-rose-800 mb-3 flex items-center gap-2">
+                    <FileText className="w-4 h-4" /> Review Details
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div><span className="text-gray-600 text-sm block">Reviewed By</span><span className="font-medium">{entry.reviewed_by || '-'}</span></div>
+                    <div><span className="text-gray-600 text-sm block">Reviewed At</span><span className="font-medium">{formatDateTime(entry.reviewed_at)}</span></div>
+                  </div>
+                </div>
+              )}
+
+              {/* Edit Section for Refund Requests - Admin Only */}
+              {canEditRefunds && (
+                <div className="mt-6 pt-4 border-t border-gray-200">
+                  {!isEditing ? (
+                    <button
+                      onClick={() => setIsEditing(true)}
+                      className="w-full py-3 bg-gradient-to-r from-rose-500 to-pink-500 text-white rounded-xl font-medium hover:shadow-lg transition-all flex items-center justify-center gap-2"
+                    >
+                      <Edit3 className="w-4 h-4" /> Update Status
+                    </button>
+                  ) : (
+                    <div className="space-y-4 bg-rose-50 p-4 rounded-xl border border-rose-200">
+                      <h4 className="font-semibold text-rose-800 flex items-center gap-2">
+                        <Edit3 className="w-4 h-4" /> Review Refund Request
+                      </h4>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-xs font-medium text-gray-600 mb-1.5 block">Status</label>
+                          <select
+                            value={refundEditForm.status}
+                            onChange={ev => setRefundEditForm({ ...refundEditForm, status: ev.target.value })}
+                            className="w-full p-2.5 border-2 border-gray-200 rounded-xl outline-none focus:border-rose-400 bg-white"
+                          >
+                            <option value="Pending">Pending</option>
+                            <option value="Reviewed">Reviewed</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-gray-600 mb-1.5 block">Reviewed By</label>
+                          <select
+                            value={refundEditForm.reviewed_by}
+                            onChange={ev => setRefundEditForm({ ...refundEditForm, reviewed_by: ev.target.value })}
+                            className="w-full p-2.5 border-2 border-gray-200 rounded-xl outline-none focus:border-rose-400 bg-white"
+                          >
+                            <option value="">Select Reviewer...</option>
+                            {financeAdminUsers?.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
+                          </select>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handleRefundSave}
+                          className="flex-1 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl font-medium hover:shadow-lg transition-all"
+                        >
+                          Save Review
+                        </button>
+                        <button
+                          onClick={() => setIsEditing(false)}
+                          className="px-4 py-2.5 bg-gray-200 rounded-xl font-medium hover:bg-gray-300 transition-all"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -1084,7 +1186,7 @@ const [analyticsModule, setAnalyticsModule] = useState('daily-recon');
     'billing-inquiry': { patient_name: '', chart_number: '', parent_name: '', date_of_request: today, inquiry_type: '', description: '', amount_in_question: '', best_contact_method: '', best_contact_time: '', billing_team_reviewed: '', date_reviewed: '', status: 'Pending', result: '' },
 'bills-payment': { bill_date: today, vendor: '', transaction_id: '', description: '', amount: '', due_date: '' },
     'order-requests': { date_entered: today, vendor: '', invoice_number: '', invoice_date: '', due_date: '', amount: '', entered_by: '', notes: '' },
-    'refund-requests': { patient_name: '', chart_number: '', parent_name: '', rp_address: '', date_of_request: today, type: '', description: '', amount_requested: '', best_contact_method: '', eassist_audited: '', status: 'Pending' },
+  'refund-requests': { patient_name: '', chart_number: '', parent_name: '', rp_address: '', date_of_request: today, type: '', description: '', amount_requested: '', best_contact_method: '', contact_info: '', eassist_audited: '', status: 'Pending' },
    'it-requests': { date_reported: today, urgency: '', requester_name: '', device_system: '', description_of_issue: '', best_contact_method: '', best_contact_time: '', assigned_to: '', status: 'Open', resolution_notes: '', completed_by: '' }
   });
 
@@ -2093,8 +2195,9 @@ if (moduleId === 'daily-recon') {
         description: form.description,
         amount_requested: parseFloat(form.amount_requested) || 0,
         best_contact_method: form.best_contact_method || null,
+        contact_info: form.contact_info || null,
         eassist_audited: form.eassist_audited === 'Yes' ? true : form.eassist_audited === 'No' ? false : null,
-        status: form.status || 'Pending'
+        status: 'Pending'
       };
 } else if (moduleId === 'it-requests') {
       entryData = {
@@ -2270,7 +2373,7 @@ const updateOrderRequest = async (entryId, formData) => {
     updated_by: currentUser.id
   };
 
-const { error } = await supabase
+  const { error } = await supabase
     .from('order_requests')
     .update(updateData)
     .eq('id', entryId);
@@ -2283,6 +2386,32 @@ const { error } = await supabase
 
   showMessage('success', '✓ Order request updated!');
   loadModuleData('order-requests');
+};
+
+const updateRefundRequest = async (entryId, formData) => {
+  const confirmed = await showConfirm('Update Refund Request', 'Are you sure you want to update this refund request?', 'Update', 'rose');
+  if (!confirmed) return;
+
+  const updateData = {
+    status: formData.status,
+    reviewed_by: formData.reviewed_by || null,
+    reviewed_at: formData.status === 'Reviewed' ? new Date().toISOString() : null,
+    updated_by: currentUser.id
+  };
+
+  const { error } = await supabase
+    .from('refund_requests')
+    .update(updateData)
+    .eq('id', entryId);
+
+  if (error) {
+    console.error('Refund request update error:', error);
+    showMessage('error', 'Failed to update refund request: ' + error.message);
+    return;
+  }
+
+  showMessage('success', '✓ Refund request updated!');
+  loadModuleData('refund-requests');
 };
   
 const updateEntryStatus = async (moduleId, entryId, newStatus, additionalFields = {}) => {
@@ -2681,7 +2810,7 @@ const getTotalPages = () => {
       amount: entry.amount || '',
       notes: entry.notes || ''
     });
-  } else if (activeModule === 'refund-requests') {
+} else if (activeModule === 'refund-requests') {
     setStaffEditForm({
       patient_name: entry.patient_name || '',
       chart_number: entry.chart_number || '',
@@ -2691,7 +2820,8 @@ const getTotalPages = () => {
       type: entry.type || '',
       description: entry.description || '',
       amount_requested: entry.amount_requested || '',
-      best_contact_method: entry.best_contact_method || ''
+      best_contact_method: entry.best_contact_method || '',
+      contact_info: entry.contact_info || ''
     });
   } else if (activeModule === 'it-requests') {
     setStaffEditForm({
@@ -2762,7 +2892,7 @@ if (!confirmed) return;;
       amount: parseFloat(staffEditForm.amount) || 0,
       notes: staffEditForm.notes
     };
-  } else if (activeModule === 'refund-requests') {
+} else if (activeModule === 'refund-requests') {
     updateData = { ...updateData,
       patient_name: staffEditForm.patient_name,
       chart_number: staffEditForm.chart_number,
@@ -2772,7 +2902,8 @@ if (!confirmed) return;;
       type: staffEditForm.type || null,
       description: staffEditForm.description,
       amount_requested: parseFloat(staffEditForm.amount_requested) || 0,
-      best_contact_method: staffEditForm.best_contact_method || null
+      best_contact_method: staffEditForm.best_contact_method || null,
+      contact_info: staffEditForm.contact_info || null
     };
   } else if (activeModule === 'it-requests') {
     updateData = { ...updateData,
@@ -3069,8 +3200,12 @@ onUpdateBillsPayment={async (entryId, formData) => {
     await updateBillsPayment(entryId, formData);
     setViewingEntry(null);
   }}
-  onUpdateOrderRequest={async (entryId, formData) => {
+onUpdateOrderRequest={async (entryId, formData) => {
     await updateOrderRequest(entryId, formData);
+    setViewingEntry(null);
+  }}
+  onUpdateRefundRequest={async (entryId, formData) => {
+    await updateRefundRequest(entryId, formData);
     setViewingEntry(null);
   }}
   onDelete={async (recordId) => {
@@ -4859,6 +4994,54 @@ if (activeModule === 'it-requests') {
   );
 }
 
+
+// Refund Requests - special handling with Chart Number
+            if (activeModule === 'refund-requests') {
+              return (
+                <div key={e.id} className={`p-4 rounded-xl border-2 ${currentColors?.border} ${currentColors?.bg} hover:shadow-md transition-all ${selectedRecords.includes(e.id) ? 'ring-2 ring-purple-500' : ''}`}>
+                  <div className="flex justify-between items-start gap-4">
+                    <div className="flex items-start gap-3 flex-1">
+                      <button onClick={() => toggleRecordSelection(e.id)} className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 mt-1 transition-all ${selectedRecords.includes(e.id) ? 'bg-purple-600 border-purple-600' : 'border-gray-300 hover:border-purple-400'}`}>
+                        {selectedRecords.includes(e.id) && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                      </button>
+                      <div className="flex-1 cursor-pointer" onClick={() => setViewingEntry(e)}>
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          {e.chart_number && <span className="font-bold text-rose-600">Chart# {e.chart_number}</span>}
+                          <StatusBadge status={e.status} />
+                        </div>
+                        <p className="font-medium text-gray-800">{e.patient_name || 'No Patient Name'}</p>
+                        <p className="text-sm text-gray-500 mt-1">
+                          {e.locations?.name} • {e.type || 'No Type'} • {e.date_of_request ? new Date(e.date_of_request).toLocaleDateString() : new Date(e.created_at).toLocaleDateString()}
+                        </p>
+                        <p className="text-lg font-bold text-emerald-600 mt-2">${Number(e.amount_requested || 0).toFixed(2)}</p>
+                        
+                        {docs.length > 0 && (
+                          <div className="mt-3 flex flex-wrap gap-2" onClick={ev => ev.stopPropagation()}>
+                            {docs.map(doc => (
+                              <div key={doc.id} className="flex items-center gap-1 bg-white px-2 py-1 rounded-lg border text-xs">
+                                <File className="w-3 h-3 text-gray-400" />
+                                <span className="text-gray-600 max-w-24 truncate">{doc.file_name}</span>
+                                <button onClick={() => viewDocument(doc)} className="p-0.5 text-blue-500 hover:bg-blue-100 rounded" title="Preview">
+                                  <Eye className="w-3 h-3" />
+                                </button>
+                                <button onClick={() => downloadDocument(doc)} className="p-0.5 text-emerald-500 hover:bg-emerald-100 rounded" title="Download">
+                                  <Download className="w-3 h-3" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1" onClick={ev => ev.stopPropagation()}>
+                      <button onClick={() => setViewingEntry(e)} className="p-2 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors" title="Preview"><Eye className="w-4 h-4" /></button>
+                      <button onClick={() => deleteRecord(activeModule, e.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+
 // Order Requests - special handling with Invoice Number
             if (activeModule === 'order-requests') {
               return (
@@ -5211,7 +5394,8 @@ if (activeModule === 'it-requests') {
         <InputField label="Date of Request" type="date" value={forms['refund-requests'].date_of_request} onChange={e => updateForm('refund-requests', 'date_of_request', e.target.value)} />
         <InputField label="Type Transaction" value={forms['refund-requests'].type} onChange={e => updateForm('refund-requests', 'type', e.target.value)} options={REFUND_TYPES} />
         <InputField label="Amount Requested" prefix="$" value={forms['refund-requests'].amount_requested} onChange={e => updateForm('refund-requests', 'amount_requested', e.target.value)} />
-        <InputField label="Best Contact Method" value={forms['refund-requests'].best_contact_method} onChange={e => updateForm('refund-requests', 'best_contact_method', e.target.value)} options={CONTACT_METHODS} />
+<InputField label="Best Contact Method" value={forms['refund-requests'].best_contact_method} onChange={e => updateForm('refund-requests', 'best_contact_method', e.target.value)} options={CONTACT_METHODS} />
+        <InputField label="Contact Info" value={forms['refund-requests'].contact_info} onChange={e => updateForm('refund-requests', 'contact_info', e.target.value)} placeholder="Phone number or email" />
         <InputField label="eAssist Audited" value={forms['refund-requests'].eassist_audited} onChange={e => updateForm('refund-requests', 'eassist_audited', e.target.value)} options={['Yes', 'No', 'N/A']} />
         <InputField label="Status" value={forms['refund-requests'].status} onChange={e => updateForm('refund-requests', 'status', e.target.value)} options={['Pending', 'Approved', 'Completed', 'Denied']} />
       </div>
@@ -5404,7 +5588,7 @@ if (activeModule === 'it-requests') {
                       </div>
                     )}
                     
-                    {activeModule === 'refund-requests' && (
+{activeModule === 'refund-requests' && (
                       <div className="grid grid-cols-2 gap-3">
                         <InputField label="Patient Name" value={staffEditForm.patient_name} onChange={ev => updateStaffEditForm('patient_name', ev.target.value)} />
                         <InputField label="Chart Number" value={staffEditForm.chart_number} onChange={ev => updateStaffEditForm('chart_number', ev.target.value)} />
@@ -5414,6 +5598,7 @@ if (activeModule === 'it-requests') {
                         <InputField label="Type" value={staffEditForm.type} onChange={ev => updateStaffEditForm('type', ev.target.value)} options={REFUND_TYPES} />
                         <InputField label="Amount Requested" prefix="$" value={staffEditForm.amount_requested} onChange={ev => updateStaffEditForm('amount_requested', ev.target.value)} />
                         <InputField label="Contact Method" value={staffEditForm.best_contact_method} onChange={ev => updateStaffEditForm('best_contact_method', ev.target.value)} options={CONTACT_METHODS} />
+                        <InputField label="Contact Info" value={staffEditForm.contact_info} onChange={ev => updateStaffEditForm('contact_info', ev.target.value)} placeholder="Phone or email" />
                         <div className="col-span-2">
                           <InputField label="Description" large value={staffEditForm.description} onChange={ev => updateStaffEditForm('description', ev.target.value)} />
                         </div>
@@ -5450,10 +5635,14 @@ if (activeModule === 'it-requests') {
 <p className="font-medium text-gray-800">
                           {e.ticket_number ? `IT-${e.ticket_number}` : 
                            e.transaction_id ? <span className="text-violet-600 font-bold">{e.transaction_id}</span> :
+                           (activeModule === 'refund-requests' && e.chart_number) ? <span className="text-rose-600 font-bold">Chart# {e.chart_number}</span> :
                            e.patient_name || e.vendor || e.recon_date || new Date(e.created_at).toLocaleDateString()}
                         </p>
                         {activeModule === 'bills-payment' && e.transaction_id && e.vendor && (
                           <p className="text-sm text-gray-600">{e.vendor}</p>
+                        )}
+                        {activeModule === 'refund-requests' && e.chart_number && e.patient_name && (
+                          <p className="text-sm text-gray-600">{e.patient_name}</p>
                         )}
                         <StatusBadge status={e.status || (activeModule === 'daily-recon' ? 'Pending' : e.status)} />
                         {!canEdit && <Lock className="w-4 h-4 text-gray-400" title="Locked (past Friday cutoff)" />}
