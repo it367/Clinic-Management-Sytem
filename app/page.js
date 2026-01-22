@@ -4602,12 +4602,8 @@ if (activeModule === 'it-requests') {
         <InputField label="Date of Request" type="date" value={forms['billing-inquiry'].date_of_request} onChange={e => updateForm('billing-inquiry', 'date_of_request', e.target.value)} />
         <InputField label="Type of Inquiry" value={forms['billing-inquiry'].inquiry_type} onChange={e => updateForm('billing-inquiry', 'inquiry_type', e.target.value)} options={INQUIRY_TYPES} />
         <InputField label="Amount in Question" prefix="$" value={forms['billing-inquiry'].amount_in_question} onChange={e => updateForm('billing-inquiry', 'amount_in_question', e.target.value)} />
-        <InputField label="Best Contact Method" value={forms['billing-inquiry'].best_contact_method} onChange={e => updateForm('billing-inquiry', 'best_contact_method', e.target.value)} options={CONTACT_METHODS} />
+<InputField label="Best Contact Method" value={forms['billing-inquiry'].best_contact_method} onChange={e => updateForm('billing-inquiry', 'best_contact_method', e.target.value)} options={CONTACT_METHODS} />
         <InputField label="Best Time to Contact" value={forms['billing-inquiry'].best_contact_time} onChange={e => updateForm('billing-inquiry', 'best_contact_time', e.target.value)} />
-        <InputField label="Billing Team Reviewed" value={forms['billing-inquiry'].billing_team_reviewed} onChange={e => updateForm('billing-inquiry', 'billing_team_reviewed', e.target.value)} />
-        <InputField label="Date Reviewed" type="date" value={forms['billing-inquiry'].date_reviewed} onChange={e => updateForm('billing-inquiry', 'date_reviewed', e.target.value)} />
-        <InputField label="Status" value={forms['billing-inquiry'].status} onChange={e => updateForm('billing-inquiry', 'status', e.target.value)} options={['Pending', 'In Progress', 'Resolved']} />
-        <InputField label="Result" value={forms['billing-inquiry'].result} onChange={e => updateForm('billing-inquiry', 'result', e.target.value)} />
       </div>
       <div className="mt-4">
         <InputField label="Description" large value={forms['billing-inquiry'].description} onChange={e => updateForm('billing-inquiry', 'description', e.target.value)} />
@@ -4828,7 +4824,7 @@ if (activeModule === 'it-requests') {
                       </div>
                     )}
                     
-                    {activeModule === 'billing-inquiry' && (
+{activeModule === 'billing-inquiry' && (
                       <div className="grid grid-cols-2 gap-3">
                         <InputField label="Patient Name" value={staffEditForm.patient_name} onChange={ev => updateStaffEditForm('patient_name', ev.target.value)} />
                         <InputField label="Chart Number" value={staffEditForm.chart_number} onChange={ev => updateStaffEditForm('chart_number', ev.target.value)} />
