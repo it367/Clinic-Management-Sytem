@@ -242,8 +242,10 @@ const [isEditing, setIsEditing] = useState(false);
   const formatCurrency = (val) => val ? `$${Number(val).toFixed(2)}` : '$0.00';
   const formatDateTime = (date) => date ? new Date(date).toLocaleString() : '-';
 
-  const isITRequest = module?.id === 'it-requests';
-  const canEdit = isITRequest && currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'finance_admin' || currentUser.role === 'it');
+const isITRequest = module?.id === 'it-requests';
+  const isBillingInquiry = module?.id === 'billing-inquiry';
+  const canEditIT = isITRequest && currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'it');
+  const canEditBilling = isBillingInquiry && currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'finance_admin');
 
 const handleSave = () => {
     if (onUpdateStatus) {
@@ -356,8 +358,8 @@ const handleSave = () => {
                 </div>
               )}
 
-              {/* Edit Section for Billing Inquiry - Admin Only */}
-              {currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'finance_admin') && (
+{/* Edit Section for Billing Inquiry - Admin Only */}
+              {canEditBilling && (
                 <div className="mt-6 pt-4 border-t border-gray-200">
                   {!isEditing ? (
                     <button
@@ -499,8 +501,8 @@ const handleSave = () => {
                 {entry.resolved_at && <div><span className="text-gray-600 text-sm block">Resolved At</span><span className="font-medium">{formatDateTime(entry.resolved_at)}</span></div>}
               </div>
 
-              {/* Edit Section for IT Requests */}
-              {canEdit && (
+{/* Edit Section for IT Requests */}
+              {canEditIT && (
                 <div className="mt-6 pt-4 border-t border-gray-200">
                   {!isEditing ? (
                     <button
@@ -1153,7 +1155,7 @@ const loadFinanceAdminUsers = async () => {
   const { data, error } = await supabase
     .from('users')
     .select('id, name')
-    .in('role', ['finance_admin', 'super_admin'])
+    .eq('role', 'finance_admin')
     .eq('is_active', true)
     .order('name');
   
