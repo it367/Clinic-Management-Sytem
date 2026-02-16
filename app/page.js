@@ -1374,6 +1374,15 @@ useEffect(() => { if (currentUser) setNameForm(currentUser.name || ''); }, [curr
 
 useEffect(() => { setCurrentPage(1); setRecordSearch(''); }, [activeModule, adminLocation]);
   useEffect(() => { setStaffCurrentPage(1); setStaffRecordSearch(''); setEditingStaffEntry(null); }, [activeModule, selectedLocation]);
+
+  useEffect(() => {
+  if (currentUser && (activeModule === 'completed-procedure' || activeModule === 'claims-documents')) {
+    if (!forms[activeModule].checked_by) {
+      setForms(prev => ({ ...prev, [activeModule]: { ...prev[activeModule], checked_by: currentUser.name } }));
+    }
+  }
+}, [activeModule, currentUser]);
+  
 useEffect(() => { setSelectedRecords([]); setSelectAll(false); }, [activeModule, adminLocation, currentPage, recordSearch]);
   useEffect(() => { setSelectedDocuments([]); setDocSelectAll(false); }, [adminView, docSearch]);
 useEffect(() => {
@@ -3397,10 +3406,58 @@ onUpdateOrderRequest={async (entryId, formData) => {
             </>
           )}
 
-<p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">Office Task Checklist</p>
-          {CHECKLIST_MODULES.map(m => {
-            const colors = MODULE_COLORS[m.id];
-            const isActive = activeModule === m.id && adminView !== 'users' && adminView !== 'export' && adminView !== 'settings' && view !== 'settings';
+{(isOfficeManager || currentUser?.role === 'super_admin' || currentUser?.role === 'rev_rangers' || currentUser?.role === 'it') && (
+            <>
+              <p className={`text-xs font-semibold uppercase tracking-wider mb-3 px-3 flex items-center gap-2 ${
+                isOfficeManager && CHECKLIST_MODULES.every(m => checklistStatus[m.id]?.submitted)
+                  ? 'text-emerald-600'
+                  : 'text-gray-400'
+              }`}>
+                {isOfficeManager && CHECKLIST_MODULES.every(m => checklistStatus[m.id]?.submitted) && (
+                  <CheckCircle className="w-3.5 h-3.5" />
+                )}
+                Office Task Checklist
+              </p>
+              {CHECKLIST_MODULES.map(m => {
+                const colors = MODULE_COLORS[m.id];
+                const isActive = activeModule === m.id && adminView !== 'users' && adminView !== 'export' && adminView !== 'settings' && view !== 'settings';
+                const submitted = isOfficeManager && checklistStatus[m.id]?.submitted;
+
+                return (
+                  <button
+                    key={m.id}
+                    onClick={() => { setActiveModule(m.id); setAdminView('records'); setView('entry'); setSidebarOpen(false); }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${
+                      submitted
+                        ? 'bg-emerald-50 text-emerald-700 border-2 border-emerald-200'
+                        : isActive
+                          ? `${colors.bg} ${colors.text} ${colors.border} border-2`
+                          : 'text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    {isOfficeManager && (
+                      <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
+                        {submitted ? (
+                          <CheckCircle className="w-5 h-5 text-emerald-500" />
+                        ) : (
+                          <Circle className="w-5 h-5 text-gray-300" />
+                        )}
+                      </div>
+                    )}
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                      submitted ? 'bg-emerald-100' : isActive ? colors.light : 'bg-gray-100'
+                    }`}>
+                      <m.icon className={`w-4 h-4 ${
+                        submitted ? 'text-emerald-600' : isActive ? colors.text : 'text-gray-500'
+                      }`} />
+                    </div>
+                    <span className="text-sm font-medium">{m.name}</span>
+                  </button>
+                );
+              })}
+              <div className="border-t my-3"></div>
+            </>
+          )}
             return (
               <button
                 key={m.id}
@@ -3434,7 +3491,7 @@ onUpdateOrderRequest={async (entryId, formData) => {
             );
           })}
 
-{(currentUser?.role === 'super_admin' || currentUser?.role === 'it' || !isAdmin) && (
+{(currentUser?.role === 'super_admin' || currentUser?.role === 'it' || !isAdmin || isOfficeManager) && (
             <>
               <div className="border-t my-4"></div>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">Support</p>
@@ -5531,6 +5588,178 @@ if (activeModule === 'it-requests') {
                 </>
               )}
 
+{activeModule === 'completed-procedure' && (
+                <>
+                  {checklistStatus['completed-procedure']?.submitted ? (
+                    <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-l-emerald-500">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center">
+                          <CheckCircle className="w-6 h-6 text-emerald-600" />
+                        </div>
+                        <div>
+                          <h2 className="font-semibold text-gray-800">Completed Procedure — Submitted</h2>
+                          <p className="text-sm text-emerald-600 font-medium">Submitted today at {new Date(checklistStatus['completed-procedure']?.entry?.created_at).toLocaleTimeString('en-US', { timeZone: 'Pacific/Honolulu', hour: 'numeric', minute: '2-digit' })}</p>
+                        </div>
+                      </div>
+                      <div className="space-y-3 bg-gray-50 rounded-xl p-4 border border-gray-200">
+                        <div className="flex items-center justify-between">
+                          <StatusBadge status={checklistStatus['completed-procedure']?.entry?.status || 'Pending'} />
+                          {checklistStatus['completed-procedure']?.entry?.creator?.name && (
+                            <span className="text-sm text-gray-500">By: {checklistStatus['completed-procedure']?.entry?.creator?.name}</span>
+                          )}
+                        </div>
+                        <div>
+                          <span className="text-xs font-medium text-gray-500">Checked By</span>
+                          <p className="font-medium text-gray-800">{checklistStatus['completed-procedure']?.entry?.checked_by || '-'}</p>
+                        </div>
+                        {checklistStatus['completed-procedure']?.entry?.notes && (
+                          <div>
+                            <span className="text-xs font-medium text-gray-500">Notes</span>
+                            <p className="text-gray-700 bg-white p-3 rounded-lg border border-gray-100 mt-1">{checklistStatus['completed-procedure']?.entry?.notes}</p>
+                          </div>
+                        )}
+                        {checklistStatus['completed-procedure']?.entry?.admin_notes && (
+                          <div>
+                            <span className="text-xs font-medium text-gray-500">Admin Notes</span>
+                            <p className={`p-3 rounded-lg border mt-1 ${checklistStatus['completed-procedure']?.entry?.status === 'Needs Revisions' ? 'bg-orange-50 border-orange-200 text-orange-800' : 'bg-emerald-50 border-emerald-200 text-emerald-800'}`}>
+                              {checklistStatus['completed-procedure']?.entry?.admin_notes}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                      <div className="mt-4 p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-center">
+                        <p className="text-sm text-emerald-700 font-medium flex items-center justify-center gap-2">
+                          <Lock className="w-4 h-4" /> Entry locked for today. Resets at midnight.
+                        </p>
+                      </div>
+                    </div>
+                  ) : isChecklistPastDeadline() ? (
+                    <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-l-gray-400">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center">
+                          <Lock className="w-6 h-6 text-gray-400" />
+                        </div>
+                        <div>
+                          <h2 className="font-semibold text-gray-800">Completed Procedure</h2>
+                          <p className="text-sm text-red-600 font-medium">Submissions closed for today</p>
+                        </div>
+                      </div>
+                      <div className="p-4 bg-red-50 rounded-xl border border-red-200 text-center">
+                        <p className="text-sm text-red-700">The deadline has passed. A new form will be available tomorrow.</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className={`bg-white rounded-2xl shadow-lg p-6 border-l-4 ${currentColors?.accent}`}>
+                        <h2 className="font-semibold mb-4 text-gray-800 flex items-center gap-2">
+                          <ClipboardList className="w-5 h-5 text-teal-500" /> Completed Procedure
+                        </h2>
+                        <div className="grid grid-cols-2 gap-4">
+                          <InputField label="Checked By" value={forms['completed-procedure'].checked_by} onChange={e => updateForm('completed-procedure', 'checked_by', e.target.value)} />
+                          <div className="flex items-end">
+                            <div className="p-3 bg-teal-50 rounded-xl border border-teal-200 text-sm text-teal-700 w-full">
+                              <span className="font-medium">Date:</span> {new Date().toLocaleDateString('en-US', { timeZone: 'Pacific/Honolulu', weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="mt-4">
+                          <InputField label="Notes" large value={forms['completed-procedure'].notes} onChange={e => updateForm('completed-procedure', 'notes', e.target.value)} placeholder="Enter procedure notes..." />
+                        </div>
+                      </div>
+                      <div className="bg-white rounded-2xl shadow-lg p-6">
+                        <FileUpload label="Attachments" files={files['completed-procedure'].documentation} onFilesChange={f => updateFiles('completed-procedure', 'documentation', f)} onViewFile={setViewingFile} />
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
+
+              {activeModule === 'claims-documents' && (
+                <>
+                  {checklistStatus['claims-documents']?.submitted ? (
+                    <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-l-emerald-500">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center">
+                          <CheckCircle className="w-6 h-6 text-emerald-600" />
+                        </div>
+                        <div>
+                          <h2 className="font-semibold text-gray-800">Claims & Documents — Submitted</h2>
+                          <p className="text-sm text-emerald-600 font-medium">Submitted today at {new Date(checklistStatus['claims-documents']?.entry?.created_at).toLocaleTimeString('en-US', { timeZone: 'Pacific/Honolulu', hour: 'numeric', minute: '2-digit' })}</p>
+                        </div>
+                      </div>
+                      <div className="space-y-3 bg-gray-50 rounded-xl p-4 border border-gray-200">
+                        <div className="flex items-center justify-between">
+                          <StatusBadge status={checklistStatus['claims-documents']?.entry?.status || 'Pending'} />
+                          {checklistStatus['claims-documents']?.entry?.creator?.name && (
+                            <span className="text-sm text-gray-500">By: {checklistStatus['claims-documents']?.entry?.creator?.name}</span>
+                          )}
+                        </div>
+                        <div>
+                          <span className="text-xs font-medium text-gray-500">Checked By</span>
+                          <p className="font-medium text-gray-800">{checklistStatus['claims-documents']?.entry?.checked_by || '-'}</p>
+                        </div>
+                        {checklistStatus['claims-documents']?.entry?.notes && (
+                          <div>
+                            <span className="text-xs font-medium text-gray-500">Notes</span>
+                            <p className="text-gray-700 bg-white p-3 rounded-lg border border-gray-100 mt-1">{checklistStatus['claims-documents']?.entry?.notes}</p>
+                          </div>
+                        )}
+                        {checklistStatus['claims-documents']?.entry?.admin_notes && (
+                          <div>
+                            <span className="text-xs font-medium text-gray-500">Admin Notes</span>
+                            <p className={`p-3 rounded-lg border mt-1 ${checklistStatus['claims-documents']?.entry?.status === 'Needs Revisions' ? 'bg-orange-50 border-orange-200 text-orange-800' : 'bg-emerald-50 border-emerald-200 text-emerald-800'}`}>
+                              {checklistStatus['claims-documents']?.entry?.admin_notes}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                      <div className="mt-4 p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-center">
+                        <p className="text-sm text-emerald-700 font-medium flex items-center justify-center gap-2">
+                          <Lock className="w-4 h-4" /> Entry locked for today. Resets at midnight.
+                        </p>
+                      </div>
+                    </div>
+                  ) : isChecklistPastDeadline() ? (
+                    <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-l-gray-400">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center">
+                          <Lock className="w-6 h-6 text-gray-400" />
+                        </div>
+                        <div>
+                          <h2 className="font-semibold text-gray-800">Claims & Documents</h2>
+                          <p className="text-sm text-red-600 font-medium">Submissions closed for today</p>
+                        </div>
+                      </div>
+                      <div className="p-4 bg-red-50 rounded-xl border border-red-200 text-center">
+                        <p className="text-sm text-red-700">The deadline has passed. A new form will be available tomorrow.</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className={`bg-white rounded-2xl shadow-lg p-6 border-l-4 ${currentColors?.accent}`}>
+                        <h2 className="font-semibold mb-4 text-gray-800 flex items-center gap-2">
+                          <Paperclip className="w-5 h-5 text-sky-500" /> Claims & Documents (X-ray, Documents)
+                        </h2>
+                        <div className="grid grid-cols-2 gap-4">
+                          <InputField label="Checked By" value={forms['claims-documents'].checked_by} onChange={e => updateForm('claims-documents', 'checked_by', e.target.value)} />
+                          <div className="flex items-end">
+                            <div className="p-3 bg-sky-50 rounded-xl border border-sky-200 text-sm text-sky-700 w-full">
+                              <span className="font-medium">Date:</span> {new Date().toLocaleDateString('en-US', { timeZone: 'Pacific/Honolulu', weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="mt-4">
+                          <InputField label="Notes" large value={forms['claims-documents'].notes} onChange={e => updateForm('claims-documents', 'notes', e.target.value)} placeholder="Enter claims/document notes..." />
+                        </div>
+                      </div>
+                      <div className="bg-white rounded-2xl shadow-lg p-6">
+                        <FileUpload label="X-rays, Documents & Attachments" files={files['claims-documents'].documentation} onFilesChange={f => updateFiles('claims-documents', 'documentation', f)} onViewFile={setViewingFile} />
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
+
               {activeModule === 'it-requests' && (
                 <>
                   <div className={`bg-white rounded-2xl shadow-lg p-6 border-l-4 ${currentColors?.accent}`}>
@@ -5649,13 +5878,16 @@ if (activeModule === 'it-requests') {
   </>
 )}
 
-              <button
-                onClick={() => saveEntry(activeModule)}
-                disabled={saving}
-                className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl text-lg font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
-              >
-                {saving ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Save Entry'}
-              </button>
+{!((activeModule === 'completed-procedure' && (checklistStatus['completed-procedure']?.submitted || isChecklistPastDeadline())) ||
+                 (activeModule === 'claims-documents' && (checklistStatus['claims-documents']?.submitted || isChecklistPastDeadline()))) && (
+                <button
+                  onClick={() => saveEntry(activeModule)}
+                  disabled={saving}
+                  className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl text-lg font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
+                >
+                  {saving ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Save Entry'}
+                </button>
+              )}
             </div>
           )}
 
