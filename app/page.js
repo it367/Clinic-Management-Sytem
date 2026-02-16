@@ -45,7 +45,9 @@ const formatRole = (role) => {
     'it': 'IT',
     'staff': 'Staff',
     'super_admin': 'Super Admin',
-    'finance_admin': 'Finance Admin'
+    'finance_admin': 'Finance Admin',
+    'office_manager': 'Office Manager',
+    'rev_rangers': 'Rev Rangers'
   };
   return roleMap[role] || role;
 };
@@ -1228,7 +1230,7 @@ useEffect(() => {
         }
         setLastLogin(sessionData.lastLogin);
 // Load users if admin and set default view
-if (sessionData.user.role === 'super_admin' || sessionData.user.role === 'finance_admin' || sessionData.user.role === 'it') {
+if (sessionData.user.role === 'super_admin' || sessionData.user.role === 'finance_admin' || sessionData.user.role === 'it' || sessionData.user.role === 'rev_rangers') {
   loadUsers();
   loadItUsers();
   loadFinanceAdminUsers();
@@ -1318,9 +1320,11 @@ useEffect(() => {
     }
   }
 }, [analyticsModule, adminView, currentUser, moduleData]);
-const isAdmin = currentUser?.role === 'super_admin' || currentUser?.role === 'finance_admin' || currentUser?.role === 'it';
+const isAdmin = currentUser?.role === 'super_admin' || currentUser?.role === 'finance_admin' || currentUser?.role === 'it' || currentUser?.role === 'rev_rangers';
 const isSuperAdmin = currentUser?.role === 'super_admin' || currentUser?.role === 'it';
-
+const isChecklistReviewer = currentUser?.role === 'super_admin' || currentUser?.role === 'rev_rangers';
+const isOfficeManager = currentUser?.role === 'office_manager';
+  
 const showConfirm = (title, message, confirmText = 'Confirm', confirmColor = 'blue') => {
   return new Promise((resolve) => {
     setConfirmDialog({
@@ -1567,10 +1571,10 @@ const { data: usersData, error: usersError } = await supabase
 
     let query = supabase.from(module.table).select('*').order('created_at', { ascending: false });
 
-    if (!isAdmin && selectedLocation) {
+if ((!isAdmin || isOfficeManager) && selectedLocation) {
       const loc = locations.find(l => l.name === selectedLocation);
       if (loc) query = query.eq('location_id', loc.id);
-    } else if (isAdmin && adminLocation !== 'all') {
+    } else if (isAdmin && !isOfficeManager && adminLocation !== 'all') {
       const loc = locations.find(l => l.name === adminLocation);
       if (loc) query = query.eq('location_id', loc.id);
     }
@@ -1796,7 +1800,7 @@ setCurrentUser(user);
       setSelectedLocation(selectedLoc);
     }
 
-if (user.role === 'super_admin' || user.role === 'finance_admin') {
+if (user.role === 'super_admin' || user.role === 'finance_admin' || user.role === 'rev_rangers') {
       loadUsers();
       loadItUsers();
       loadFinanceAdminUsers();
@@ -3072,7 +3076,7 @@ if (!currentUser) {
 
   // LOCATION SELECTION
 
-  if (!isAdmin && !selectedLocation && userLocations.length > 1) {
+if ((!isAdmin || isOfficeManager) && !selectedLocation && userLocations.length > 1) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4">
         <div className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl p-8 w-full max-w-sm border border-white/20">
@@ -3223,15 +3227,15 @@ onUpdateOrderRequest={async (entryId, formData) => {
 
       {/* Sidebar */}
 <div className={`fixed inset-y-0 left-0 z-40 w-72 bg-white shadow-xl flex flex-col transform transition-transform lg:relative lg:translate-x-0 lg:h-screen lg:sticky lg:top-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-<div className={`p-5 flex-shrink-0 ${currentUser?.role === 'it' ? 'bg-gradient-to-r from-cyan-600 to-teal-600' : isSuperAdmin ? 'bg-gradient-to-r from-rose-600 to-pink-600' : isAdmin ? 'bg-gradient-to-r from-purple-600 to-indigo-600' : 'bg-gradient-to-r from-blue-600 to-indigo-600'}`}>       
+<div className={`p-5 flex-shrink-0 ${currentUser?.role === 'it' ? 'bg-gradient-to-r from-cyan-600 to-teal-600' : currentUser?.role === 'rev_rangers' ? 'bg-gradient-to-r from-amber-600 to-orange-600' : currentUser?.role === 'office_manager' ? 'bg-gradient-to-r from-emerald-600 to-green-600' : isSuperAdmin ? 'bg-gradient-to-r from-rose-600 to-pink-600' : isAdmin ? 'bg-gradient-to-r from-purple-600 to-indigo-600' : 'bg-gradient-to-r from-blue-600 to-indigo-600'}`}>     
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-              {currentUser?.role === 'it' ? <Monitor className="w-6 h-6 text-white" /> : isSuperAdmin ? <Shield className="w-6 h-6 text-white" /> : isAdmin ? <Shield className="w-6 h-6 text-white" /> : <User className="w-6 h-6 text-white" />}
+              {currentUser?.role === 'it' ? <Monitor className="w-6 h-6 text-white" /> : currentUser?.role === 'rev_rangers' ? <Shield className="w-6 h-6 text-white" /> : currentUser?.role === 'office_manager' ? <Users className="w-6 h-6 text-white" /> : isSuperAdmin ? <Shield className="w-6 h-6 text-white" /> : isAdmin ? <Shield className="w-6 h-6 text-white" /> : <User className="w-6 h-6 text-white" />}
             </div>
             <div className="text-white">
               <p className="font-semibold">{currentUser.name}</p>
 <p className="text-sm text-white/80">
-  {isAdmin || currentUser?.role === 'it' ? formatRole(currentUser?.role) : selectedLocation}
+  {isAdmin || currentUser?.role === 'it' || currentUser?.role === 'office_manager' ? formatRole(currentUser?.role) : selectedLocation}
 </p>
             </div>
           </div>
@@ -3473,7 +3477,7 @@ onUpdateOrderRequest={async (entryId, formData) => {
                     <InputField label="Username *" value={editingUser ? (editingUser.username || '') : newUser.username} onChange={e => editingUser ? setEditingUser({...editingUser, username: e.target.value}) : setNewUser({...newUser, username: e.target.value})} placeholder="Login username" />
                     <InputField label="Email *" value={editingUser ? editingUser.email : newUser.email} onChange={e => editingUser ? setEditingUser({...editingUser, email: e.target.value}) : setNewUser({...newUser, email: e.target.value})} />
                     <PasswordField label={editingUser ? "New Password" : "Password *"} value={editingUser ? (editingUser.newPassword || '') : newUser.password} onChange={e => editingUser ? setEditingUser({...editingUser, newPassword: e.target.value}) : setNewUser({...newUser, password: e.target.value})} placeholder={editingUser ? "Leave blank to keep current" : ""} />
-<InputField label="Role" value={editingUser ? editingUser.role : newUser.role} onChange={e => editingUser ? setEditingUser({...editingUser, role: e.target.value}) : setNewUser({...newUser, role: e.target.value})} options={currentUser?.role === 'super_admin' ? ['staff', 'finance_admin', 'it', 'super_admin'] : currentUser?.role === 'it' ? ['staff', 'finance_admin', 'it'] : ['staff', 'finance_admin']} />
+<InputField label="Role" value={editingUser ? editingUser.role : newUser.role} onChange={e => editingUser ? setEditingUser({...editingUser, role: e.target.value}) : setNewUser({...newUser, role: e.target.value})} options={currentUser?.role === 'super_admin' ? ['staff', 'office_manager', 'rev_rangers', 'finance_admin', 'it', 'super_admin'] : currentUser?.role === 'it' ? ['staff', 'office_manager', 'rev_rangers', 'finance_admin', 'it'] : ['staff', 'office_manager', 'rev_rangers', 'finance_admin']} />
                   </div>
                   {((editingUser ? editingUser.role : newUser.role) === 'staff') && (
                     <div className="mt-4">
@@ -3513,7 +3517,7 @@ onUpdateOrderRequest={async (entryId, formData) => {
       <div key={u.id}>
         <div className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
           <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-semibold ${u.role === 'super_admin' ? 'bg-gradient-to-br from-rose-500 to-pink-500' : u.role === 'it' ? 'bg-gradient-to-br from-cyan-500 to-teal-500' : u.role === 'finance_admin' ? 'bg-gradient-to-br from-purple-500 to-indigo-500' : 'bg-gradient-to-br from-blue-500 to-indigo-500'}`}>
+           <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-semibold ${u.role === 'super_admin' ? 'bg-gradient-to-br from-rose-500 to-pink-500' : u.role === 'it' ? 'bg-gradient-to-br from-cyan-500 to-teal-500' : u.role === 'finance_admin' ? 'bg-gradient-to-br from-purple-500 to-indigo-500' : u.role === 'rev_rangers' ? 'bg-gradient-to-br from-amber-500 to-orange-500' : u.role === 'office_manager' ? 'bg-gradient-to-br from-emerald-500 to-green-500' : 'bg-gradient-to-br from-blue-500 to-indigo-500'}`}>
               {u.name.charAt(0)}
             </div>
             <div>
@@ -3526,8 +3530,8 @@ onUpdateOrderRequest={async (entryId, formData) => {
                   ))}
                 </div>
               )}
-{(u.role === 'finance_admin' || u.role === 'super_admin' || u.role === 'it') && (
-  <span className={`text-xs font-medium ${u.role === 'it' ? 'text-cyan-600' : 'text-purple-600'}`}>All locations access</span>
+{(u.role === 'finance_admin' || u.role === 'super_admin' || u.role === 'it' || u.role === 'rev_rangers') && (
+  <span className={`text-xs font-medium ${u.role === 'it' ? 'text-cyan-600' : u.role === 'rev_rangers' ? 'text-amber-600' : 'text-purple-600'}`}>All locations access</span>
 )}
             </div>
           </div>
