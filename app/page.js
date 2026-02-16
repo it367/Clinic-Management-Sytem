@@ -1973,7 +1973,7 @@ if (!confirmed) return;
     return;
   }
 
-  if (newUser.role === 'staff' && newUser.locations.length > 0) {
+if ((newUser.role === 'staff' || newUser.role === 'office_manager') && newUser.locations.length > 0) {
     const locationAssignments = newUser.locations.map(locId => ({
       user_id: createdUser.id,
       location_id: locId,
@@ -2041,8 +2041,8 @@ if (!confirmed) return;
     return;
   }
 
-  await supabase.from('user_locations').delete().eq('user_id', editingUser.id);
-  if (editingUser.role === 'staff' && editingUser.locationIds?.length > 0) {
+await supabase.from('user_locations').delete().eq('user_id', editingUser.id);
+  if ((editingUser.role === 'staff' || editingUser.role === 'office_manager') && editingUser.locationIds?.length > 0) {
     const locationAssignments = editingUser.locationIds.map(locId => ({
       user_id: editingUser.id,
       location_id: locId,
@@ -3694,7 +3694,7 @@ onUpdateOrderRequest={async (entryId, formData) => {
                     <PasswordField label={editingUser ? "New Password" : "Password *"} value={editingUser ? (editingUser.newPassword || '') : newUser.password} onChange={e => editingUser ? setEditingUser({...editingUser, newPassword: e.target.value}) : setNewUser({...newUser, password: e.target.value})} placeholder={editingUser ? "Leave blank to keep current" : ""} />
 <InputField label="Role" value={editingUser ? editingUser.role : newUser.role} onChange={e => editingUser ? setEditingUser({...editingUser, role: e.target.value}) : setNewUser({...newUser, role: e.target.value})} options={currentUser?.role === 'super_admin' ? ['staff', 'office_manager', 'rev_rangers', 'finance_admin', 'it', 'super_admin'] : currentUser?.role === 'it' ? ['staff', 'office_manager', 'rev_rangers', 'finance_admin', 'it'] : ['staff', 'office_manager', 'rev_rangers', 'finance_admin']} />
                   </div>
-                  {((editingUser ? editingUser.role : newUser.role) === 'staff') && (
+{((editingUser ? editingUser.role : newUser.role) === 'staff' || (editingUser ? editingUser.role : newUser.role) === 'office_manager') && (
                     <div className="mt-4">
                       <label className="text-xs font-medium text-gray-600 mb-2 block">Assigned Locations</label>
                       <div className="flex flex-wrap gap-2">
@@ -3747,6 +3747,9 @@ onUpdateOrderRequest={async (entryId, formData) => {
               )}
 {(u.role === 'finance_admin' || u.role === 'super_admin' || u.role === 'it' || u.role === 'rev_rangers') && (
   <span className={`text-xs font-medium ${u.role === 'it' ? 'text-cyan-600' : u.role === 'rev_rangers' ? 'text-amber-600' : 'text-purple-600'}`}>All locations access</span>
+)}
+{u.role === 'office_manager' && u.locations?.length === 0 && (
+  <span className="text-xs font-medium text-orange-600">No locations assigned</span>
 )}
             </div>
           </div>
