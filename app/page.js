@@ -6,9 +6,11 @@
 import { useState, useEffect, useRef } from 'react';
 import JSZip from 'jszip';
 import { supabase } from '../lib/supabase';
-import { DollarSign, FileText, Building2, Bot, Send, Loader2, LogOut, User, Upload, X, File, Shield, Receipt, CreditCard, Package, RefreshCw, Monitor, Menu, Eye, EyeOff, FolderOpen, Edit3, Users, Plus, Trash2, Lock, Download, Settings, MessageCircle, Sparkles, AlertCircle, Maximize2, Minimize2, Headphones, Search, TrendingUp, TrendingDown, Calendar, PieChart, BarChart3 } from 'lucide-react';
+import { DollarSign, FileText, Building2, Bot, Send, Loader2, LogOut, User, Upload, X, File, Shield, Receipt, CreditCard, Package, RefreshCw, Monitor, Menu, Eye, EyeOff, FolderOpen, Edit3, Users, Plus, Trash2, Lock, Download, Settings, MessageCircle, Sparkles, AlertCircle, Maximize2, Minimize2, Headphones, Search, TrendingUp, TrendingDown, Calendar, PieChart, BarChart3, ClipboardList, Paperclip, CheckCircle, Circle } from 'lucide-react';
 const CHECKLIST_MODULES = [
   { id: 'daily-recon', name: 'Daily Reconciliation', icon: DollarSign, color: 'emerald', table: 'daily_recon' },
+  { id: 'completed-procedure', name: 'Completed Procedure', icon: ClipboardList, color: 'teal', table: 'completed_procedures' },
+  { id: 'claims-documents', name: 'Claims & Documents', icon: Paperclip, color: 'sky', table: 'claims_documents' },
 ];
 
 const MODULES = [
@@ -31,7 +33,9 @@ const MODULE_COLORS = {
   'bills-payment': { bg: 'bg-violet-50', border: 'border-violet-200', text: 'text-violet-700', accent: 'bg-violet-500', light: 'bg-violet-100' },
   'order-requests': { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', accent: 'bg-amber-500', light: 'bg-amber-100' },
   'refund-requests': { bg: 'bg-rose-50', border: 'border-rose-200', text: 'text-rose-700', accent: 'bg-rose-500', light: 'bg-rose-100' },
-  'it-requests': { bg: 'bg-cyan-50', border: 'border-cyan-200', text: 'text-cyan-700', accent: 'bg-cyan-500', light: 'bg-cyan-100' },
+'it-requests': { bg: 'bg-cyan-50', border: 'border-cyan-200', text: 'text-cyan-700', accent: 'bg-cyan-500', light: 'bg-cyan-100' },
+  'completed-procedure': { bg: 'bg-teal-50', border: 'border-teal-200', text: 'text-teal-700', accent: 'bg-teal-500', light: 'bg-teal-100' },
+  'claims-documents': { bg: 'bg-sky-50', border: 'border-sky-200', text: 'text-sky-700', accent: 'bg-sky-500', light: 'bg-sky-100' },
 };
 
 const IT_STATUSES = ['For Review', 'In Progress', 'On-hold', 'Resolved'];
@@ -917,7 +921,9 @@ function StatusBadge({ status }) {
     'Paid': 'bg-emerald-100 text-emerald-700 border-emerald-200',
     'Denied': 'bg-red-100 text-red-700 border-red-200',
     'Accounted': 'bg-emerald-100 text-emerald-700 border-emerald-200',
-    'Rejected': 'bg-red-100 text-red-700 border-red-200'
+'Rejected': 'bg-red-100 text-red-700 border-red-200',
+    'Needs Revisions': 'bg-orange-100 text-orange-700 border-orange-200',
+    'Reviewed': 'bg-blue-100 text-blue-700 border-blue-200'
   };
   return <span className={`px-2.5 py-1 rounded-lg text-xs font-semibold border ${colors[status] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>{status || 'Pending'}</span>;
 }
@@ -1166,9 +1172,66 @@ const [analyticsModule, setAnalyticsModule] = useState('daily-recon');
   }]);
   const [chatInput, setChatInput] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
-
+const [checklistStatus, setChecklistStatus] = useState({});
+  const [checklistLoading, setChecklistLoading] = useState(false);
   const [entryDocuments, setEntryDocuments] = useState({});
 
+  const getHawaiiToday = () => {
+    const now = new Date();
+    const hawaiiTime = new Date(now.toLocaleString('en-US', { timeZone: 'Pacific/Honolulu' }));
+    const year = hawaiiTime.getFullYear();
+    const month = String(hawaiiTime.getMonth() + 1).padStart(2, '0');
+    const day = String(hawaiiTime.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const isChecklistPastDeadline = () => {
+    const now = new Date();
+    const hawaiiTime = new Date(now.toLocaleString('en-US', { timeZone: 'Pacific/Honolulu' }));
+    return hawaiiTime.getHours() === 23 && hawaiiTime.getMinutes() >= 59;
+  };
+
+  const loadChecklistStatus = async (locationId) => {
+    if (!locationId) return;
+    setChecklistLoading(true);
+    
+    const hawaiiToday = getHawaiiToday();
+    const dayStart = `${hawaiiToday}T00:00:00-10:00`;
+    const dayEnd = `${hawaiiToday}T23:59:59-10:00`;
+    
+    const status = {};
+    
+    for (const mod of CHECKLIST_MODULES) {
+      const { data, error } = await supabase
+        .from(mod.table)
+        .select('*')
+        .eq('location_id', locationId)
+        .gte('created_at', dayStart)
+        .lte('created_at', dayEnd)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      
+      if (data && data.length > 0) {
+        // Get creator name
+        const { data: userData } = await supabase
+          .from('users')
+          .select('id, name')
+          .eq('id', data[0].created_by)
+          .maybeSingle();
+        
+        status[mod.id] = {
+          submitted: true,
+          entry: { ...data[0], creator: userData || null },
+          status: data[0].status || 'Pending'
+        };
+      } else {
+        status[mod.id] = { submitted: false, entry: null, status: null };
+      }
+    }
+    
+    setChecklistStatus(status);
+    setChecklistLoading(false);
+  };
   const loadEntryDocuments = async (recordType, recordId) => {
     const key = `${recordType}-${recordId}`;
     if (entryDocuments[key]) return; // Already loaded
@@ -1192,7 +1255,9 @@ const [analyticsModule, setAnalyticsModule] = useState('daily-recon');
 'bills-payment': { bill_date: today, vendor: '', transaction_id: '', description: '', amount: '', due_date: '', paid: '' },
     'order-requests': { date_entered: today, vendor: '', invoice_number: '', invoice_date: '', due_date: '', amount: '', entered_by: '', notes: '' },
   'refund-requests': { patient_name: '', chart_number: '', parent_name: '', rp_address: '', date_of_request: today, type: '', description: '', amount_requested: '', best_contact_method: '', contact_info: '', eassist_audited: '', status: 'Pending' },
-   'it-requests': { date_reported: today, urgency: '', requester_name: '', device_system: '', description_of_issue: '', best_contact_method: '', best_contact_time: '', assigned_to: '', status: 'Open', resolution_notes: '', completed_by: '' }
+'it-requests': { date_reported: today, urgency: '', requester_name: '', device_system: '', description_of_issue: '', best_contact_method: '', best_contact_time: '', assigned_to: '', status: 'Open', resolution_notes: '', completed_by: '' },
+    'completed-procedure': { checked_by: '', notes: '' },
+    'claims-documents': { checked_by: '', notes: '' }
   });
 
   const [files, setFiles] = useState({
@@ -1201,7 +1266,9 @@ const [analyticsModule, setAnalyticsModule] = useState('daily-recon');
     'bills-payment': { documentation: [] },
     'order-requests': { orderInvoices: [] },
     'refund-requests': { documentation: [] },
-    'it-requests': { documentation: [] }
+'it-requests': { documentation: [] },
+    'completed-procedure': { documentation: [] },
+    'claims-documents': { documentation: [] }
   });
 
 useEffect(() => {
@@ -1297,6 +1364,13 @@ useEffect(() => { if (currentUser) setNameForm(currentUser.name || ''); }, [curr
       loadModuleData(activeModule);
     }
   }, [currentUser, selectedLocation, activeModule, adminLocation]);
+
+  useEffect(() => {
+    if (currentUser && selectedLocation && (isOfficeManager || currentUser?.role === 'staff')) {
+      const loc = locations.find(l => l.name === selectedLocation);
+      if (loc) loadChecklistStatus(loc.id);
+    }
+  }, [currentUser, selectedLocation, locations]);
 
 useEffect(() => { setCurrentPage(1); setRecordSearch(''); }, [activeModule, adminLocation]);
   useEffect(() => { setStaffCurrentPage(1); setStaffRecordSearch(''); setEditingStaffEntry(null); }, [activeModule, selectedLocation]);
@@ -2207,6 +2281,21 @@ if (moduleId === 'daily-recon') {
         eassist_audited: form.eassist_audited === 'Yes' ? true : form.eassist_audited === 'No' ? false : null,
         status: 'Pending'
       };
+
+  } else if (moduleId === 'completed-procedure') {
+      entryData = {
+        ...entryData,
+        checked_by: form.checked_by || currentUser.name,
+        notes: form.notes,
+        status: 'Pending'
+      };
+    } else if (moduleId === 'claims-documents') {
+      entryData = {
+        ...entryData,
+        checked_by: form.checked_by || currentUser.name,
+        notes: form.notes,
+        status: 'Pending'
+      };
 } else if (moduleId === 'it-requests') {
       entryData = {
         ...entryData,
@@ -2247,7 +2336,14 @@ if (moduleId === 'daily-recon') {
       [moduleId]: Object.fromEntries(Object.entries(files[moduleId]).map(([k]) => [k, []]))
     }));
 
-    loadModuleData(moduleId);
+loadModuleData(moduleId);
+    
+    // Refresh checklist status after saving a checklist module
+    if (CHECKLIST_MODULES.some(m => m.id === moduleId) && selectedLocation) {
+      const loc = locations.find(l => l.name === selectedLocation);
+      if (loc) loadChecklistStatus(loc.id);
+    }
+    
     setSaving(false);
   };
 
@@ -2832,6 +2928,17 @@ const getTotalPages = () => {
       best_contact_method: entry.best_contact_method || '',
       contact_info: entry.contact_info || ''
     });
+
+    } else if (activeModule === 'completed-procedure') {
+    setStaffEditForm({
+      checked_by: entry.checked_by || '',
+      notes: entry.notes || ''
+    });
+  } else if (activeModule === 'claims-documents') {
+    setStaffEditForm({
+      checked_by: entry.checked_by || '',
+      notes: entry.notes || ''
+    });
   } else if (activeModule === 'it-requests') {
     setStaffEditForm({
       date_reported: entry.date_reported || '',
@@ -2915,6 +3022,18 @@ if (!confirmed) return;;
       best_contact_method: staffEditForm.best_contact_method || null,
       contact_info: staffEditForm.contact_info || null
     };
+
+} else if (activeModule === 'completed-procedure') {
+    updateData = { ...updateData,
+      checked_by: staffEditForm.checked_by,
+      notes: staffEditForm.notes
+    };
+  } else if (activeModule === 'claims-documents') {
+    updateData = { ...updateData,
+      checked_by: staffEditForm.checked_by,
+      notes: staffEditForm.notes
+    };
+    
   } else if (activeModule === 'it-requests') {
     updateData = { ...updateData,
       date_reported: staffEditForm.date_reported,
