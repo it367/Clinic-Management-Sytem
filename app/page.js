@@ -15,7 +15,6 @@ const CHECKLIST_MODULES = [
 
 const MODULES = [
   { id: 'billing-inquiry', name: 'Billing Inquiry', icon: Receipt, color: 'blue', table: 'billing_inquiries' },
-  { id: 'billing-inquiry', name: 'Billing Inquiry', icon: Receipt, color: 'blue', table: 'billing_inquiries' },
   { id: 'bills-payment', name: 'Bills Payment', icon: CreditCard, color: 'violet', table: 'bills_payment' },
   { id: 'order-requests', name: 'Order Requests', icon: Package, color: 'amber', table: 'order_requests' },
   { id: 'refund-requests', name: 'Refund Requests', icon: RefreshCw, color: 'rose', table: 'refund_requests' },
