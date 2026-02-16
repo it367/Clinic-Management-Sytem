@@ -7,8 +7,12 @@ import { useState, useEffect, useRef } from 'react';
 import JSZip from 'jszip';
 import { supabase } from '../lib/supabase';
 import { DollarSign, FileText, Building2, Bot, Send, Loader2, LogOut, User, Upload, X, File, Shield, Receipt, CreditCard, Package, RefreshCw, Monitor, Menu, Eye, EyeOff, FolderOpen, Edit3, Users, Plus, Trash2, Lock, Download, Settings, MessageCircle, Sparkles, AlertCircle, Maximize2, Minimize2, Headphones, Search, TrendingUp, TrendingDown, Calendar, PieChart, BarChart3 } from 'lucide-react';
-const MODULES = [
+const CHECKLIST_MODULES = [
   { id: 'daily-recon', name: 'Daily Reconciliation', icon: DollarSign, color: 'emerald', table: 'daily_recon' },
+];
+
+const MODULES = [
+  { id: 'billing-inquiry', name: 'Billing Inquiry', icon: Receipt, color: 'blue', table: 'billing_inquiries' },
   { id: 'billing-inquiry', name: 'Billing Inquiry', icon: Receipt, color: 'blue', table: 'billing_inquiries' },
   { id: 'bills-payment', name: 'Bills Payment', icon: CreditCard, color: 'violet', table: 'bills_payment' },
   { id: 'order-requests', name: 'Order Requests', icon: Package, color: 'amber', table: 'order_requests' },
@@ -19,7 +23,7 @@ const SUPPORT_MODULES = [
   { id: 'it-requests', name: 'IT Requests', icon: Monitor, color: 'cyan', table: 'it_requests' },
 ];
 
-const ALL_MODULES = [...MODULES, ...SUPPORT_MODULES];
+const ALL_MODULES = [...CHECKLIST_MODULES, ...MODULES, ...SUPPORT_MODULES];
 
 const MODULE_COLORS = {
   'daily-recon': { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', accent: 'bg-emerald-500', light: 'bg-emerald-100' },
@@ -3269,7 +3273,26 @@ onUpdateOrderRequest={async (entryId, formData) => {
               <div className="border-t my-3"></div>
             </>
           )}
-          
+
+<p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">Office Task Checklist</p>
+          {CHECKLIST_MODULES.map(m => {
+            const colors = MODULE_COLORS[m.id];
+            const isActive = activeModule === m.id && adminView !== 'users' && adminView !== 'export' && adminView !== 'settings' && view !== 'settings';
+            return (
+              <button
+                key={m.id}
+                onClick={() => { setActiveModule(m.id); setAdminView('records'); setView('entry'); setSidebarOpen(false); }}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${isActive ? `${colors.bg} ${colors.text} ${colors.border} border-2` : 'text-gray-600 hover:bg-gray-50'}`}
+              >
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isActive ? colors.light : 'bg-gray-100'}`}>
+                  <m.icon className={`w-4 h-4 ${isActive ? colors.text : 'text-gray-500'}`} />
+                </div>
+                <span className="text-sm font-medium">{m.name}</span>
+              </button>
+            );
+          })}
+          <div className="border-t my-3"></div>
+            
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">Modules</p>
           {MODULES.map(m => {
             const colors = MODULE_COLORS[m.id];
