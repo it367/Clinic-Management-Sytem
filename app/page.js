@@ -3458,59 +3458,7 @@ onUpdateOrderRequest={async (entryId, formData) => {
             </>
           )}
 
-           {(isOfficeManager || currentUser?.role === 'super_admin' || currentUser?.role === 'rev_rangers' || currentUser?.role === 'it') && (
-            <>
-              <p className={`text-xs font-semibold uppercase tracking-wider mb-3 px-3 flex items-center gap-2 ${
-                isOfficeManager && CHECKLIST_MODULES.every(m => checklistStatus[m.id]?.submitted)
-                  ? 'text-emerald-600'
-                  : 'text-gray-400'
-              }`}>
-                {isOfficeManager && CHECKLIST_MODULES.every(m => checklistStatus[m.id]?.submitted) && (
-                  <CheckCircle className="w-3.5 h-3.5" />
-                )}
-                Office Task Checklist
-              </p>
-              {CHECKLIST_MODULES.map(m => {
-                const colors = MODULE_COLORS[m.id];
-                const isActive = activeModule === m.id && adminView !== 'users' && adminView !== 'export' && adminView !== 'settings' && view !== 'settings';
-                const submitted = isOfficeManager && checklistStatus[m.id]?.submitted;
-
-                return (
-                  <button
-                    key={m.id}
-                    onClick={() => { setActiveModule(m.id); setAdminView('records'); setView('entry'); setSidebarOpen(false); }}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${
-                      submitted
-                        ? 'bg-emerald-50 text-emerald-700 border-2 border-emerald-200'
-                        : isActive
-                          ? `${colors.bg} ${colors.text} ${colors.border} border-2`
-                          : 'text-gray-600 hover:bg-gray-50'
-                    }`}
-                  >
-                    {isOfficeManager && (
-                      <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
-                        {submitted ? (
-                          <CheckCircle className="w-5 h-5 text-emerald-500" />
-                        ) : (
-                          <Circle className="w-5 h-5 text-gray-300" />
-                        )}
-                      </div>
-                    )}
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                      submitted ? 'bg-emerald-100' : isActive ? colors.light : 'bg-gray-100'
-                    }`}>
-                      <m.icon className={`w-4 h-4 ${
-                        submitted ? 'text-emerald-600' : isActive ? colors.text : 'text-gray-500'
-                      }`} />
-                    </div>
-                    <span className="text-sm font-medium">{m.name}</span>
-                  </button>
-                );
-              })}
-              <div className="border-t my-3"></div>
-            </>
-          )} 
-
+          
             
 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">Modules</p>
           {MODULES.map(m => {
