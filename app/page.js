@@ -824,7 +824,7 @@ const handleChecklistSave = () => {
           {(module?.id === 'completed-procedure' || module?.id === 'claims-documents') && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <div><span className="text-gray-600 text-sm block">Checked By</span><span className="font-medium">{entry.checked_by || '-'}</span></div>
+  <div><span className="text-gray-600 text-sm block">Submitted By</span><span className="font-medium">{entry.checked_by || '-'}</span></div>
                 <div><span className="text-gray-600 text-sm block">Date Submitted</span><span className="font-medium">{new Date(entry.created_at).toLocaleString('en-US', { timeZone: 'Pacific/Honolulu' })}</span></div>
                 <div><span className="text-gray-600 text-sm block">Location</span><span className="font-medium">{entry.locations?.name || '-'}</span></div>
               </div>
@@ -1292,6 +1292,16 @@ const [checklistStatus, setChecklistStatus] = useState({});
     return hawaiiTime.getHours() === 23 && hawaiiTime.getMinutes() >= 59;
   };
 
+    const canEditChecklistEntry = (createdAt) => {
+    const now = new Date();
+    const hawaiiNow = new Date(now.toLocaleString('en-US', { timeZone: 'Pacific/Honolulu' }));
+    const recordDate = new Date(createdAt);
+    const recordHawaii = new Date(recordDate.toLocaleString('en-US', { timeZone: 'Pacific/Honolulu' }));
+    return hawaiiNow.getFullYear() === recordHawaii.getFullYear() &&
+           hawaiiNow.getMonth() === recordHawaii.getMonth() &&
+           hawaiiNow.getDate() === recordHawaii.getDate() &&
+           !isChecklistPastDeadline();
+  };
   const loadChecklistStatus = async (locationId) => {
     if (!locationId) return;
     setChecklistLoading(true);
@@ -5608,7 +5618,7 @@ if (activeModule === 'it-requests') {
                           <StatusBadge status={e.status || 'Pending'} />
                         </div>
                         <p className="text-sm text-gray-600">
-                          Checked by: <span className="font-medium">{e.checked_by || '-'}</span>
+                          Submitted by: <span className="font-medium">{e.checked_by || '-'}</span>
                         </p>
                         <p className="text-sm text-gray-500 mt-1">
                           Submitted: {new Date(e.created_at).toLocaleString('en-US', { timeZone: 'Pacific/Honolulu', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
@@ -5780,47 +5790,83 @@ if (activeModule === 'it-requests') {
                           <p className="text-sm text-emerald-600 font-medium">Submitted today at {new Date(checklistStatus['daily-recon']?.entry?.created_at).toLocaleTimeString('en-US', { timeZone: 'Pacific/Honolulu', hour: 'numeric', minute: '2-digit' })}</p>
                         </div>
                       </div>
-                      <div className="space-y-3 bg-gray-50 rounded-xl p-4 border border-gray-200">
-                        <div className="flex items-center justify-between">
-                          <StatusBadge status={checklistStatus['daily-recon']?.entry?.status || 'Pending'} />
-                          {checklistStatus['daily-recon']?.entry?.creator?.name && (
-                            <span className="text-sm text-gray-500">By: {checklistStatus['daily-recon']?.entry?.creator?.name}</span>
-                          )}
-                        </div>
-                        <div className="grid grid-cols-2 gap-3 text-sm">
-                          <div><span className="text-gray-500">Date:</span> <span className="font-medium">{checklistStatus['daily-recon']?.entry?.recon_date}</span></div>
-                          <div><span className="text-gray-500">Cash:</span> <span className="font-medium">${Number(checklistStatus['daily-recon']?.entry?.cash || 0).toFixed(2)}</span></div>
-                          <div><span className="text-gray-500">Credit Card:</span> <span className="font-medium">${Number(checklistStatus['daily-recon']?.entry?.credit_card || 0).toFixed(2)}</span></div>
-                          <div><span className="text-gray-500">Checks OTC:</span> <span className="font-medium">${Number(checklistStatus['daily-recon']?.entry?.checks_otc || 0).toFixed(2)}</span></div>
-                          <div><span className="text-gray-500">Insurance:</span> <span className="font-medium">${Number(checklistStatus['daily-recon']?.entry?.insurance_checks || 0).toFixed(2)}</span></div>
-                          <div><span className="text-gray-500">Care Credit:</span> <span className="font-medium">${Number(checklistStatus['daily-recon']?.entry?.care_credit || 0).toFixed(2)}</span></div>
-                          <div><span className="text-gray-500">VCC:</span> <span className="font-medium">${Number(checklistStatus['daily-recon']?.entry?.vcc || 0).toFixed(2)}</span></div>
-                          <div><span className="text-gray-500">EFTs:</span> <span className="font-medium">${Number(checklistStatus['daily-recon']?.entry?.efts || 0).toFixed(2)}</span></div>
-                        </div>
-                        <div className="pt-2 border-t border-gray-200">
-                          <span className="text-gray-500 text-sm">Total Collected:</span>
-                          <span className="font-bold text-emerald-700 text-lg ml-2">${Number(checklistStatus['daily-recon']?.entry?.total_collected || 0).toFixed(2)}</span>
-                        </div>
-{checklistStatus['daily-recon']?.entry?.notes && (
-                          <div>
-                            <span className="text-xs font-medium text-gray-500">Notes</span>
-                            <p className="text-gray-700 bg-white p-3 rounded-lg border border-gray-100 mt-1">{checklistStatus['daily-recon']?.entry?.notes}</p>
+ {editingStaffEntry === checklistStatus['daily-recon']?.entry?.id ? (
+                        <div className="space-y-4 bg-emerald-50 rounded-xl p-4 border border-emerald-200">
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-semibold text-emerald-800 flex items-center gap-2">
+                              <Edit3 className="w-4 h-4" /> Edit Today's Entry
+                            </h4>
+                            <button onClick={() => { setEditingStaffEntry(null); setStaffEditForm({}); }} className="text-gray-400 hover:text-gray-600">
+                              <X className="w-5 h-5" />
+                            </button>
                           </div>
-                        )}
-                      </div>
-                      {!isChecklistPastDeadline() && (
-                        <button
-                          onClick={() => startEditingStaffEntry(checklistStatus['daily-recon']?.entry)}
-                          className="w-full mt-4 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl font-medium hover:shadow-lg transition-all flex items-center justify-center gap-2"
-                        >
-                          <Edit3 className="w-4 h-4" /> Edit Today's Entry
-                        </button>
+                          <div className="grid grid-cols-2 gap-3">
+                            <InputField label="Date" type="date" value={staffEditForm.recon_date} onChange={ev => updateStaffEditForm('recon_date', ev.target.value)} />
+                            <InputField label="Cash" prefix="$" value={staffEditForm.cash} onChange={ev => updateStaffEditForm('cash', ev.target.value)} />
+                            <InputField label="Credit Card" prefix="$" value={staffEditForm.credit_card} onChange={ev => updateStaffEditForm('credit_card', ev.target.value)} />
+                            <InputField label="Checks OTC" prefix="$" value={staffEditForm.checks_otc} onChange={ev => updateStaffEditForm('checks_otc', ev.target.value)} />
+                            <InputField label="Insurance Checks" prefix="$" value={staffEditForm.insurance_checks} onChange={ev => updateStaffEditForm('insurance_checks', ev.target.value)} />
+                            <InputField label="Care Credit" prefix="$" value={staffEditForm.care_credit} onChange={ev => updateStaffEditForm('care_credit', ev.target.value)} />
+                            <InputField label="VCC" prefix="$" value={staffEditForm.vcc} onChange={ev => updateStaffEditForm('vcc', ev.target.value)} />
+                            <InputField label="EFTs" prefix="$" value={staffEditForm.efts} onChange={ev => updateStaffEditForm('efts', ev.target.value)} />
+                            <div className="col-span-2">
+                              <InputField label="Notes" value={staffEditForm.notes} onChange={ev => updateStaffEditForm('notes', ev.target.value)} />
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <button onClick={saveStaffEntryUpdate} disabled={saving} className="flex-1 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl font-medium hover:shadow-lg transition-all disabled:opacity-50">
+                              {saving ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Save Changes'}
+                            </button>
+                            <button onClick={() => { setEditingStaffEntry(null); setStaffEditForm({}); }} className="px-4 py-2.5 bg-gray-200 rounded-xl font-medium hover:bg-gray-300 transition-all">
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="space-y-3 bg-gray-50 rounded-xl p-4 border border-gray-200">
+                            <div className="flex items-center justify-between">
+                              <StatusBadge status={checklistStatus['daily-recon']?.entry?.status || 'Pending'} />
+                              {checklistStatus['daily-recon']?.entry?.creator?.name && (
+                                <span className="text-sm text-gray-500">By: {checklistStatus['daily-recon']?.entry?.creator?.name}</span>
+                              )}
+                            </div>
+                            <div className="grid grid-cols-2 gap-3 text-sm">
+                              <div><span className="text-gray-500">Date:</span> <span className="font-medium">{checklistStatus['daily-recon']?.entry?.recon_date}</span></div>
+                              <div><span className="text-gray-500">Cash:</span> <span className="font-medium">${Number(checklistStatus['daily-recon']?.entry?.cash || 0).toFixed(2)}</span></div>
+                              <div><span className="text-gray-500">Credit Card:</span> <span className="font-medium">${Number(checklistStatus['daily-recon']?.entry?.credit_card || 0).toFixed(2)}</span></div>
+                              <div><span className="text-gray-500">Checks OTC:</span> <span className="font-medium">${Number(checklistStatus['daily-recon']?.entry?.checks_otc || 0).toFixed(2)}</span></div>
+                              <div><span className="text-gray-500">Insurance:</span> <span className="font-medium">${Number(checklistStatus['daily-recon']?.entry?.insurance_checks || 0).toFixed(2)}</span></div>
+                              <div><span className="text-gray-500">Care Credit:</span> <span className="font-medium">${Number(checklistStatus['daily-recon']?.entry?.care_credit || 0).toFixed(2)}</span></div>
+                              <div><span className="text-gray-500">VCC:</span> <span className="font-medium">${Number(checklistStatus['daily-recon']?.entry?.vcc || 0).toFixed(2)}</span></div>
+                              <div><span className="text-gray-500">EFTs:</span> <span className="font-medium">${Number(checklistStatus['daily-recon']?.entry?.efts || 0).toFixed(2)}</span></div>
+                            </div>
+                            <div className="pt-2 border-t border-gray-200">
+                              <span className="text-gray-500 text-sm">Total Collected:</span>
+                              <span className="font-bold text-emerald-700 text-lg ml-2">${Number(checklistStatus['daily-recon']?.entry?.total_collected || 0).toFixed(2)}</span>
+                            </div>
+                            {checklistStatus['daily-recon']?.entry?.notes && (
+                              <div>
+                                <span className="text-xs font-medium text-gray-500">Notes</span>
+                                <p className="text-gray-700 bg-white p-3 rounded-lg border border-gray-100 mt-1">{checklistStatus['daily-recon']?.entry?.notes}</p>
+                              </div>
+                            )}
+                          </div>
+                          {!isChecklistPastDeadline() && (
+                            <button
+                              onClick={() => startEditingStaffEntry(checklistStatus['daily-recon']?.entry)}
+                              className="w-full mt-4 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl font-medium hover:shadow-lg transition-all flex items-center justify-center gap-2"
+                            >
+                              <Edit3 className="w-4 h-4" /> Edit Today's Entry
+                            </button>
+                          )}
+                          <div className="mt-4 p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-center">
+                            <p className="text-sm text-emerald-700 font-medium flex items-center justify-center gap-2">
+                              <Lock className="w-4 h-4" /> One entry per day. Resets at midnight.
+                            </p>
+                          </div>
+                        </>
                       )}
-                      <div className="mt-4 p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-center">
-                        <p className="text-sm text-emerald-700 font-medium flex items-center justify-center gap-2">
-                          <Lock className="w-4 h-4" /> One entry per day. Resets at midnight.
-                        </p>
-                      </div>
                     </div>
                   ) : isChecklistPastDeadline() ? (
                     <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-l-gray-400">
@@ -6340,7 +6386,8 @@ if (activeModule === 'it-requests') {
       ) : (
         <div className="space-y-3">
           {getStaffPaginatedEntries().map(e => {
-            const canEdit = canEditRecord(e.created_at);
+            const isChecklist = CHECKLIST_MODULES.some(m => m.id === activeModule);
+            const canEdit = isChecklist ? canEditChecklistEntry(e.created_at) : canEditRecord(e.created_at);
             const isEditing = editingStaffEntry === e.id;
             const docKey = `${activeModule}-${e.id}`;
             const docs = entryDocuments[docKey] || [];
@@ -6353,6 +6400,10 @@ if (activeModule === 'it-requests') {
             if (activeModule === 'daily-recon') {
               if (e.status === 'Accounted') bgClass = 'bg-emerald-50 border-2 border-emerald-300';
               else if (e.status === 'Rejected') bgClass = 'bg-red-50 border-2 border-red-300';
+              else bgClass = 'bg-amber-50 border-2 border-amber-300';
+            } else if (activeModule === 'completed-procedure' || activeModule === 'claims-documents') {
+              if (e.status === 'Approved') bgClass = 'bg-emerald-50 border-2 border-emerald-300';
+              else if (e.status === 'Needs Revisions') bgClass = 'bg-red-50 border-2 border-red-300';
               else bgClass = 'bg-amber-50 border-2 border-amber-300';
             }
             
@@ -6506,7 +6557,7 @@ if (activeModule === 'it-requests') {
                           <p className="text-sm text-gray-600">{e.patient_name}</p>
                         )}
                         {(activeModule === 'completed-procedure' || activeModule === 'claims-documents') && e.checked_by && (
-                          <p className="text-sm text-gray-600">Checked by: {e.checked_by}</p>
+                          <p className="text-sm text-gray-600">Submitted by: {e.checked_by}</p>
                         )}
                         <StatusBadge status={e.status || (activeModule === 'daily-recon' ? 'Pending' : e.status)} />
                         {!canEdit && <Lock className="w-4 h-4 text-gray-400" title="Locked (past Friday cutoff)" />}
@@ -6523,7 +6574,7 @@ if (activeModule === 'it-requests') {
 
 {(activeModule === 'completed-procedure' || activeModule === 'claims-documents') && e.admin_notes && (
                         <div className={`mt-2 p-2 rounded-lg text-sm ${e.status === 'Needs Revisions' ? 'bg-orange-100 text-orange-700 border border-orange-200' : 'bg-emerald-100 text-emerald-700 border border-emerald-200'}`}>
-                          <span className="font-medium">Admin Feedback: </span>{e.admin_notes}
+                          <span className="font-medium">Rev-Rangers Feedback: </span>{e.admin_notes}
                         </div>
                       )}
 
@@ -6548,7 +6599,9 @@ if (activeModule === 'it-requests') {
                       {canEdit && (
                         <button onClick={() => startEditingStaffEntry(e)} className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors" title="Edit"><Edit3 className="w-4 h-4" /></button>
                       )}
-                      <button onClick={() => deleteRecord(activeModule, e.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
+                      {(!isChecklist || canEdit) && (
+                        <button onClick={() => deleteRecord(activeModule, e.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
+                      )}
                     </div>
 </div>
                 )}
