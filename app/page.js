@@ -1274,8 +1274,13 @@ const [analyticsModule, setAnalyticsModule] = useState('daily-recon');
   const [chatInput, setChatInput] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
 const [checklistStatus, setChecklistStatus] = useState({});
-  const [checklistLoading, setChecklistLoading] = useState(false);
+ const [checklistLoading, setChecklistLoading] = useState(false);
   const [entryDocuments, setEntryDocuments] = useState({});
+  const [checklistAnalyticsTab, setChecklistAnalyticsTab] = useState('overview');
+  const [checklistCalendarDate, setChecklistCalendarDate] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
 
   const getHawaiiToday = () => {
     const now = new Date();
@@ -1343,6 +1348,39 @@ const [checklistStatus, setChecklistStatus] = useState({});
     setChecklistStatus(status);
     setChecklistLoading(false);
   };
+
+const loadChecklistAnalyticsData = async () => {
+    for (const mod of CHECKLIST_MODULES) {
+      if (moduleData[mod.id]?.length > 0 && moduleData[mod.id]?._allLocations) continue;
+      const { data, error } = await supabase
+        .from(mod.table)
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(1500);
+      if (data && data.length > 0) {
+        const locIds = [...new Set(data.map(d => d.location_id).filter(Boolean))];
+        const { data: locsData } = await supabase.from('locations').select('id, name').in('id', locIds).eq('is_active', true);
+        const locMap = {};
+        locsData?.forEach(l => { locMap[l.id] = l; });
+        const userIds = [...new Set(data.map(d => d.created_by).filter(Boolean))];
+        const { data: usersData } = await supabase.from('users').select('id, name').in('id', userIds);
+        const userMap = {};
+        usersData?.forEach(u => { userMap[u.id] = u; });
+        const enriched = data.map(d => ({
+          ...d,
+          locations: locMap[d.location_id] || null,
+          creator: userMap[d.created_by] || null
+        }));
+        enriched._allLocations = true;
+        setModuleData(prev => ({ ...prev, [mod.id]: enriched }));
+      } else {
+        const empty = [];
+        empty._allLocations = true;
+        setModuleData(prev => ({ ...prev, [mod.id]: empty }));
+      }
+    }
+  };
+  
   const loadEntryDocuments = async (recordType, recordId) => {
     const key = `${recordType}-${recordId}`;
     if (entryDocuments[key]) return; // Already loaded
@@ -1517,6 +1555,14 @@ useEffect(() => {
   }
 }, [viewingEntry, activeModule]);
   
+// Load data when checklist analytics is selected
+useEffect(() => {
+  const userIsAdmin = currentUser?.role === 'super_admin' || currentUser?.role === 'finance_admin' || currentUser?.role === 'rev_rangers' || currentUser?.role === 'it';
+  if (userIsAdmin && adminView === 'analytics' && analyticsModule === 'checklist-overview') {
+    loadChecklistAnalyticsData();
+  }
+}, [analyticsModule, adminView]);
+
 // Load data when analytics module changes
 useEffect(() => {
   const userIsAdmin = currentUser?.role === 'super_admin' || currentUser?.role === 'finance_admin' || currentUser?.role === 'rev_rangers';
@@ -3991,6 +4037,14 @@ onDelete={isITViewOnly ? null : async (recordId) => {
     {/* Module Selector */}
     <div className="bg-white rounded-2xl shadow-lg p-4 border border-gray-100">
 <div className="flex flex-wrap items-center gap-2">
+        <button
+          onClick={() => setAnalyticsModule('checklist-overview')}
+          className={`px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 transition-all ${analyticsModule === 'checklist-overview' ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+        >
+          <ClipboardList className="w-4 h-4" />
+          Daily Checklist
+        </button>
+        <div className="w-px h-8 bg-gray-300 mx-1"></div>
         {[
           ...(currentUser?.role === 'rev_rangers' ? [CHECKLIST_MODULES.find(m => m.id === 'daily-recon')] : []),
           ...(currentUser?.role === 'rev_rangers' ? MODULES.filter(m => m.id === 'billing-inquiry') : MODULES)
@@ -4102,6 +4156,422 @@ onDelete={isITViewOnly ? null : async (recordId) => {
             <p className="text-gray-500 text-lg">No data available for this period</p>
             <p className="text-gray-400 text-sm mt-1">Try selecting a different date range or location</p>
           </div>
+        );
+      }
+
+      // Checklist Overview Analytics
+      if (analyticsModule === 'checklist-overview') {
+        const allLoaded = CHECKLIST_MODULES.every(m => moduleData[m.id] !== undefined);
+        if (!allLoaded) {
+          return (
+            <div className="bg-white rounded-2xl shadow-lg p-12 border border-gray-100 text-center">
+              <Loader2 className="w-8 h-8 animate-spin text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-500">Loading checklist data...</p>
+            </div>
+          );
+        }
+
+        const [cYear, cMonth] = checklistCalendarDate.split('-').map(Number);
+        const daysInMonth = new Date(cYear, cMonth, 0).getDate();
+        const hawaiiToday = getHawaiiToday();
+        const activeLocs = locations;
+
+        // Build submission map: modId -> dateStr -> locationId -> entry
+        const subMap = {};
+        CHECKLIST_MODULES.forEach(mod => {
+          subMap[mod.id] = {};
+          (moduleData[mod.id] || []).forEach(entry => {
+            const d = new Date(entry.created_at);
+            const hDate = `${d.toLocaleString('en-US', { timeZone: 'Pacific/Honolulu', year: 'numeric' })}-${String(d.toLocaleString('en-US', { timeZone: 'Pacific/Honolulu', month: '2-digit' })).padStart(2,'0')}-${String(d.toLocaleString('en-US', { timeZone: 'Pacific/Honolulu', day: '2-digit' })).padStart(2,'0')}`;
+            const dateKey = new Date(entry.created_at).toLocaleDateString('en-CA', { timeZone: 'Pacific/Honolulu' });
+            if (!subMap[mod.id][dateKey]) subMap[mod.id][dateKey] = {};
+            const existing = subMap[mod.id][dateKey][entry.location_id];
+            if (!existing || new Date(entry.created_at) > new Date(existing.created_at)) {
+              subMap[mod.id][dateKey][entry.location_id] = entry;
+            }
+          });
+        });
+
+        const getStat = (modId, dateStr, locId) => {
+          const e = subMap[modId]?.[dateStr]?.[locId];
+          if (!e) return 'missing';
+          return e.status || 'Pending';
+        };
+
+        const statDot = (s) => {
+          if (s === 'Approved' || s === 'Accounted') return 'bg-emerald-500';
+          if (s === 'Needs Revisions' || s === 'Rejected') return 'bg-red-500';
+          if (s === 'Pending') return 'bg-amber-400';
+          return 'bg-gray-300';
+        };
+
+        const statBg = (s) => {
+          if (s === 'Approved' || s === 'Accounted') return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+          if (s === 'Needs Revisions' || s === 'Rejected') return 'bg-red-100 text-red-700 border-red-200';
+          if (s === 'Pending') return 'bg-amber-100 text-amber-700 border-amber-200';
+          return 'bg-gray-100 text-gray-400 border-gray-200';
+        };
+
+        const statLabel = (s) => {
+          if (s === 'Approved' || s === 'Accounted') return 'Approved';
+          if (s === 'Needs Revisions' || s === 'Rejected') return 'Revision';
+          if (s === 'Pending') return 'Pending';
+          return 'Missing';
+        };
+
+        const modAbbrev = { 'daily-recon': 'DR', 'completed-procedure': 'CP', 'claims-documents': 'CD' };
+        const filteredMods = checklistAnalyticsTab === 'overview' ? CHECKLIST_MODULES : CHECKLIST_MODULES.filter(m => m.id === checklistAnalyticsTab);
+
+        // Build date arrays
+        const allDates = [];
+        for (let d = 1; d <= daysInMonth; d++) {
+          allDates.push(`${cYear}-${String(cMonth).padStart(2, '0')}-${String(d).padStart(2, '0')}`);
+        }
+        const pastDates = allDates.filter(d => d <= hawaiiToday);
+
+        // KPI: Today
+        let todaySubmitted = 0, todayApproved = 0, todayRevisions = 0;
+        const todayTotal = activeLocs.length * CHECKLIST_MODULES.length;
+        activeLocs.forEach(loc => {
+          CHECKLIST_MODULES.forEach(mod => {
+            const s = getStat(mod.id, hawaiiToday, loc.id);
+            if (s !== 'missing') todaySubmitted++;
+            if (s === 'Approved' || s === 'Accounted') todayApproved++;
+            if (s === 'Needs Revisions' || s === 'Rejected') todayRevisions++;
+          });
+        });
+
+        // KPI: This week (last 7 business days in pastDates)
+        const weekDates = pastDates.slice(-7);
+        let weekTotal = 0, weekSubmitted = 0;
+        weekDates.forEach(date => {
+          activeLocs.forEach(loc => {
+            CHECKLIST_MODULES.forEach(mod => {
+              weekTotal++;
+              if (getStat(mod.id, date, loc.id) !== 'missing') weekSubmitted++;
+            });
+          });
+        });
+
+        // KPI: Pending reviews total
+        let pendingReviews = 0;
+        CHECKLIST_MODULES.forEach(mod => {
+          (moduleData[mod.id] || []).forEach(e => {
+            if (e.status === 'Pending' || !e.status) pendingReviews++;
+          });
+        });
+
+        // Location compliance for visible month
+        const locCompliance = activeLocs.map(loc => {
+          let total = 0, submitted = 0, approved = 0, revisions = 0;
+          pastDates.forEach(date => {
+            CHECKLIST_MODULES.forEach(mod => {
+              total++;
+              const s = getStat(mod.id, date, loc.id);
+              if (s !== 'missing') submitted++;
+              if (s === 'Approved' || s === 'Accounted') approved++;
+              if (s === 'Needs Revisions' || s === 'Rejected') revisions++;
+            });
+          });
+          return { loc, total, submitted, approved, revisions, rate: total > 0 ? (submitted / total * 100) : 0 };
+        }).sort((a, b) => b.rate - a.rate);
+
+        // Perfect locations today
+        const perfectToday = activeLocs.filter(loc => {
+          return CHECKLIST_MODULES.every(mod => getStat(mod.id, hawaiiToday, loc.id) !== 'missing');
+        }).length;
+
+        // Month nav
+        const prevMonth = () => {
+          const d = new Date(cYear, cMonth - 2, 1);
+          setChecklistCalendarDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+        };
+        const nextMonth = () => {
+          const d = new Date(cYear, cMonth, 1);
+          const now = new Date();
+          if (d <= now) setChecklistCalendarDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+        };
+        const monthName = new Date(cYear, cMonth - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+        return (
+          <>
+            {/* Sub-module Tabs */}
+            <div className="bg-white rounded-2xl shadow-lg p-4 border border-gray-100">
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div className="flex items-center gap-2">
+                  {[
+                    { id: 'overview', label: 'All Modules', icon: ClipboardList },
+                    ...CHECKLIST_MODULES.map(m => ({ id: m.id, label: m.name, icon: m.icon }))
+                  ].map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setChecklistAnalyticsTab(tab.id)}
+                      className={`px-3 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-all ${checklistAnalyticsTab === tab.id ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                    >
+                      <tab.icon className="w-4 h-4" />
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+                {/* Month Navigator */}
+                <div className="flex items-center gap-2">
+                  <button onClick={prevMonth} className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-600">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
+                  </button>
+                  <span className="text-sm font-semibold text-gray-700 min-w-[140px] text-center">{monthName}</span>
+                  <button onClick={nextMonth} className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-600">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Today's Status Grid */}
+            <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-blue-200">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+                  <Calendar className="w-5 h-5 text-blue-500" />
+                  Today's Checklist Status
+                </h3>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-500">{new Date(hawaiiToday + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</span>
+                  <span className={`px-3 py-1 rounded-full text-sm font-bold ${todaySubmitted === todayTotal ? 'bg-emerald-100 text-emerald-700' : todaySubmitted > 0 ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'}`}>
+                    {todayTotal > 0 ? Math.round(todaySubmitted / todayTotal * 100) : 0}%
+                  </span>
+                </div>
+              </div>
+
+              {/* Legend */}
+              <div className="flex flex-wrap gap-4 mb-4 text-xs">
+                <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-emerald-500"></div><span className="text-gray-600">Approved</span></div>
+                <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-amber-400"></div><span className="text-gray-600">Pending Review</span></div>
+                <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-red-500"></div><span className="text-gray-600">Needs Revision</span></div>
+                <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-gray-300"></div><span className="text-gray-600">Not Submitted</span></div>
+              </div>
+
+              <div className="space-y-2">
+                {activeLocs.map(loc => {
+                  const statuses = filteredMods.map(mod => ({
+                    mod,
+                    status: getStat(mod.id, hawaiiToday, loc.id)
+                  }));
+                  const completed = statuses.filter(s => s.status !== 'missing').length;
+                  const total = statuses.length;
+                  const allDone = completed === total;
+
+                  return (
+                    <div key={loc.id} className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${allDone ? 'bg-emerald-50 border-emerald-200' : completed > 0 ? 'bg-amber-50 border-amber-200' : 'bg-gray-50 border-gray-200'}`}>
+                      <div className="flex items-center gap-2 w-28 flex-shrink-0">
+                        {allDone ? <CheckCircle className="w-4 h-4 text-emerald-500 flex-shrink-0" /> : <Circle className="w-4 h-4 text-gray-300 flex-shrink-0" />}
+                        <span className="font-medium text-sm text-gray-800 truncate">{loc.name}</span>
+                      </div>
+                      <div className="flex items-center gap-2 flex-1">
+                        {statuses.map(({ mod, status }) => (
+                          <div key={mod.id} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium ${statBg(status)}`}>
+                            {status !== 'missing' ? <CheckCircle className="w-3.5 h-3.5" /> : <Circle className="w-3.5 h-3.5" />}
+                            <span>{modAbbrev[mod.id]}</span>
+                            <span className="hidden sm:inline">· {statLabel(status)}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <span className={`text-sm font-bold ${allDone ? 'text-emerald-600' : completed > 0 ? 'text-amber-600' : 'text-gray-400'}`}>
+                          {completed}/{total}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* KPI Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-4 text-white shadow-lg">
+                <p className="text-emerald-100 text-sm font-medium">Today's Completion</p>
+                <p className="text-3xl font-bold mt-1">{todayTotal > 0 ? Math.round(todaySubmitted / todayTotal * 100) : 0}%</p>
+                <p className="text-emerald-200 text-xs mt-2">{todaySubmitted}/{todayTotal} submitted</p>
+              </div>
+              <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-4 text-white shadow-lg">
+                <p className="text-blue-100 text-sm font-medium">Weekly Average</p>
+                <p className="text-3xl font-bold mt-1">{weekTotal > 0 ? Math.round(weekSubmitted / weekTotal * 100) : 0}%</p>
+                <p className="text-blue-200 text-xs mt-2">Last {weekDates.length} days</p>
+              </div>
+              <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-4 text-white shadow-lg">
+                <p className="text-amber-100 text-sm font-medium">Pending Reviews</p>
+                <p className="text-3xl font-bold mt-1">{pendingReviews}</p>
+                <p className="text-amber-200 text-xs mt-2">Across all modules</p>
+              </div>
+              <div className="bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl p-4 text-white shadow-lg">
+                <p className="text-purple-100 text-sm font-medium">100% Today</p>
+                <p className="text-3xl font-bold mt-1">{perfectToday}/{activeLocs.length}</p>
+                <p className="text-purple-200 text-xs mt-2">Locations complete</p>
+              </div>
+            </div>
+
+            {/* Calendar Grid */}
+            <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+              <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-emerald-500" /> {monthName} — Submission Calendar
+              </h3>
+              <div className="overflow-x-auto -mx-2">
+                <table className="w-full text-sm border-collapse">
+                  <thead>
+                    <tr>
+                      <th className="sticky left-0 z-10 bg-white px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider border-b-2 border-gray-200 min-w-[120px]">Date</th>
+                      {activeLocs.map(loc => (
+                        <th key={loc.id} className="px-2 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider border-b-2 border-gray-200 min-w-[80px]">
+                          {loc.name.length > 10 ? loc.name.slice(0, 10) + '…' : loc.name}
+                        </th>
+                      ))}
+                      <th className="px-3 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider border-b-2 border-gray-200 min-w-[60px]">Rate</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...pastDates].reverse().map(dateStr => {
+                      const dayDate = new Date(dateStr + 'T12:00:00');
+                      const isToday = dateStr === hawaiiToday;
+                      const dayOfWeek = dayDate.getDay();
+                      const isSunday = dayOfWeek === 0;
+                      let daySubmitted = 0, dayTotal = 0;
+
+                      return (
+                        <tr key={dateStr} className={`${isToday ? 'bg-blue-50' : isSunday ? 'bg-gray-50/50' : 'hover:bg-gray-50'} transition-colors`}>
+                          <td className={`sticky left-0 z-10 px-3 py-2 whitespace-nowrap border-b border-gray-100 ${isToday ? 'bg-blue-50' : isSunday ? 'bg-gray-50' : 'bg-white'}`}>
+                            <div className="flex items-center gap-2">
+                              <span className={`font-medium ${isToday ? 'text-blue-700' : isSunday ? 'text-gray-400' : 'text-gray-700'}`}>
+                                {dayDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                              </span>
+                              {isToday && <span className="text-[10px] bg-blue-500 text-white px-1.5 py-0.5 rounded-full font-bold">TODAY</span>}
+                            </div>
+                          </td>
+                          {activeLocs.map(loc => {
+                            const cellStatuses = filteredMods.map(mod => getStat(mod.id, dateStr, loc.id));
+                            const cellSubmitted = cellStatuses.filter(s => s !== 'missing').length;
+                            dayTotal += filteredMods.length;
+                            daySubmitted += cellSubmitted;
+                            const cellComplete = cellSubmitted === filteredMods.length;
+
+                            return (
+                              <td key={loc.id} className={`px-2 py-2 text-center border-b border-gray-100 ${cellComplete && cellSubmitted > 0 ? '' : ''}`}>
+                                <div className="flex items-center justify-center gap-1">
+                                  {filteredMods.map((mod, i) => {
+                                    const s = getStat(mod.id, dateStr, loc.id);
+                                    return (
+                                      <div
+                                        key={mod.id}
+                                        className={`${filteredMods.length === 1 ? 'w-5 h-5' : 'w-3.5 h-3.5'} rounded-full ${statDot(s)} transition-all`}
+                                        title={`${mod.name}: ${statLabel(s)}`}
+                                      />
+                                    );
+                                  })}
+                                </div>
+                              </td>
+                            );
+                          })}
+                          <td className="px-3 py-2 text-center border-b border-gray-100">
+                            {(() => {
+                              let dSub = 0, dTot = 0;
+                              activeLocs.forEach(loc => {
+                                filteredMods.forEach(mod => {
+                                  dTot++;
+                                  if (getStat(mod.id, dateStr, loc.id) !== 'missing') dSub++;
+                                });
+                              });
+                              const pct = dTot > 0 ? Math.round(dSub / dTot * 100) : 0;
+                              return (
+                                <span className={`text-xs font-bold px-2 py-1 rounded-full ${pct === 100 ? 'bg-emerald-100 text-emerald-700' : pct >= 50 ? 'bg-amber-100 text-amber-700' : pct > 0 ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-400'}`}>
+                                  {pct}%
+                                </span>
+                              );
+                            })()}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Location Compliance Rankings */}
+            <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+              <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-blue-500" /> Location Compliance — {monthName}
+              </h3>
+              <div className="space-y-3">
+                {locCompliance.map((item, idx) => {
+                  const maxRate = locCompliance[0]?.rate || 100;
+                  return (
+                    <div key={item.loc.id} className="p-4 rounded-xl bg-gray-50 border border-gray-100">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-3">
+                          <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold ${idx === 0 ? 'bg-emerald-500 text-white' : idx === 1 ? 'bg-blue-500 text-white' : idx === 2 ? 'bg-violet-500 text-white' : 'bg-gray-200 text-gray-600'}`}>
+                            {idx + 1}
+                          </span>
+                          <span className="font-medium text-gray-800">{item.loc.name}</span>
+                        </div>
+                        <span className={`text-lg font-bold ${item.rate >= 90 ? 'text-emerald-600' : item.rate >= 70 ? 'text-amber-600' : item.rate >= 50 ? 'text-orange-600' : 'text-red-600'}`}>
+                          {item.rate.toFixed(0)}%
+                        </span>
+                      </div>
+                      <div className="h-3 bg-gray-200 rounded-full overflow-hidden mb-2">
+                        <div className={`h-full rounded-full transition-all ${item.rate >= 90 ? 'bg-emerald-500' : item.rate >= 70 ? 'bg-amber-500' : item.rate >= 50 ? 'bg-orange-500' : 'bg-red-500'}`} style={{ width: `${item.rate}%` }}></div>
+                      </div>
+                      <div className="flex items-center gap-4 text-xs text-gray-500">
+                        <span>{item.submitted}/{item.total} submitted</span>
+                        <span className="text-emerald-600">{item.approved} approved</span>
+                        {item.revisions > 0 && <span className="text-red-600">{item.revisions} revisions</span>}
+                        <span className="text-gray-400">{item.total - item.submitted} missing</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Per-Module Breakdown */}
+            <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+              <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <PieChart className="w-5 h-5 text-teal-500" /> Module Breakdown — {monthName}
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {CHECKLIST_MODULES.map(mod => {
+                  let modSubmitted = 0, modApproved = 0, modRevisions = 0, modTotal = 0;
+                  pastDates.forEach(date => {
+                    activeLocs.forEach(loc => {
+                      modTotal++;
+                      const s = getStat(mod.id, date, loc.id);
+                      if (s !== 'missing') modSubmitted++;
+                      if (s === 'Approved' || s === 'Accounted') modApproved++;
+                      if (s === 'Needs Revisions' || s === 'Rejected') modRevisions++;
+                    });
+                  });
+                  const modRate = modTotal > 0 ? Math.round(modSubmitted / modTotal * 100) : 0;
+                  const colors = MODULE_COLORS[mod.id];
+
+                  return (
+                    <div key={mod.id} className={`p-4 rounded-xl border-2 ${colors?.border} ${colors?.bg}`}>
+                      <div className="flex items-center gap-2 mb-3">
+                        <mod.icon className={`w-5 h-5 ${colors?.text}`} />
+                        <span className={`font-semibold ${colors?.text}`}>{mod.name}</span>
+                      </div>
+                      <p className="text-3xl font-bold text-gray-800 mb-2">{modRate}%</p>
+                      <div className="h-2 bg-gray-200 rounded-full overflow-hidden mb-3">
+                        <div className={`h-full rounded-full ${colors?.accent}`} style={{ width: `${modRate}%` }}></div>
+                      </div>
+                      <div className="space-y-1 text-xs">
+                        <div className="flex justify-between"><span className="text-gray-500">Submitted</span><span className="font-medium">{modSubmitted}/{modTotal}</span></div>
+                        <div className="flex justify-between"><span className="text-emerald-600">Approved</span><span className="font-medium">{modApproved}</span></div>
+                        {modRevisions > 0 && <div className="flex justify-between"><span className="text-red-600">Needs Revision</span><span className="font-medium">{modRevisions}</span></div>}
+                        <div className="flex justify-between"><span className="text-gray-400">Missing</span><span className="font-medium">{modTotal - modSubmitted}</span></div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </>
         );
       }
       
