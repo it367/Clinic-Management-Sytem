@@ -1566,12 +1566,12 @@ useEffect(() => {
 // Load data when analytics module changes
 useEffect(() => {
   const userIsAdmin = currentUser?.role === 'super_admin' || currentUser?.role === 'finance_admin' || currentUser?.role === 'rev_rangers';
-  if (userIsAdmin && adminView === 'analytics' && analyticsModule) {
+if (userIsAdmin && adminView === 'analytics' && analyticsModule && analyticsModule !== 'checklist-overview') {
     if (!moduleData[analyticsModule]) {
       loadModuleData(analyticsModule);
     }
   }
-}, [analyticsModule, adminView, currentUser, moduleData]);
+}, [analyticsModule, adminView, currentUser]);
 const isAdmin = currentUser?.role === 'super_admin' || currentUser?.role === 'finance_admin' || currentUser?.role === 'it' || currentUser?.role === 'rev_rangers';
 const isSuperAdmin = currentUser?.role === 'super_admin' || currentUser?.role === 'it';
 const isChecklistReviewer = currentUser?.role === 'super_admin' || currentUser?.role === 'rev_rangers';
@@ -1637,9 +1637,8 @@ const deleteRecord = async (moduleId, recordId) => {
     if (passwordValid === false) showMessage('error', 'Incorrect password');
     return false;
   }
-
-  const module = ALL_MODULES.find(m => m.id === moduleId);
-  if (!module) return false;
+    const module = ALL_MODULES.find(m => m.id === moduleId);
+    if (!module) { setLoading(false); return; }
 
   const { data: docs } = await supabase.from('documents').select('storage_path').eq('record_type', moduleId).eq('record_id', recordId);
   if (docs && docs.length > 0) {
