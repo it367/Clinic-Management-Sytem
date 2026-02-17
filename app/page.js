@@ -3206,10 +3206,17 @@ if (!confirmed) return;;
     return;
   }
 
-  showMessage('success', '✓ Entry updated!');
+showMessage('success', '✓ Entry updated!');
   setEditingStaffEntry(null);
   setStaffEditForm({});
   loadModuleData(activeModule);
+  
+  // Refresh checklist status if editing a checklist module
+  if (CHECKLIST_MODULES.some(m => m.id === activeModule) && selectedLocation) {
+    const loc = locations.find(l => l.name === selectedLocation);
+    if (loc) loadChecklistStatus(loc.id);
+  }
+  
   setSaving(false);
 };
 
@@ -5794,16 +5801,24 @@ if (activeModule === 'it-requests') {
                           <span className="text-gray-500 text-sm">Total Collected:</span>
                           <span className="font-bold text-emerald-700 text-lg ml-2">${Number(checklistStatus['daily-recon']?.entry?.total_collected || 0).toFixed(2)}</span>
                         </div>
-                        {checklistStatus['daily-recon']?.entry?.notes && (
+{checklistStatus['daily-recon']?.entry?.notes && (
                           <div>
                             <span className="text-xs font-medium text-gray-500">Notes</span>
                             <p className="text-gray-700 bg-white p-3 rounded-lg border border-gray-100 mt-1">{checklistStatus['daily-recon']?.entry?.notes}</p>
                           </div>
                         )}
                       </div>
+                      {!isChecklistPastDeadline() && (
+                        <button
+                          onClick={() => startEditingStaffEntry(checklistStatus['daily-recon']?.entry)}
+                          className="w-full mt-4 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl font-medium hover:shadow-lg transition-all flex items-center justify-center gap-2"
+                        >
+                          <Edit3 className="w-4 h-4" /> Edit Today's Entry
+                        </button>
+                      )}
                       <div className="mt-4 p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-center">
                         <p className="text-sm text-emerald-700 font-medium flex items-center justify-center gap-2">
-                          <Lock className="w-4 h-4" /> Entry locked for today. Resets at midnight.
+                          <Lock className="w-4 h-4" /> One entry per day. Resets at midnight.
                         </p>
                       </div>
                     </div>
@@ -5856,7 +5871,7 @@ if (activeModule === 'it-requests') {
 
 {activeModule === 'completed-procedure' && (
                 <>
-                  {checklistStatus['completed-procedure']?.submitted ? (
+{checklistStatus['completed-procedure']?.submitted ? (
                     <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-l-emerald-500">
                       <div className="flex items-center gap-3 mb-4">
                         <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center">
@@ -5867,37 +5882,78 @@ if (activeModule === 'it-requests') {
                           <p className="text-sm text-emerald-600 font-medium">Submitted today at {new Date(checklistStatus['completed-procedure']?.entry?.created_at).toLocaleTimeString('en-US', { timeZone: 'Pacific/Honolulu', hour: 'numeric', minute: '2-digit' })}</p>
                         </div>
                       </div>
-                      <div className="space-y-3 bg-gray-50 rounded-xl p-4 border border-gray-200">
-                        <div className="flex items-center justify-between">
-                          <StatusBadge status={checklistStatus['completed-procedure']?.entry?.status || 'Pending'} />
-                          {checklistStatus['completed-procedure']?.entry?.creator?.name && (
-                            <span className="text-sm text-gray-500">By: {checklistStatus['completed-procedure']?.entry?.creator?.name}</span>
-                          )}
-                        </div>
-                        <div>
-                          <span className="text-xs font-medium text-gray-500">Checked By</span>
-                          <p className="font-medium text-gray-800">{checklistStatus['completed-procedure']?.entry?.checked_by || '-'}</p>
-                        </div>
-                        {checklistStatus['completed-procedure']?.entry?.notes && (
-                          <div>
-                            <span className="text-xs font-medium text-gray-500">Notes</span>
-                            <p className="text-gray-700 bg-white p-3 rounded-lg border border-gray-100 mt-1">{checklistStatus['completed-procedure']?.entry?.notes}</p>
+
+                      {editingStaffEntry === checklistStatus['completed-procedure']?.entry?.id ? (
+                        <div className="space-y-4 bg-teal-50 rounded-xl p-4 border border-teal-200">
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-semibold text-teal-800 flex items-center gap-2">
+                              <Edit3 className="w-4 h-4" /> Edit Today's Entry
+                            </h4>
+                            <button onClick={() => { setEditingStaffEntry(null); setStaffEditForm({}); }} className="text-gray-400 hover:text-gray-600">
+                              <X className="w-5 h-5" />
+                            </button>
                           </div>
-                        )}
-                        {checklistStatus['completed-procedure']?.entry?.admin_notes && (
-                          <div>
-                            <span className="text-xs font-medium text-gray-500">Admin Notes</span>
-                            <p className={`p-3 rounded-lg border mt-1 ${checklistStatus['completed-procedure']?.entry?.status === 'Needs Revisions' ? 'bg-orange-50 border-orange-200 text-orange-800' : 'bg-emerald-50 border-emerald-200 text-emerald-800'}`}>
-                              {checklistStatus['completed-procedure']?.entry?.admin_notes}
+                          <div className="grid grid-cols-2 gap-3">
+                            <InputField label="Checked By" value={staffEditForm.checked_by} onChange={ev => updateStaffEditForm('checked_by', ev.target.value)} />
+                            <div className="flex items-end">
+                              <div className="p-3 bg-teal-100 rounded-xl border border-teal-200 text-sm text-teal-700 w-full">
+                                <span className="font-medium">Date:</span> {new Date().toLocaleDateString('en-US', { timeZone: 'Pacific/Honolulu', weekday: 'short', month: 'short', day: 'numeric' })}
+                              </div>
+                            </div>
+                          </div>
+                          <InputField label="Notes" large value={staffEditForm.notes} onChange={ev => updateStaffEditForm('notes', ev.target.value)} placeholder="Update notes..." />
+                          <div className="flex gap-2">
+                            <button onClick={saveStaffEntryUpdate} disabled={saving} className="flex-1 py-2.5 bg-gradient-to-r from-teal-500 to-emerald-500 text-white rounded-xl font-medium hover:shadow-lg transition-all disabled:opacity-50">
+                              {saving ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Save Changes'}
+                            </button>
+                            <button onClick={() => { setEditingStaffEntry(null); setStaffEditForm({}); }} className="px-4 py-2.5 bg-gray-200 rounded-xl font-medium hover:bg-gray-300 transition-all">
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="space-y-3 bg-gray-50 rounded-xl p-4 border border-gray-200">
+                            <div className="flex items-center justify-between">
+                              <StatusBadge status={checklistStatus['completed-procedure']?.entry?.status || 'Pending'} />
+                              {checklistStatus['completed-procedure']?.entry?.creator?.name && (
+                                <span className="text-sm text-gray-500">By: {checklistStatus['completed-procedure']?.entry?.creator?.name}</span>
+                              )}
+                            </div>
+                            <div>
+                              <span className="text-xs font-medium text-gray-500">Checked By</span>
+                              <p className="font-medium text-gray-800">{checklistStatus['completed-procedure']?.entry?.checked_by || '-'}</p>
+                            </div>
+                            {checklistStatus['completed-procedure']?.entry?.notes && (
+                              <div>
+                                <span className="text-xs font-medium text-gray-500">Notes</span>
+                                <p className="text-gray-700 bg-white p-3 rounded-lg border border-gray-100 mt-1">{checklistStatus['completed-procedure']?.entry?.notes}</p>
+                              </div>
+                            )}
+                            {checklistStatus['completed-procedure']?.entry?.admin_notes && (
+                              <div>
+                                <span className="text-xs font-medium text-gray-500">Admin Notes</span>
+                                <p className={`p-3 rounded-lg border mt-1 ${checklistStatus['completed-procedure']?.entry?.status === 'Needs Revisions' ? 'bg-orange-50 border-orange-200 text-orange-800' : 'bg-emerald-50 border-emerald-200 text-emerald-800'}`}>
+                                  {checklistStatus['completed-procedure']?.entry?.admin_notes}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                          {!isChecklistPastDeadline() && (
+                            <button
+                              onClick={() => startEditingStaffEntry(checklistStatus['completed-procedure']?.entry)}
+                              className="w-full mt-4 py-3 bg-gradient-to-r from-teal-500 to-emerald-500 text-white rounded-xl font-medium hover:shadow-lg transition-all flex items-center justify-center gap-2"
+                            >
+                              <Edit3 className="w-4 h-4" /> Edit Today's Entry
+                            </button>
+                          )}
+                          <div className="mt-4 p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-center">
+                            <p className="text-sm text-emerald-700 font-medium flex items-center justify-center gap-2">
+                              <Lock className="w-4 h-4" /> One entry per day. Resets at midnight.
                             </p>
                           </div>
-                        )}
-                      </div>
-                      <div className="mt-4 p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-center">
-                        <p className="text-sm text-emerald-700 font-medium flex items-center justify-center gap-2">
-                          <Lock className="w-4 h-4" /> Entry locked for today. Resets at midnight.
-                        </p>
-                      </div>
+                        </>
+                      )}
                     </div>
                   ) : isChecklistPastDeadline() ? (
                     <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-l-gray-400">
@@ -5942,7 +5998,7 @@ if (activeModule === 'it-requests') {
 
               {activeModule === 'claims-documents' && (
                 <>
-                  {checklistStatus['claims-documents']?.submitted ? (
+{checklistStatus['claims-documents']?.submitted ? (
                     <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-l-emerald-500">
                       <div className="flex items-center gap-3 mb-4">
                         <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center">
@@ -5953,37 +6009,78 @@ if (activeModule === 'it-requests') {
                           <p className="text-sm text-emerald-600 font-medium">Submitted today at {new Date(checklistStatus['claims-documents']?.entry?.created_at).toLocaleTimeString('en-US', { timeZone: 'Pacific/Honolulu', hour: 'numeric', minute: '2-digit' })}</p>
                         </div>
                       </div>
-                      <div className="space-y-3 bg-gray-50 rounded-xl p-4 border border-gray-200">
-                        <div className="flex items-center justify-between">
-                          <StatusBadge status={checklistStatus['claims-documents']?.entry?.status || 'Pending'} />
-                          {checklistStatus['claims-documents']?.entry?.creator?.name && (
-                            <span className="text-sm text-gray-500">By: {checklistStatus['claims-documents']?.entry?.creator?.name}</span>
-                          )}
-                        </div>
-                        <div>
-                          <span className="text-xs font-medium text-gray-500">Checked By</span>
-                          <p className="font-medium text-gray-800">{checklistStatus['claims-documents']?.entry?.checked_by || '-'}</p>
-                        </div>
-                        {checklistStatus['claims-documents']?.entry?.notes && (
-                          <div>
-                            <span className="text-xs font-medium text-gray-500">Notes</span>
-                            <p className="text-gray-700 bg-white p-3 rounded-lg border border-gray-100 mt-1">{checklistStatus['claims-documents']?.entry?.notes}</p>
+
+                      {editingStaffEntry === checklistStatus['claims-documents']?.entry?.id ? (
+                        <div className="space-y-4 bg-sky-50 rounded-xl p-4 border border-sky-200">
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-semibold text-sky-800 flex items-center gap-2">
+                              <Edit3 className="w-4 h-4" /> Edit Today's Entry
+                            </h4>
+                            <button onClick={() => { setEditingStaffEntry(null); setStaffEditForm({}); }} className="text-gray-400 hover:text-gray-600">
+                              <X className="w-5 h-5" />
+                            </button>
                           </div>
-                        )}
-                        {checklistStatus['claims-documents']?.entry?.admin_notes && (
-                          <div>
-                            <span className="text-xs font-medium text-gray-500">Admin Notes</span>
-                            <p className={`p-3 rounded-lg border mt-1 ${checklistStatus['claims-documents']?.entry?.status === 'Needs Revisions' ? 'bg-orange-50 border-orange-200 text-orange-800' : 'bg-emerald-50 border-emerald-200 text-emerald-800'}`}>
-                              {checklistStatus['claims-documents']?.entry?.admin_notes}
+                          <div className="grid grid-cols-2 gap-3">
+                            <InputField label="Checked By" value={staffEditForm.checked_by} onChange={ev => updateStaffEditForm('checked_by', ev.target.value)} />
+                            <div className="flex items-end">
+                              <div className="p-3 bg-sky-100 rounded-xl border border-sky-200 text-sm text-sky-700 w-full">
+                                <span className="font-medium">Date:</span> {new Date().toLocaleDateString('en-US', { timeZone: 'Pacific/Honolulu', weekday: 'short', month: 'short', day: 'numeric' })}
+                              </div>
+                            </div>
+                          </div>
+                          <InputField label="Notes" large value={staffEditForm.notes} onChange={ev => updateStaffEditForm('notes', ev.target.value)} placeholder="Update notes..." />
+                          <div className="flex gap-2">
+                            <button onClick={saveStaffEntryUpdate} disabled={saving} className="flex-1 py-2.5 bg-gradient-to-r from-sky-500 to-blue-500 text-white rounded-xl font-medium hover:shadow-lg transition-all disabled:opacity-50">
+                              {saving ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Save Changes'}
+                            </button>
+                            <button onClick={() => { setEditingStaffEntry(null); setStaffEditForm({}); }} className="px-4 py-2.5 bg-gray-200 rounded-xl font-medium hover:bg-gray-300 transition-all">
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="space-y-3 bg-gray-50 rounded-xl p-4 border border-gray-200">
+                            <div className="flex items-center justify-between">
+                              <StatusBadge status={checklistStatus['claims-documents']?.entry?.status || 'Pending'} />
+                              {checklistStatus['claims-documents']?.entry?.creator?.name && (
+                                <span className="text-sm text-gray-500">By: {checklistStatus['claims-documents']?.entry?.creator?.name}</span>
+                              )}
+                            </div>
+                            <div>
+                              <span className="text-xs font-medium text-gray-500">Checked By</span>
+                              <p className="font-medium text-gray-800">{checklistStatus['claims-documents']?.entry?.checked_by || '-'}</p>
+                            </div>
+                            {checklistStatus['claims-documents']?.entry?.notes && (
+                              <div>
+                                <span className="text-xs font-medium text-gray-500">Notes</span>
+                                <p className="text-gray-700 bg-white p-3 rounded-lg border border-gray-100 mt-1">{checklistStatus['claims-documents']?.entry?.notes}</p>
+                              </div>
+                            )}
+                            {checklistStatus['claims-documents']?.entry?.admin_notes && (
+                              <div>
+                                <span className="text-xs font-medium text-gray-500">Admin Notes</span>
+                                <p className={`p-3 rounded-lg border mt-1 ${checklistStatus['claims-documents']?.entry?.status === 'Needs Revisions' ? 'bg-orange-50 border-orange-200 text-orange-800' : 'bg-emerald-50 border-emerald-200 text-emerald-800'}`}>
+                                  {checklistStatus['claims-documents']?.entry?.admin_notes}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                          {!isChecklistPastDeadline() && (
+                            <button
+                              onClick={() => startEditingStaffEntry(checklistStatus['claims-documents']?.entry)}
+                              className="w-full mt-4 py-3 bg-gradient-to-r from-sky-500 to-blue-500 text-white rounded-xl font-medium hover:shadow-lg transition-all flex items-center justify-center gap-2"
+                            >
+                              <Edit3 className="w-4 h-4" /> Edit Today's Entry
+                            </button>
+                          )}
+                          <div className="mt-4 p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-center">
+                            <p className="text-sm text-emerald-700 font-medium flex items-center justify-center gap-2">
+                              <Lock className="w-4 h-4" /> One entry per day. Resets at midnight.
                             </p>
                           </div>
-                        )}
-                      </div>
-                      <div className="mt-4 p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-center">
-                        <p className="text-sm text-emerald-700 font-medium flex items-center justify-center gap-2">
-                          <Lock className="w-4 h-4" /> Entry locked for today. Resets at midnight.
-                        </p>
-                      </div>
+                        </>
+                      )}
                     </div>
                   ) : isChecklistPastDeadline() ? (
                     <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-l-gray-400">
@@ -6348,7 +6445,21 @@ if (activeModule === 'it-requests') {
                         </div>
                       </div>
                     )}
-                    
+
+{(activeModule === 'completed-procedure' || activeModule === 'claims-documents') && (
+                      <div className="grid grid-cols-2 gap-3">
+                        <InputField label="Checked By" value={staffEditForm.checked_by} onChange={ev => updateStaffEditForm('checked_by', ev.target.value)} />
+                        <div className="flex items-end">
+                          <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 text-sm text-gray-600 w-full">
+                            <span className="font-medium">Module:</span> {activeModule === 'completed-procedure' ? 'Completed Procedure' : 'Claims & Documents'}
+                          </div>
+                        </div>
+                        <div className="col-span-2">
+                          <InputField label="Notes" large value={staffEditForm.notes} onChange={ev => updateStaffEditForm('notes', ev.target.value)} placeholder="Enter notes..." />
+                        </div>
+                      </div>
+                    )}
+
                     {activeModule === 'it-requests' && (
                       <div className="grid grid-cols-2 gap-3">
                         <InputField label="Date Reported" type="date" value={staffEditForm.date_reported} onChange={ev => updateStaffEditForm('date_reported', ev.target.value)} />
