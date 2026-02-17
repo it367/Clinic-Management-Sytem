@@ -4111,8 +4111,8 @@ onDelete={isITViewOnly ? null : async (recordId) => {
     {(() => {
       let data = moduleData[analyticsModule] || [];
       
-      // Show loading if no data yet
-      if (!moduleData[analyticsModule]) {
+// Show loading if no data yet (skip for checklist-overview which has its own loading)
+      if (!moduleData[analyticsModule] && analyticsModule !== 'checklist-overview') {
         return (
           <div className="bg-white rounded-2xl shadow-lg p-12 border border-gray-100 text-center">
             <Loader2 className="w-8 h-8 animate-spin text-gray-400 mx-auto mb-4" />
