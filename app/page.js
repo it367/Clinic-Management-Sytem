@@ -835,7 +835,7 @@ const handleChecklistSave = () => {
                 </div>
               )}
 
-              {/* Admin Notes - Read Only */}
+{/* Admin Notes - Read Only */}
               {!isEditing && entry.admin_notes && (
                 <div className={`p-4 rounded-xl border ${entry.status === 'Needs Revisions' ? 'bg-orange-50 border-orange-200' : 'bg-emerald-50 border-emerald-200'}`}>
                   <h4 className={`font-semibold mb-2 flex items-center gap-2 ${entry.status === 'Needs Revisions' ? 'text-orange-800' : 'text-emerald-800'}`}>
