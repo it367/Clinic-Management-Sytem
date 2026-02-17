@@ -1489,6 +1489,13 @@ useEffect(() => { if (currentUser) setNameForm(currentUser.name || ''); }, [curr
   }, [currentUser, selectedLocation, locations]);
 
 useEffect(() => { setCurrentPage(1); setRecordSearch(''); }, [activeModule, adminLocation]);
+
+  useEffect(() => {
+  if (adminView === 'rev-entry' && activeModule !== 'daily-recon') {
+    setAdminView('records');
+  }
+}, [activeModule]);
+  
   useEffect(() => { setStaffCurrentPage(1); setStaffRecordSearch(''); setEditingStaffEntry(null); }, [activeModule, selectedLocation]);
 
   useEffect(() => {
@@ -2323,10 +2330,11 @@ const saveEntry = async (moduleId) => {
     setSaving(true);
     const module = ALL_MODULES.find(m => m.id === moduleId);
     const form = forms[moduleId];
-    const loc = locations.find(l => l.name === selectedLocation);
+const locationName = currentUser.role === 'rev_rangers' ? adminLocation : selectedLocation;
+    const loc = locations.find(l => l.name === locationName);
 
     if (!loc) {
-      showMessage('error', 'Please select a location');
+      showMessage('error', currentUser.role === 'rev_rangers' ? 'Please select a specific location from the sidebar filter' : 'Please select a location');
       setSaving(false);
       return;
     }
@@ -3735,7 +3743,7 @@ onUpdateRefundRequest={async (entryId, formData) => {
               <button onClick={() => setSidebarOpen(!sidebarOpen)} className="lg:hidden p-2 hover:bg-gray-100 rounded-xl"><Menu className="w-5 h-5" /></button>
               <div>
 <h1 className="font-bold text-gray-800 text-lg">
-                  {isAdmin ? (adminView === 'users' ? 'User Management' : adminView === 'export' ? 'Export Data' : adminView === 'documents' ? 'All Documents' : adminView === 'settings' ? 'Settings' : adminView === 'analytics' ? 'Analytics' : currentUser?.role === 'rev_rangers' ? `Review: ${currentModule?.name}` : currentModule?.name) : (view === 'settings' ? 'Settings' : currentModule?.name)}
+                  {isAdmin ? (adminView === 'users' ? 'User Management' : adminView === 'export' ? 'Export Data' : adminView === 'documents' ? 'All Documents' : adminView === 'settings' ? 'Settings' : adminView === 'analytics' ? 'Analytics' : adminView === 'rev-entry' ? `New Entry: ${currentModule?.name}` : currentUser?.role === 'rev_rangers' ? `Review: ${currentModule?.name}` : currentModule?.name) : (view === 'settings' ? 'Settings' : currentModule?.name)}
                 </h1>
                 <p className="text-sm text-gray-500">{isAdmin ? (adminLocation === 'all' ? 'All Locations' : adminLocation) : selectedLocation}</p>
               </div>
@@ -3748,7 +3756,11 @@ onUpdateRefundRequest={async (entryId, formData) => {
 
 {/* Tabs */}
           <div className="flex gap-2 px-4 pb-3 overflow-x-auto">
-            {isAdmin && adminView === 'records' ? (
+{isAdmin && currentUser?.role === 'rev_rangers' && activeModule === 'daily-recon' ? (
+              [{ id: 'rev-entry', label: '+ New Entry' }, { id: 'records', label: 'Records' }].map(tab => (
+                <button key={tab.id} onClick={() => setAdminView(tab.id)} className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${adminView === tab.id ? 'bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow-lg' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{tab.label}</button>
+              ))
+            ) : isAdmin && adminView === 'records' ? (
               <button className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap flex items-center gap-2 transition-all ${currentColors?.accent} text-white shadow-lg`}>
                 <FileText className="w-4 h-4" />Records
               </button>
@@ -5085,6 +5097,53 @@ const totalDeposited = filteredData.reduce((sum, r) => {
         </button>
       </div>
     </div>
+  </div>
+)}
+
+{/* Rev Rangers Daily Recon Entry */}
+{isAdmin && adminView === 'rev-entry' && currentUser?.role === 'rev_rangers' && activeModule === 'daily-recon' && (
+  <div className="space-y-4">
+    {adminLocation === 'all' ? (
+      <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-amber-200">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center">
+            <Building2 className="w-6 h-6 text-amber-600" />
+          </div>
+          <div>
+            <h2 className="font-semibold text-gray-800">Select a Location</h2>
+            <p className="text-sm text-amber-600">Please select a specific location from the sidebar filter before entering data.</p>
+          </div>
+        </div>
+      </div>
+    ) : (
+      <>
+        <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-l-amber-500">
+          <h2 className="font-semibold mb-2 text-gray-800 flex items-center gap-2">
+            <DollarSign className="w-5 h-5 text-amber-500" /> Daily Recon — {adminLocation}
+          </h2>
+          <p className="text-sm text-gray-500 mb-4">EFT, Insurance Check & VCC Entry</p>
+          <div className="grid grid-cols-2 gap-4">
+            <InputField label="Recon Date" type="date" value={forms['daily-recon'].recon_date} onChange={e => updateForm('daily-recon', 'recon_date', e.target.value)} />
+            <InputField label="Insurance Check" prefix="$" value={forms['daily-recon'].insurance_checks} onChange={e => updateForm('daily-recon', 'insurance_checks', e.target.value)} />
+            <InputField label="VCC" prefix="$" value={forms['daily-recon'].vcc} onChange={e => updateForm('daily-recon', 'vcc', e.target.value)} />
+            <InputField label="EFTs" prefix="$" value={forms['daily-recon'].efts} onChange={e => updateForm('daily-recon', 'efts', e.target.value)} />
+          </div>
+          <div className="mt-4">
+            <InputField label="Notes" value={forms['daily-recon'].notes} onChange={e => updateForm('daily-recon', 'notes', e.target.value)} />
+          </div>
+        </div>
+        <div className="bg-white rounded-2xl shadow-lg p-6">
+          <FileUpload label="Upload Documents" files={files['daily-recon'].documents} onFilesChange={f => updateFiles('daily-recon', 'documents', f)} onViewFile={setViewingFile} />
+        </div>
+        <button
+          onClick={() => saveEntry('daily-recon')}
+          disabled={saving}
+          className="w-full py-4 bg-gradient-to-r from-amber-600 to-orange-600 text-white rounded-xl text-lg font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
+        >
+          {saving ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Save Entry'}
+        </button>
+      </>
+    )}
   </div>
 )}
 
