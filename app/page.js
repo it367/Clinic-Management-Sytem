@@ -1399,10 +1399,17 @@ useEffect(() => {
         setLastLogin(sessionData.lastLogin);
 // Load users if admin and set default view
 if (sessionData.user.role === 'super_admin' || sessionData.user.role === 'finance_admin' || sessionData.user.role === 'it' || sessionData.user.role === 'rev_rangers') {
-  loadUsers();
+  if (sessionData.user.role !== 'rev_rangers') {
+    loadUsers();
+  }
   loadItUsers();
   loadFinanceAdminUsers();
-  setAdminView('analytics');
+  if (sessionData.user.role === 'rev_rangers') {
+    setAdminView('records');
+    setActiveModule('completed-procedure');
+  } else {
+    setAdminView('analytics');
+  }
 }
       }
     } catch (e) {
@@ -1984,12 +1991,19 @@ setCurrentUser(user);
       setSelectedLocation(selectedLoc);
     }
 
-if (user.role === 'super_admin' || user.role === 'finance_admin' || user.role === 'rev_rangers') {
-      loadUsers();
+if (user.role === 'super_admin' || user.role === 'finance_admin' || user.role === 'it' || user.role === 'rev_rangers') {
+      if (user.role !== 'rev_rangers') {
+        loadUsers();
+      }
       loadItUsers();
       loadFinanceAdminUsers();
       loadLoginHistory(user.id);
-      setAdminView('analytics'); // Default to analytics for admins
+      if (user.role === 'rev_rangers') {
+        setAdminView('records');
+        setActiveModule('completed-procedure');
+      } else {
+        setAdminView('analytics');
+      }
     }
 
     showMessage('success', '✓ Login successful!');
@@ -3524,7 +3538,7 @@ onUpdateRefundRequest={async (entryId, formData) => {
         {/* Navigation */}
         <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto">
           {/* Analytics - Admin Only */}
-          {isAdmin && (
+{isAdmin && currentUser?.role !== 'rev_rangers' && (
             <>
               <button
                 onClick={() => { setAdminView('analytics'); setSidebarOpen(false); }}
@@ -3594,7 +3608,9 @@ onUpdateRefundRequest={async (entryId, formData) => {
 
           
             
-<p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">Modules</p>
+{currentUser?.role !== 'rev_rangers' && (
+          <>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">Modules</p>
           {MODULES.map(m => {
             const colors = MODULE_COLORS[m.id];
             const isActive = activeModule === m.id && adminView !== 'users' && adminView !== 'export' && adminView !== 'settings' && view !== 'settings';
@@ -3608,9 +3624,11 @@ onUpdateRefundRequest={async (entryId, formData) => {
                   <m.icon className={`w-4 h-4 ${isActive ? colors.text : 'text-gray-500'}`} />
                 </div>
                 <span className="text-sm font-medium">{m.name}</span>
-              </button>
+            </button>
             );
           })}
+          </>
+          )}
 
 {(currentUser?.role === 'super_admin' || currentUser?.role === 'it' || !isAdmin || isOfficeManager) && (
             <>
@@ -3635,7 +3653,7 @@ onUpdateRefundRequest={async (entryId, formData) => {
             </>
           )}
 
-          {isAdmin && (
+{isAdmin && currentUser?.role !== 'rev_rangers' && (
             <>
               <div className="border-t my-4"></div>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">Management</p>
@@ -3679,7 +3697,7 @@ onUpdateRefundRequest={async (entryId, formData) => {
               <button onClick={() => setSidebarOpen(!sidebarOpen)} className="lg:hidden p-2 hover:bg-gray-100 rounded-xl"><Menu className="w-5 h-5" /></button>
               <div>
 <h1 className="font-bold text-gray-800 text-lg">
-                  {isAdmin ? (adminView === 'users' ? 'User Management' : adminView === 'export' ? 'Export Data' : adminView === 'documents' ? 'All Documents' : adminView === 'settings' ? 'Settings' : adminView === 'analytics' ? 'Analytics' : currentModule?.name) : (view === 'settings' ? 'Settings' : currentModule?.name)}
+                  {isAdmin ? (adminView === 'users' ? 'User Management' : adminView === 'export' ? 'Export Data' : adminView === 'documents' ? 'All Documents' : adminView === 'settings' ? 'Settings' : adminView === 'analytics' ? 'Analytics' : currentUser?.role === 'rev_rangers' ? `Review: ${currentModule?.name}` : currentModule?.name) : (view === 'settings' ? 'Settings' : currentModule?.name)}
                 </h1>
                 <p className="text-sm text-gray-500">{isAdmin ? (adminLocation === 'all' ? 'All Locations' : adminLocation) : selectedLocation}</p>
               </div>
