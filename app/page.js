@@ -834,57 +834,6 @@ const handleChecklistSave = () => {
                 </div>
               )}
 
-              {/* Admin Review Section */}
-              {canReviewChecklist && (
-                <div className="mt-6 pt-4 border-t border-gray-200">
-                  {!isEditing ? (
-                    <button
-                      onClick={() => setIsEditing(true)}
-                      className={`w-full py-3 text-white rounded-xl font-medium hover:shadow-lg transition-all flex items-center justify-center gap-2 ${module?.id === 'completed-procedure' ? 'bg-gradient-to-r from-teal-500 to-emerald-500' : 'bg-gradient-to-r from-sky-500 to-blue-500'}`}
-                    >
-                      <Edit3 className="w-4 h-4" /> Review & Update Status
-                    </button>
-                  ) : (
-                    <div className={`space-y-4 p-4 rounded-xl border ${module?.id === 'completed-procedure' ? 'bg-teal-50 border-teal-200' : 'bg-sky-50 border-sky-200'}`}>
-                      <h4 className={`font-semibold flex items-center gap-2 ${module?.id === 'completed-procedure' ? 'text-teal-800' : 'text-sky-800'}`}>
-                        <Edit3 className="w-4 h-4" /> Review Submission 
-                      </h4>
-                      <div>
-                        <label className="text-xs font-medium text-gray-600 mb-1.5 block">Status</label>
-                        <select
-                          value={checklistEditForm.status}
-                          onChange={e => setChecklistEditForm({ ...checklistEditForm, status: e.target.value })}
-                          className="w-full p-2.5 border-2 border-gray-200 rounded-xl outline-none focus:border-teal-400 bg-white"
-                        >
-                          <option value="Pending">Pending</option>
-                          <option value="Needs Revisions">Needs Revisions</option>
-                          <option value="Approved">Approved</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="text-xs font-medium text-gray-600 mb-1.5 block">Admin Notes</label>
-                        <textarea
-                          value={checklistEditForm.admin_notes}
-                          onChange={e => setChecklistEditForm({ ...checklistEditForm, admin_notes: e.target.value })}
-                          placeholder="Add notes or feedback for the office manager..."
-                          rows={3}
-                          className="w-full p-2.5 border-2 border-gray-200 rounded-xl outline-none focus:border-teal-400 bg-white resize-none"
-                        />
-                      </div>
-                      <div className="flex gap-2">
-                        <button onClick={handleChecklistSave} className="flex-1 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl font-medium hover:shadow-lg transition-all">
-                          Save Review
-                        </button>
-                        <button onClick={() => setIsEditing(false)} className="px-4 py-2.5 bg-gray-200 rounded-xl font-medium hover:bg-gray-300 transition-all">
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
 
           {/* IT Requests */}
           {module?.id === 'it-requests' && (
