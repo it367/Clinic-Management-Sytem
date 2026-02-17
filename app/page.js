@@ -1712,10 +1712,11 @@ const { data: usersData, error: usersError } = await supabase
       .from('user_locations')
       .select('user_id, location_id');
     
-    // Get all locations
+// Get all locations (active only)
     const { data: locsData } = await supabase
       .from('locations')
-      .select('id, name');
+      .select('id, name')
+      .eq('is_active', true);
     
     // Build a location map for quick lookup
     const locationMap = {};
@@ -1986,10 +1987,11 @@ const handleLogin = async () => {
     const locIds = userLocsData?.map(ul => ul.location_id) || [];
     let locationsList = [];
     if (locIds.length > 0) {
-      const { data: locsData } = await supabase
+const { data: locsData } = await supabase
         .from('locations')
         .select('id, name')
-        .in('id', locIds);
+        .in('id', locIds)
+        .eq('is_active', true);
       locationsList = locsData || [];
     }
 
