@@ -1412,9 +1412,9 @@ if (sessionData.user.role === 'super_admin' || sessionData.user.role === 'financ
   loadUsers();
   loadItUsers();
   loadFinanceAdminUsers();
-  if (sessionData.user.role === 'rev_rangers') {
-    setAdminView('records');
-    setActiveModule('completed-procedure');
+if (sessionData.user.role === 'rev_rangers') {
+    setAdminView('analytics');
+    setAnalyticsModule('daily-recon');
   } else {
     setAdminView('analytics');
   }
@@ -2011,9 +2011,9 @@ if (user.role === 'super_admin' || user.role === 'finance_admin' || user.role ==
       loadItUsers();
       loadFinanceAdminUsers();
       loadLoginHistory(user.id);
-      if (user.role === 'rev_rangers') {
-        setAdminView('records');
-        setActiveModule('completed-procedure');
+if (user.role === 'rev_rangers') {
+        setAdminView('analytics');
+        setAnalyticsModule('daily-recon');
       } else {
         setAdminView('analytics');
       }
@@ -3987,8 +3987,11 @@ onUpdateRefundRequest={async (entryId, formData) => {
   <div className="space-y-6">
     {/* Module Selector */}
     <div className="bg-white rounded-2xl shadow-lg p-4 border border-gray-100">
-      <div className="flex flex-wrap items-center gap-2">
-        {MODULES.map(m => {
+<div className="flex flex-wrap items-center gap-2">
+        {[
+          ...(currentUser?.role === 'rev_rangers' ? [CHECKLIST_MODULES.find(m => m.id === 'daily-recon')] : []),
+          ...(currentUser?.role === 'rev_rangers' ? MODULES.filter(m => m.id === 'billing-inquiry') : MODULES)
+        ].map(m => {
           const colors = MODULE_COLORS[m.id];
           const isActive = analyticsModule === m.id;
           return (
