@@ -5752,8 +5752,70 @@ if (activeModule === 'it-requests') {
           {/* Entry Form - Staff */}
           {!isAdmin && view === 'entry' && (
             <div className="space-y-4">
-              {activeModule === 'daily-recon' && (
+{activeModule === 'daily-recon' && (
                 <>
+                  {checklistStatus['daily-recon']?.submitted ? (
+                    <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-l-emerald-500">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center">
+                          <CheckCircle className="w-6 h-6 text-emerald-600" />
+                        </div>
+                        <div>
+                          <h2 className="font-semibold text-gray-800">Daily Reconciliation — Submitted</h2>
+                          <p className="text-sm text-emerald-600 font-medium">Submitted today at {new Date(checklistStatus['daily-recon']?.entry?.created_at).toLocaleTimeString('en-US', { timeZone: 'Pacific/Honolulu', hour: 'numeric', minute: '2-digit' })}</p>
+                        </div>
+                      </div>
+                      <div className="space-y-3 bg-gray-50 rounded-xl p-4 border border-gray-200">
+                        <div className="flex items-center justify-between">
+                          <StatusBadge status={checklistStatus['daily-recon']?.entry?.status || 'Pending'} />
+                          {checklistStatus['daily-recon']?.entry?.creator?.name && (
+                            <span className="text-sm text-gray-500">By: {checklistStatus['daily-recon']?.entry?.creator?.name}</span>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 text-sm">
+                          <div><span className="text-gray-500">Date:</span> <span className="font-medium">{checklistStatus['daily-recon']?.entry?.recon_date}</span></div>
+                          <div><span className="text-gray-500">Cash:</span> <span className="font-medium">${Number(checklistStatus['daily-recon']?.entry?.cash || 0).toFixed(2)}</span></div>
+                          <div><span className="text-gray-500">Credit Card:</span> <span className="font-medium">${Number(checklistStatus['daily-recon']?.entry?.credit_card || 0).toFixed(2)}</span></div>
+                          <div><span className="text-gray-500">Checks OTC:</span> <span className="font-medium">${Number(checklistStatus['daily-recon']?.entry?.checks_otc || 0).toFixed(2)}</span></div>
+                          <div><span className="text-gray-500">Insurance:</span> <span className="font-medium">${Number(checklistStatus['daily-recon']?.entry?.insurance_checks || 0).toFixed(2)}</span></div>
+                          <div><span className="text-gray-500">Care Credit:</span> <span className="font-medium">${Number(checklistStatus['daily-recon']?.entry?.care_credit || 0).toFixed(2)}</span></div>
+                          <div><span className="text-gray-500">VCC:</span> <span className="font-medium">${Number(checklistStatus['daily-recon']?.entry?.vcc || 0).toFixed(2)}</span></div>
+                          <div><span className="text-gray-500">EFTs:</span> <span className="font-medium">${Number(checklistStatus['daily-recon']?.entry?.efts || 0).toFixed(2)}</span></div>
+                        </div>
+                        <div className="pt-2 border-t border-gray-200">
+                          <span className="text-gray-500 text-sm">Total Collected:</span>
+                          <span className="font-bold text-emerald-700 text-lg ml-2">${Number(checklistStatus['daily-recon']?.entry?.total_collected || 0).toFixed(2)}</span>
+                        </div>
+                        {checklistStatus['daily-recon']?.entry?.notes && (
+                          <div>
+                            <span className="text-xs font-medium text-gray-500">Notes</span>
+                            <p className="text-gray-700 bg-white p-3 rounded-lg border border-gray-100 mt-1">{checklistStatus['daily-recon']?.entry?.notes}</p>
+                          </div>
+                        )}
+                      </div>
+                      <div className="mt-4 p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-center">
+                        <p className="text-sm text-emerald-700 font-medium flex items-center justify-center gap-2">
+                          <Lock className="w-4 h-4" /> Entry locked for today. Resets at midnight.
+                        </p>
+                      </div>
+                    </div>
+                  ) : isChecklistPastDeadline() ? (
+                    <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-l-gray-400">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center">
+                          <Lock className="w-6 h-6 text-gray-400" />
+                        </div>
+                        <div>
+                          <h2 className="font-semibold text-gray-800">Daily Reconciliation</h2>
+                          <p className="text-sm text-red-600 font-medium">Submissions closed for today</p>
+                        </div>
+                      </div>
+                      <div className="p-4 bg-red-50 rounded-xl border border-red-200 text-center">
+                        <p className="text-sm text-red-700">The deadline has passed. A new form will be available tomorrow.</p>
+                      </div>
+                    </div>
+                  ) : (
+                  <>
                   <div className={`bg-white rounded-2xl shadow-lg p-6 border-l-4 ${currentColors?.accent}`}>
                     <h2 className="font-semibold mb-4 text-gray-800 flex items-center gap-2">
                       <DollarSign className="w-5 h-5 text-emerald-500" />Daily Reconciliation
@@ -5777,8 +5839,10 @@ if (activeModule === 'it-requests') {
   <h2 className="font-semibold mb-4 text-gray-800 flex items-center gap-2">
     <File className="w-5 h-5 text-amber-500" />Documents
   </h2>
-  <FileUpload label="Upload Documents (EOD Sheets, Bank Receipts, etc.)" files={files['daily-recon'].documents} onFilesChange={f => updateFiles('daily-recon', 'documents', f)} onViewFile={setViewingFile} />
+<FileUpload label="Upload Documents (EOD Sheets, Bank Receipts, etc.)" files={files['daily-recon'].documents} onFilesChange={f => updateFiles('daily-recon', 'documents', f)} onViewFile={setViewingFile} />
 </div>
+                  </>
+                  )}
                 </>
               )}
 
@@ -6072,7 +6136,8 @@ if (activeModule === 'it-requests') {
   </>
 )}
 
-{!((activeModule === 'completed-procedure' && (checklistStatus['completed-procedure']?.submitted || isChecklistPastDeadline())) ||
+{!((activeModule === 'daily-recon' && (checklistStatus['daily-recon']?.submitted || isChecklistPastDeadline())) ||
+                 (activeModule === 'completed-procedure' && (checklistStatus['completed-procedure']?.submitted || isChecklistPastDeadline())) ||
                  (activeModule === 'claims-documents' && (checklistStatus['claims-documents']?.submitted || isChecklistPastDeadline()))) && (
                 <button
                   onClick={() => saveEntry(activeModule)}
