@@ -287,7 +287,7 @@ const isBillingInquiry = module?.id === 'billing-inquiry';
   const isBillsPayment = module?.id === 'bills-payment';
   const isOrderRequest = module?.id === 'order-requests';
   const canEditIT = isITRequest && currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'it');
-  const canEditBilling = (isBillingInquiry || isBillsPayment) && currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'finance_admin');
+const canEditBilling = (isBillingInquiry || isBillsPayment) && currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'finance_admin' || (currentUser.role === 'rev_rangers' && isBillingInquiry));
 const canEditOrders = isOrderRequest && currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'finance_admin');
   const isRefundRequest = module?.id === 'refund-requests';
   const canEditRefunds = isRefundRequest && currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'finance_admin');
@@ -1409,9 +1409,7 @@ useEffect(() => {
         setLastLogin(sessionData.lastLogin);
 // Load users if admin and set default view
 if (sessionData.user.role === 'super_admin' || sessionData.user.role === 'finance_admin' || sessionData.user.role === 'it' || sessionData.user.role === 'rev_rangers') {
-  if (sessionData.user.role !== 'rev_rangers') {
-    loadUsers();
-  }
+  loadUsers();
   loadItUsers();
   loadFinanceAdminUsers();
   if (sessionData.user.role === 'rev_rangers') {
@@ -1514,7 +1512,7 @@ useEffect(() => {
   
 // Load data when analytics module changes
 useEffect(() => {
-  const userIsAdmin = currentUser?.role === 'super_admin' || currentUser?.role === 'finance_admin';
+  const userIsAdmin = currentUser?.role === 'super_admin' || currentUser?.role === 'finance_admin' || currentUser?.role === 'rev_rangers';
   if (userIsAdmin && adminView === 'analytics' && analyticsModule) {
     if (!moduleData[analyticsModule]) {
       loadModuleData(analyticsModule);
@@ -2002,9 +2000,7 @@ setCurrentUser(user);
     }
 
 if (user.role === 'super_admin' || user.role === 'finance_admin' || user.role === 'it' || user.role === 'rev_rangers') {
-      if (user.role !== 'rev_rangers') {
-        loadUsers();
-      }
+      loadUsers();
       loadItUsers();
       loadFinanceAdminUsers();
       loadLoginHistory(user.id);
@@ -2060,8 +2056,8 @@ const addUser = async () => {
     return;
   }
 
-  // Prevent IT from creating super_admin users
-  if (currentUser.role === 'it' && newUser.role === 'super_admin') {
+// Prevent IT and Rev Rangers from creating super_admin users
+  if ((currentUser.role === 'it' || currentUser.role === 'rev_rangers') && newUser.role === 'super_admin') {
     showMessage('error', 'You do not have permission to create Super Admin users');
     return;
   }
@@ -2120,8 +2116,8 @@ const updateUser = async () => {
     return;
   }
 
-  // Prevent IT from setting super_admin role
-  if (currentUser.role === 'it' && editingUser.role === 'super_admin') {
+  // Prevent IT and Rev Rangers from setting super_admin role
+  if ((currentUser.role === 'it' || currentUser.role === 'rev_rangers') && editingUser.role === 'super_admin') {
     showMessage('error', 'You do not have permission to assign Super Admin role');
     return;
   }
@@ -3288,8 +3284,14 @@ const getStaffTotalPages = () => {
   return Math.ceil(allEntries.length / staffRecordsPerPage);
 };
   
-  const currentColors = MODULE_COLORS[activeModule];
+const currentColors = MODULE_COLORS[activeModule];
   const currentModule = ALL_MODULES.find(m => m.id === activeModule);
+
+  const visibleModules = currentUser?.role === 'rev_rangers'
+    ? MODULES.filter(m => m.id === 'billing-inquiry')
+    : currentUser?.role === 'finance_admin'
+    ? MODULES.filter(m => m.id !== 'billing-inquiry')
+    : MODULES;
 
   const getModuleName = (moduleId) => {
     const mod = ALL_MODULES.find(m => m.id === moduleId);
@@ -3574,7 +3576,7 @@ onUpdateRefundRequest={async (entryId, formData) => {
         {/* Navigation */}
         <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto">
           {/* Analytics - Admin Only */}
-{isAdmin && currentUser?.role !== 'rev_rangers' && (
+{isAdmin && (
             <>
               <button
                 onClick={() => { setAdminView('analytics'); setSidebarOpen(false); }}
@@ -3644,10 +3646,10 @@ onUpdateRefundRequest={async (entryId, formData) => {
 
           
             
-{currentUser?.role !== 'rev_rangers' && (
+{visibleModules.length > 0 && (
           <>
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">Modules</p>
-          {MODULES.map(m => {
+          {visibleModules.map(m => {
             const colors = MODULE_COLORS[m.id];
             const isActive = activeModule === m.id && adminView !== 'users' && adminView !== 'export' && adminView !== 'settings' && view !== 'settings';
             return (
@@ -3689,7 +3691,7 @@ onUpdateRefundRequest={async (entryId, formData) => {
             </>
           )}
 
-{isAdmin && currentUser?.role !== 'rev_rangers' && (
+{isAdmin && (
             <>
               <div className="border-t my-4"></div>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">Management</p>
@@ -3701,7 +3703,7 @@ onUpdateRefundRequest={async (entryId, formData) => {
                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${adminView === 'export' ? 'bg-purple-100' : 'bg-gray-100'}`}><Download className="w-4 h-4" /></div>
                 <span className="text-sm font-medium">Export</span>
               </button>
-{(currentUser?.role === 'super_admin' || currentUser?.role === 'it') && (
+{(currentUser?.role === 'super_admin' || currentUser?.role === 'it' || currentUser?.role === 'rev_rangers') && (
                 <button onClick={() => { setAdminView('users'); loadUsers(); setSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${adminView === 'users' ? 'bg-purple-50 text-purple-700 border-2 border-purple-200' : 'text-gray-600 hover:bg-gray-50'}`}>
                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${adminView === 'users' ? 'bg-purple-100' : 'bg-gray-100'}`}><Users className="w-4 h-4" /></div>
                   <span className="text-sm font-medium">Users</span>
@@ -3832,7 +3834,7 @@ onUpdateRefundRequest={async (entryId, formData) => {
                     <InputField label="Username *" value={editingUser ? (editingUser.username || '') : newUser.username} onChange={e => editingUser ? setEditingUser({...editingUser, username: e.target.value}) : setNewUser({...newUser, username: e.target.value})} placeholder="Login username" />
                     <InputField label="Email *" value={editingUser ? editingUser.email : newUser.email} onChange={e => editingUser ? setEditingUser({...editingUser, email: e.target.value}) : setNewUser({...newUser, email: e.target.value})} />
                     <PasswordField label={editingUser ? "New Password" : "Password *"} value={editingUser ? (editingUser.newPassword || '') : newUser.password} onChange={e => editingUser ? setEditingUser({...editingUser, newPassword: e.target.value}) : setNewUser({...newUser, password: e.target.value})} placeholder={editingUser ? "Leave blank to keep current" : ""} />
-<InputField label="Role" value={editingUser ? editingUser.role : newUser.role} onChange={e => editingUser ? setEditingUser({...editingUser, role: e.target.value}) : setNewUser({...newUser, role: e.target.value})} options={currentUser?.role === 'super_admin' ? ['staff', 'office_manager', 'rev_rangers', 'finance_admin', 'it', 'super_admin'] : currentUser?.role === 'it' ? ['staff', 'office_manager', 'rev_rangers', 'finance_admin', 'it'] : ['staff', 'office_manager', 'rev_rangers', 'finance_admin']} />
+<InputField label="Role" value={editingUser ? editingUser.role : newUser.role} onChange={e => editingUser ? setEditingUser({...editingUser, role: e.target.value}) : setNewUser({...newUser, role: e.target.value})}options={currentUser?.role === 'super_admin' ? ['staff', 'office_manager', 'rev_rangers', 'finance_admin', 'it', 'super_admin'] : (currentUser?.role === 'it' || currentUser?.role === 'rev_rangers') ? ['staff', 'office_manager', 'rev_rangers', 'finance_admin', 'it'] : ['staff', 'office_manager', 'rev_rangers', 'finance_admin']} />
                   </div>
 {((editingUser ? editingUser.role : newUser.role) === 'staff' || (editingUser ? editingUser.role : newUser.role) === 'office_manager') && (
                     <div className="mt-4">
@@ -5222,8 +5224,10 @@ return (
 
 {!isEditing && (
                       <div className="flex items-center gap-1" onClick={ev => ev.stopPropagation()}>
-                        <button onClick={() => setViewingEntry(e)} className="p-2 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors" title="Preview"><Eye className="w-4 h-4" /></button>
-                        <button onClick={() => startEditingRecon(e)} className="p-2 text-purple-600 hover:bg-purple-100 rounded-lg transition-colors" title="Review"><Edit3 className="w-4 h-4" /></button>
+<button onClick={() => setViewingEntry(e)} className="p-2 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors" title="Preview"><Eye className="w-4 h-4" /></button>
+                        {currentUser?.role !== 'finance_admin' && (
+                          <button onClick={() => startEditingRecon(e)} className="p-2 text-purple-600 hover:bg-purple-100 rounded-lg transition-colors" title="Review"><Edit3 className="w-4 h-4" /></button>
+                        )}
                         <button onClick={() => deleteRecord(activeModule, e.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
                       </div>
                     )}
