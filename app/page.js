@@ -214,8 +214,7 @@ function FileViewer({ file, onClose }) {
   );
 }
 
-function EntryPreview({ entry, module, onClose, colors, onViewDocument, currentUser, itUsers, financeAdminUsers, onUpdateStatus, onDelete, onUpdateBillingInquiry, onUpdateBillsPayment, onUpdateOrderRequest, onUpdateRefundRequest }) {
-const [isEditing, setIsEditing] = useState(false);
+function EntryPreview({ entry, module, onClose, colors, onViewDocument, currentUser, itUsers, financeAdminUsers, onUpdateStatus, onDelete, onUpdateBillingInquiry, onUpdateBillsPayment, onUpdateOrderRequest, onUpdateRefundRequest, onUpdateChecklist }) {
   const [editForm, setEditForm] = useState({
     status: entry?.status || 'For Review',
     assigned_to: entry?.assigned_to || '',
@@ -238,7 +237,10 @@ const [orderEditForm, setOrderEditForm] = useState({
     reviewed_by: entry?.reviewed_by || '',
     reviewed_at: entry?.reviewed_at || ''
   });
-
+const [checklistEditForm, setChecklistEditForm] = useState({
+    status: entry?.status || 'Pending',
+    admin_notes: entry?.admin_notes || ''
+  });
   useEffect(() => {
     if (entry) {
       setEditForm({
@@ -258,10 +260,14 @@ setOrderEditForm({
         reviewed_by: entry.reviewed_by || '',
         reviewed_at: entry.reviewed_at || ''
       });
-      setRefundEditForm({
+setRefundEditForm({
         status: entry.status || 'Pending',
         reviewed_by: entry.reviewed_by || '',
         reviewed_at: entry.reviewed_at || ''
+      });
+      setChecklistEditForm({
+        status: entry.status || 'Pending',
+        admin_notes: entry.admin_notes || ''
       });
       setIsEditing(false);
     }
@@ -282,7 +288,9 @@ const isBillingInquiry = module?.id === 'billing-inquiry';
 const canEditOrders = isOrderRequest && currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'finance_admin');
   const isRefundRequest = module?.id === 'refund-requests';
   const canEditRefunds = isRefundRequest && currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'finance_admin');
-
+const isChecklistModule = module?.id === 'completed-procedure' || module?.id === 'claims-documents';
+  const canReviewChecklist = isChecklistModule && currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'rev_rangers');
+  
 const handleSave = () => {
     if (onUpdateStatus) {
       onUpdateStatus(entry.id, editForm.status, {
@@ -318,9 +326,9 @@ const handleOrderSave = () => {
     onClose();
   };
 
-  const handleRefundSave = () => {
-    if (onUpdateRefundRequest) {
-      onUpdateRefundRequest(entry.id, refundEditForm);
+const handleChecklistSave = () => {
+    if (onUpdateChecklist) {
+      onUpdateChecklist(entry.id, module?.id, checklistEditForm);
     }
     setIsEditing(false);
     onClose();
@@ -790,6 +798,84 @@ const handleOrderSave = () => {
                           onClick={() => setIsEditing(false)}
                           className="px-4 py-2.5 bg-gray-200 rounded-xl font-medium hover:bg-gray-300 transition-all"
                         >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+
+{/* Completed Procedure & Claims Documents */}
+          {(module?.id === 'completed-procedure' || module?.id === 'claims-documents') && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div><span className="text-gray-600 text-sm block">Checked By</span><span className="font-medium">{entry.checked_by || '-'}</span></div>
+                <div><span className="text-gray-600 text-sm block">Date Submitted</span><span className="font-medium">{new Date(entry.created_at).toLocaleString('en-US', { timeZone: 'Pacific/Honolulu' })}</span></div>
+                <div><span className="text-gray-600 text-sm block">Location</span><span className="font-medium">{entry.locations?.name || '-'}</span></div>
+              </div>
+              {entry.notes && (
+                <div className="col-span-2">
+                  <span className="text-gray-600 text-sm block">Notes</span>
+                  <p className="font-medium bg-gray-50 p-3 rounded-lg mt-1">{entry.notes}</p>
+                </div>
+              )}
+
+              {/* Admin Notes - Read Only */}
+              {!isEditing && entry.admin_notes && (
+                <div className={`p-4 rounded-xl border ${entry.status === 'Needs Revisions' ? 'bg-orange-50 border-orange-200' : 'bg-emerald-50 border-emerald-200'}`}>
+                  <h4 className={`font-semibold mb-2 flex items-center gap-2 ${entry.status === 'Needs Revisions' ? 'text-orange-800' : 'text-emerald-800'}`}>
+                    <FileText className="w-4 h-4" /> Admin Notes
+                  </h4>
+                  <p className="text-gray-700">{entry.admin_notes}</p>
+                </div>
+              )}
+
+              {/* Admin Review Section */}
+              {canReviewChecklist && (
+                <div className="mt-6 pt-4 border-t border-gray-200">
+                  {!isEditing ? (
+                    <button
+                      onClick={() => setIsEditing(true)}
+                      className={`w-full py-3 text-white rounded-xl font-medium hover:shadow-lg transition-all flex items-center justify-center gap-2 ${module?.id === 'completed-procedure' ? 'bg-gradient-to-r from-teal-500 to-emerald-500' : 'bg-gradient-to-r from-sky-500 to-blue-500'}`}
+                    >
+                      <Edit3 className="w-4 h-4" /> Review & Update Status
+                    </button>
+                  ) : (
+                    <div className={`space-y-4 p-4 rounded-xl border ${module?.id === 'completed-procedure' ? 'bg-teal-50 border-teal-200' : 'bg-sky-50 border-sky-200'}`}>
+                      <h4 className={`font-semibold flex items-center gap-2 ${module?.id === 'completed-procedure' ? 'text-teal-800' : 'text-sky-800'}`}>
+                        <Edit3 className="w-4 h-4" /> Review Submission 
+                      </h4>
+                      <div>
+                        <label className="text-xs font-medium text-gray-600 mb-1.5 block">Status</label>
+                        <select
+                          value={checklistEditForm.status}
+                          onChange={e => setChecklistEditForm({ ...checklistEditForm, status: e.target.value })}
+                          className="w-full p-2.5 border-2 border-gray-200 rounded-xl outline-none focus:border-teal-400 bg-white"
+                        >
+                          <option value="Pending">Pending</option>
+                          <option value="Needs Revisions">Needs Revisions</option>
+                          <option value="Approved">Approved</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-gray-600 mb-1.5 block">Admin Notes</label>
+                        <textarea
+                          value={checklistEditForm.admin_notes}
+                          onChange={e => setChecklistEditForm({ ...checklistEditForm, admin_notes: e.target.value })}
+                          placeholder="Add notes or feedback for the office manager..."
+                          rows={3}
+                          className="w-full p-2.5 border-2 border-gray-200 rounded-xl outline-none focus:border-teal-400 bg-white resize-none"
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={handleChecklistSave} className="flex-1 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl font-medium hover:shadow-lg transition-all">
+                          Save Review
+                        </button>
+                        <button onClick={() => setIsEditing(false)} className="px-4 py-2.5 bg-gray-200 rounded-xl font-medium hover:bg-gray-300 transition-all">
                           Cancel
                         </button>
                       </div>
@@ -2500,6 +2586,34 @@ const updateOrderRequest = async (entryId, formData) => {
   loadModuleData('order-requests');
 };
 
+const updateChecklistEntry = async (entryId, moduleId, formData) => {
+  const confirmed = await showConfirm('Update Checklist Entry', `Are you sure you want to update the status to "${formData.status}"?`, 'Update', 'blue');
+  if (!confirmed) return;
+
+  const module = ALL_MODULES.find(m => m.id === moduleId);
+  if (!module) return;
+
+  const updateData = {
+    status: formData.status,
+    admin_notes: formData.admin_notes || null,
+    updated_by: currentUser.id
+  };
+
+  const { error } = await supabase
+    .from(module.table)
+    .update(updateData)
+    .eq('id', entryId);
+
+  if (error) {
+    console.error('Checklist update error:', error);
+    showMessage('error', 'Failed to update: ' + error.message);
+    return;
+  }
+
+  showMessage('success', '✓ Checklist entry updated!');
+  loadModuleData(moduleId);
+};
+
 const updateRefundRequest = async (entryId, formData) => {
   const confirmed = await showConfirm('Update Refund Request', 'Are you sure you want to update this refund request?', 'Update', 'rose');
   if (!confirmed) return;
@@ -3341,8 +3455,12 @@ onUpdateOrderRequest={async (entryId, formData) => {
     await updateOrderRequest(entryId, formData);
     setViewingEntry(null);
   }}
-  onUpdateRefundRequest={async (entryId, formData) => {
+onUpdateRefundRequest={async (entryId, formData) => {
     await updateRefundRequest(entryId, formData);
+    setViewingEntry(null);
+  }}
+  onUpdateChecklist={async (entryId, moduleId, formData) => {
+    await updateChecklistEntry(entryId, moduleId, formData);
     setViewingEntry(null);
   }}
   onDelete={async (recordId) => {
@@ -5410,6 +5528,58 @@ if (activeModule === 'it-requests') {
                                 <button onClick={() => downloadDocument(doc)} className="p-0.5 text-emerald-500 hover:bg-emerald-100 rounded" title="Download">
                                   <Download className="w-3 h-3" />
                                 </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1" onClick={ev => ev.stopPropagation()}>
+                      <button onClick={() => setViewingEntry(e)} className="p-2 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors" title="Preview"><Eye className="w-4 h-4" /></button>
+                      <button onClick={() => deleteRecord(activeModule, e.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+
+
+// Checklist Modules (Completed Procedure & Claims Documents)
+            if (activeModule === 'completed-procedure' || activeModule === 'claims-documents') {
+              return (
+                <div key={e.id} className={`p-4 rounded-xl border-2 ${currentColors?.border} ${currentColors?.bg} hover:shadow-md transition-all ${selectedRecords.includes(e.id) ? 'ring-2 ring-purple-500' : ''}`}>
+                  <div className="flex justify-between items-start gap-4">
+                    <div className="flex items-start gap-3 flex-1">
+                      <button onClick={() => toggleRecordSelection(e.id)} className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 mt-1 transition-all ${selectedRecords.includes(e.id) ? 'bg-purple-600 border-purple-600' : 'border-gray-300 hover:border-purple-400'}`}>
+                        {selectedRecords.includes(e.id) && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                      </button>
+                      <div className="flex-1 cursor-pointer" onClick={() => setViewingEntry(e)}>
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <span className="font-bold text-gray-800">{e.locations?.name || 'Unknown Location'}</span>
+                          <StatusBadge status={e.status || 'Pending'} />
+                        </div>
+                        <p className="text-sm text-gray-600">
+                          Checked by: <span className="font-medium">{e.checked_by || '-'}</span>
+                        </p>
+                        <p className="text-sm text-gray-500 mt-1">
+                          Submitted: {new Date(e.created_at).toLocaleString('en-US', { timeZone: 'Pacific/Honolulu', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                          {e.creator?.name && <span> • By: {e.creator.name}</span>}
+                        </p>
+                        {e.notes && <p className="text-sm text-gray-600 mt-2 line-clamp-2">{e.notes}</p>}
+                        {e.admin_notes && (
+                          <div className={`mt-2 p-2 rounded-lg text-sm ${e.status === 'Needs Revisions' ? 'bg-orange-100 text-orange-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                            <span className="font-medium">Admin: </span>{e.admin_notes}
+                          </div>
+                        )}
+                        
+                        {docs.length > 0 && (
+                          <div className="mt-3 flex flex-wrap gap-2" onClick={ev => ev.stopPropagation()}>
+                            {docs.map(doc => (
+                              <div key={doc.id} className="flex items-center gap-1 bg-white px-2 py-1 rounded-lg border text-xs">
+                                <File className="w-3 h-3 text-gray-400" />
+                                <span className="text-gray-600 max-w-24 truncate">{doc.file_name}</span>
+                                <button onClick={() => viewDocument(doc)} className="p-0.5 text-blue-500 hover:bg-blue-100 rounded" title="Preview"><Eye className="w-3 h-3" /></button>
+                                <button onClick={() => downloadDocument(doc)} className="p-0.5 text-emerald-500 hover:bg-emerald-100 rounded" title="Download"><Download className="w-3 h-3" /></button>
                               </div>
                             ))}
                           </div>
