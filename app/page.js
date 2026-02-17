@@ -38,7 +38,7 @@ const MODULE_COLORS = {
 };
 
 const IT_STATUSES = ['For Review', 'In Progress', 'On-hold', 'Resolved'];
-const INQUIRY_TYPES = ['Refund', 'Balance', 'Insurance', 'Payment Plan', 'Other'];
+const INQUIRY_TYPES = ['Patient Refund', 'Insurance Refund', 'Patient Balance', 'Payment Plan', 'Other'];
 const REFUND_TYPES = ['Refund', 'Credit', 'Adjustment'];
 const CONTACT_METHODS = ['Phone', 'Email', 'Text'];
 const DATE_RANGES = ['This Week', 'Last 2 Weeks', 'This Month', 'Last Month', 'This Quarter', 'This Year', 'Custom'];
