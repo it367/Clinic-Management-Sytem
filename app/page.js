@@ -5218,7 +5218,7 @@ const totalDeposited = filteredData.reduce((sum, r) => {
         </div>
 
 {/* Mass Selection Controls */}
-        {!isITViewOnly && <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+        {!isITViewOnly && (<div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
           <div className="flex items-center gap-3">
             <button onClick={toggleSelectAll}
               <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${selectAll ? 'bg-purple-600 border-purple-600' : 'border-gray-300'}`}>
@@ -5230,10 +5230,10 @@ const totalDeposited = filteredData.reduce((sum, r) => {
           </div>
           {selectedRecords.length > 0 && (
 <button onClick={deleteSelectedRecords} className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-lg text-sm font-medium hover:shadow-lg transition-all">
-              <Trash2 className="w-4 h-4" /> Delete Selected ({selectedRecords.length})
+<Trash2 className="w-4 h-4" /> Delete Selected ({selectedRecords.length})
             </button>
           )}
-        </div>}
+        </div>)}
       </div>
 
       {/* Records List */}
