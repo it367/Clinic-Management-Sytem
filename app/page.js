@@ -2338,16 +2338,17 @@ const saveEntry = async (moduleId) => {
     let entryData = { location_id: loc.id, created_by: currentUser.id, updated_by: currentUser.id };
 
 if (moduleId === 'daily-recon') {
+  const isRevRangers = currentUser.role === 'rev_rangers';
   entryData = {
     ...entryData,
     recon_date: form.recon_date,
-    cash: parseFloat(form.cash) || 0,
-    credit_card: parseFloat(form.credit_card) || 0,
-    checks_otc: parseFloat(form.checks_otc) || 0,
-    insurance_checks: parseFloat(form.insurance_checks) || 0,
-    care_credit: parseFloat(form.care_credit) || 0,
-    vcc: parseFloat(form.vcc) || 0,
-    efts: parseFloat(form.efts) || 0,
+    cash: isRevRangers ? 0 : (parseFloat(form.cash) || 0),
+    credit_card: isRevRangers ? 0 : (parseFloat(form.credit_card) || 0),
+    checks_otc: isRevRangers ? 0 : (parseFloat(form.checks_otc) || 0),
+    insurance_checks: isRevRangers ? (parseFloat(form.insurance_checks) || 0) : 0,
+    care_credit: isRevRangers ? 0 : (parseFloat(form.care_credit) || 0),
+    vcc: isRevRangers ? (parseFloat(form.vcc) || 0) : 0,
+    efts: isRevRangers ? (parseFloat(form.efts) || 0) : 0,
     deposit_cash: parseFloat(form.deposit_cash) || 0,
     deposit_credit_card: parseFloat(form.deposit_credit_card) || 0,
     deposit_checks: parseFloat(form.deposit_checks) || 0,
@@ -3034,17 +3035,24 @@ const getTotalPages = () => {
   const startEditingStaffEntry = (entry) => {
   setEditingStaffEntry(entry.id);
   if (activeModule === 'daily-recon') {
-    setStaffEditForm({
-      recon_date: entry.recon_date || '',
-      cash: entry.cash || '',
-      credit_card: entry.credit_card || '',
-      checks_otc: entry.checks_otc || '',
-      insurance_checks: entry.insurance_checks || '',
-      care_credit: entry.care_credit || '',
-      vcc: entry.vcc || '',
-      efts: entry.efts || '',
-      notes: entry.notes || ''
-    });
+    if (currentUser.role === 'rev_rangers') {
+      setStaffEditForm({
+        recon_date: entry.recon_date || '',
+        insurance_checks: entry.insurance_checks || '',
+        vcc: entry.vcc || '',
+        efts: entry.efts || '',
+        notes: entry.notes || ''
+      });
+    } else {
+      setStaffEditForm({
+        recon_date: entry.recon_date || '',
+        cash: entry.cash || '',
+        credit_card: entry.credit_card || '',
+        checks_otc: entry.checks_otc || '',
+        care_credit: entry.care_credit || '',
+        notes: entry.notes || ''
+      });
+    }
   } else if (activeModule === 'billing-inquiry') {
     setStaffEditForm({
       patient_name: entry.patient_name || '',
@@ -3127,18 +3135,25 @@ if (!confirmed) return;;
   const module = ALL_MODULES.find(m => m.id === activeModule);
   let updateData = { updated_by: currentUser.id };
   
-  if (activeModule === 'daily-recon') {
-    updateData = { ...updateData,
-      recon_date: staffEditForm.recon_date,
-      cash: parseFloat(staffEditForm.cash) || 0,
-      credit_card: parseFloat(staffEditForm.credit_card) || 0,
-      checks_otc: parseFloat(staffEditForm.checks_otc) || 0,
-      insurance_checks: parseFloat(staffEditForm.insurance_checks) || 0,
-      care_credit: parseFloat(staffEditForm.care_credit) || 0,
-      vcc: parseFloat(staffEditForm.vcc) || 0,
-      efts: parseFloat(staffEditForm.efts) || 0,
-      notes: staffEditForm.notes
-    };
+if (activeModule === 'daily-recon') {
+    if (currentUser.role === 'rev_rangers') {
+      updateData = { ...updateData,
+        recon_date: staffEditForm.recon_date,
+        insurance_checks: parseFloat(staffEditForm.insurance_checks) || 0,
+        vcc: parseFloat(staffEditForm.vcc) || 0,
+        efts: parseFloat(staffEditForm.efts) || 0,
+        notes: staffEditForm.notes
+      };
+    } else {
+      updateData = { ...updateData,
+        recon_date: staffEditForm.recon_date,
+        cash: parseFloat(staffEditForm.cash) || 0,
+        credit_card: parseFloat(staffEditForm.credit_card) || 0,
+        checks_otc: parseFloat(staffEditForm.checks_otc) || 0,
+        care_credit: parseFloat(staffEditForm.care_credit) || 0,
+        notes: staffEditForm.notes
+      };
+    }
   } else if (activeModule === 'billing-inquiry') {
     updateData = { ...updateData,
       patient_name: staffEditForm.patient_name,
@@ -5805,10 +5820,7 @@ if (activeModule === 'it-requests') {
                             <InputField label="Cash" prefix="$" value={staffEditForm.cash} onChange={ev => updateStaffEditForm('cash', ev.target.value)} />
                             <InputField label="Credit Card" prefix="$" value={staffEditForm.credit_card} onChange={ev => updateStaffEditForm('credit_card', ev.target.value)} />
                             <InputField label="Checks OTC" prefix="$" value={staffEditForm.checks_otc} onChange={ev => updateStaffEditForm('checks_otc', ev.target.value)} />
-                            <InputField label="Insurance Checks" prefix="$" value={staffEditForm.insurance_checks} onChange={ev => updateStaffEditForm('insurance_checks', ev.target.value)} />
-                            <InputField label="Care Credit" prefix="$" value={staffEditForm.care_credit} onChange={ev => updateStaffEditForm('care_credit', ev.target.value)} />
-                            <InputField label="VCC" prefix="$" value={staffEditForm.vcc} onChange={ev => updateStaffEditForm('vcc', ev.target.value)} />
-                            <InputField label="EFTs" prefix="$" value={staffEditForm.efts} onChange={ev => updateStaffEditForm('efts', ev.target.value)} />
+<InputField label="Care Credit" prefix="$" value={staffEditForm.care_credit} onChange={ev => updateStaffEditForm('care_credit', ev.target.value)} />
                             <div className="col-span-2">
                               <InputField label="Notes" value={staffEditForm.notes} onChange={ev => updateStaffEditForm('notes', ev.target.value)} />
                             </div>
@@ -5836,10 +5848,7 @@ if (activeModule === 'it-requests') {
                               <div><span className="text-gray-500">Cash:</span> <span className="font-medium">${Number(checklistStatus['daily-recon']?.entry?.cash || 0).toFixed(2)}</span></div>
                               <div><span className="text-gray-500">Credit Card:</span> <span className="font-medium">${Number(checklistStatus['daily-recon']?.entry?.credit_card || 0).toFixed(2)}</span></div>
                               <div><span className="text-gray-500">Checks OTC:</span> <span className="font-medium">${Number(checklistStatus['daily-recon']?.entry?.checks_otc || 0).toFixed(2)}</span></div>
-                              <div><span className="text-gray-500">Insurance:</span> <span className="font-medium">${Number(checklistStatus['daily-recon']?.entry?.insurance_checks || 0).toFixed(2)}</span></div>
-                              <div><span className="text-gray-500">Care Credit:</span> <span className="font-medium">${Number(checklistStatus['daily-recon']?.entry?.care_credit || 0).toFixed(2)}</span></div>
-                              <div><span className="text-gray-500">VCC:</span> <span className="font-medium">${Number(checklistStatus['daily-recon']?.entry?.vcc || 0).toFixed(2)}</span></div>
-                              <div><span className="text-gray-500">EFTs:</span> <span className="font-medium">${Number(checklistStatus['daily-recon']?.entry?.efts || 0).toFixed(2)}</span></div>
+<div><span className="text-gray-500">Care Credit:</span> <span className="font-medium">${Number(checklistStatus['daily-recon']?.entry?.care_credit || 0).toFixed(2)}</span></div>
                             </div>
                             <div className="pt-2 border-t border-gray-200">
                               <span className="text-gray-500 text-sm">Total Collected:</span>
@@ -5894,10 +5903,7 @@ if (activeModule === 'it-requests') {
                       <InputField label="Cash" prefix="$" value={forms['daily-recon'].cash} onChange={e => updateForm('daily-recon', 'cash', e.target.value)} />
                       <InputField label="Credit Card (OTC)" prefix="$" value={forms['daily-recon'].credit_card} onChange={e => updateForm('daily-recon', 'credit_card', e.target.value)} />
                       <InputField label="Checks (OTC)" prefix="$" value={forms['daily-recon'].checks_otc} onChange={e => updateForm('daily-recon', 'checks_otc', e.target.value)} />
-                      <InputField label="Insurance Checks" prefix="$" value={forms['daily-recon'].insurance_checks} onChange={e => updateForm('daily-recon', 'insurance_checks', e.target.value)} />
-                      <InputField label="Care Credit" prefix="$" value={forms['daily-recon'].care_credit} onChange={e => updateForm('daily-recon', 'care_credit', e.target.value)} />
-                      <InputField label="VCC" prefix="$" value={forms['daily-recon'].vcc} onChange={e => updateForm('daily-recon', 'vcc', e.target.value)} />
-                      <InputField label="EFTs" prefix="$" value={forms['daily-recon'].efts} onChange={e => updateForm('daily-recon', 'efts', e.target.value)} />
+  <InputField label="Care Credit" prefix="$" value={forms['daily-recon'].care_credit} onChange={e => updateForm('daily-recon', 'care_credit', e.target.value)} />
                     </div>
             <div className="mt-4">
   <InputField label="Notes" value={forms['daily-recon'].notes} onChange={e => updateForm('daily-recon', 'notes', e.target.value)} />
@@ -6426,10 +6432,7 @@ if (activeModule === 'it-requests') {
                         <InputField label="Cash" prefix="$" value={staffEditForm.cash} onChange={ev => updateStaffEditForm('cash', ev.target.value)} />
                         <InputField label="Credit Card" prefix="$" value={staffEditForm.credit_card} onChange={ev => updateStaffEditForm('credit_card', ev.target.value)} />
                         <InputField label="Checks OTC" prefix="$" value={staffEditForm.checks_otc} onChange={ev => updateStaffEditForm('checks_otc', ev.target.value)} />
-                        <InputField label="Insurance Checks" prefix="$" value={staffEditForm.insurance_checks} onChange={ev => updateStaffEditForm('insurance_checks', ev.target.value)} />
-                        <InputField label="Care Credit" prefix="$" value={staffEditForm.care_credit} onChange={ev => updateStaffEditForm('care_credit', ev.target.value)} />
-                        <InputField label="VCC" prefix="$" value={staffEditForm.vcc} onChange={ev => updateStaffEditForm('vcc', ev.target.value)} />
-                        <InputField label="EFTs" prefix="$" value={staffEditForm.efts} onChange={ev => updateStaffEditForm('efts', ev.target.value)} />
+  <InputField label="Care Credit" prefix="$" value={staffEditForm.care_credit} onChange={ev => updateStaffEditForm('care_credit', ev.target.value)} />
                         <div className="col-span-2">
                           <InputField label="Notes" value={staffEditForm.notes} onChange={ev => updateStaffEditForm('notes', ev.target.value)} />
                         </div>
