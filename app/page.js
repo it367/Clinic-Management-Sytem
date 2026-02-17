@@ -5686,7 +5686,7 @@ if (activeModule === 'it-requests') {
 // Checklist Modules (Completed Procedure & Claims Documents)
             if (activeModule === 'completed-procedure' || activeModule === 'claims-documents') {
               return (
-                <div key={e.id} className={`p-4 rounded-xl border-2 ${currentColors?.border} ${currentColors?.bg} hover:shadow-md transition-all ${selectedRecords.includes(e.id) ? 'ring-2 ring-purple-500' : ''}`}>
+                <div key={e.id} className={`p-4 rounded-xl border-2 ${e.status === 'Approved' ? 'border-emerald-300 bg-emerald-50' : e.status === 'Needs Revisions' ? 'border-red-300 bg-red-50' : 'border-amber-300 bg-amber-50'} hover:shadow-md transition-all ${selectedRecords.includes(e.id) ? 'ring-2 ring-purple-500' : ''}`}>
                   <div className="flex justify-between items-start gap-4">
                     <div className="flex items-start gap-3 flex-1">
                       <button onClick={() => toggleRecordSelection(e.id)} className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 mt-1 transition-all ${selectedRecords.includes(e.id) ? 'bg-purple-600 border-purple-600' : 'border-gray-300 hover:border-purple-400'}`}>
