@@ -3213,7 +3213,11 @@ if (!confirmed) return;;
   setSaving(false);
 };
 
-  const getStaffEntries = () => {
+const getStaffEntries = () => {
+  // Regular staff should not see checklist module entries in history
+  if (currentUser?.role === 'staff' && CHECKLIST_MODULES.some(m => m.id === activeModule)) {
+    return [];
+  }
   let data = moduleData[activeModule] || [];
   
   if (staffRecordSearch.trim()) {
@@ -3553,7 +3557,7 @@ onUpdateRefundRequest={async (entryId, formData) => {
             </>
           )}
 
-{(isOfficeManager || currentUser?.role === 'super_admin' || currentUser?.role === 'rev_rangers' || currentUser?.role === 'it') && (
+{(isOfficeManager || currentUser?.role === 'super_admin' || currentUser?.role === 'rev_rangers' || currentUser?.role === 'it' || currentUser?.role === 'finance_admin') && currentUser?.role !== 'staff' && (
             <>
               <p className={`text-xs font-semibold uppercase tracking-wider mb-3 px-3 flex items-center gap-2 ${
                 isOfficeManager && CHECKLIST_MODULES.every(m => checklistStatus[m.id]?.submitted)
@@ -3716,8 +3720,12 @@ onUpdateRefundRequest={async (entryId, formData) => {
               </button>
             ) : !isAdmin && view !== 'settings' ? (
               [{ id: 'entry', label: '+ New Entry' }, { id: 'history', label: 'History' }].map(tab => (
-                <button key={tab.id} onClick={() => setView(tab.id)} className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${view === tab.id ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{tab.label}</button>
+<button key={tab.id} onClick={() => setView(tab.id)} className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${view === tab.id ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{tab.label}</button>
               ))
+            ) : isAdmin && adminView === 'records' && currentUser?.role === 'rev_rangers' ? (
+              <button className="px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap flex items-center gap-2 transition-all bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg">
+                <FileText className="w-4 h-4" />Review Submissions
+              </button>
             ) : null}
           </div>
         </header>
@@ -6219,11 +6227,15 @@ if (activeModule === 'it-requests') {
       {loading ? (
         <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-gray-400" /></div>
       ) : getStaffEntries().length === 0 ? (
-        <div className="text-center py-12">
+<div className="text-center py-12">
           <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <FileText className="w-8 h-8 text-gray-400" />
           </div>
-          <p className="text-gray-500">{staffRecordSearch ? 'No records match your search' : 'No entries yet'}</p>
+          <p className="text-gray-500">
+            {currentUser?.role === 'staff' && CHECKLIST_MODULES.some(m => m.id === activeModule)
+              ? 'Checklist modules are not available for your role'
+              : staffRecordSearch ? 'No records match your search' : 'No entries yet'}
+          </p>
           {staffRecordSearch && (
             <button onClick={() => setStaffRecordSearch('')} className="mt-2 text-blue-600 text-sm font-medium hover:underline">Clear search</button>
           )}
@@ -6366,6 +6378,8 @@ if (activeModule === 'it-requests') {
                       <div className="flex items-center gap-2">
 <p className="font-medium text-gray-800">
                           {e.ticket_number ? `IT-${e.ticket_number}` : 
+                           (activeModule === 'completed-procedure' || activeModule === 'claims-documents') ? <span className={`${activeModule === 'completed-procedure' ? 'text-teal-600' : 'text-sky-600'} font-bold`}>{activeModule === 'completed-procedure' ? 'Completed Procedure' : 'Claims & Documents'} — {new Date(e.created_at).toLocaleDateString('en-US', { timeZone: 'Pacific/Honolulu', month: 'short', day: 'numeric' })}</span> :
+                           (activeModule === 'daily-recon') ? <span className="text-emerald-600 font-bold">Recon: {e.recon_date}</span> :
                            (activeModule === 'bills-payment' && e.transaction_id) ? <span className="text-violet-600 font-bold">Invoice: {e.transaction_id}</span> :
                            (activeModule === 'billing-inquiry' && e.chart_number) ? <span className="text-blue-600 font-bold">Chart# {e.chart_number}</span> :
                            (activeModule === 'refund-requests' && e.chart_number) ? <span className="text-rose-600 font-bold">Chart# {e.chart_number}</span> :
@@ -6374,11 +6388,14 @@ if (activeModule === 'it-requests') {
                         {activeModule === 'bills-payment' && e.transaction_id && e.vendor && (
                           <p className="text-sm text-gray-600">{e.vendor}</p>
                         )}
-                        {activeModule === 'billing-inquiry' && e.chart_number && e.patient_name && (
+{activeModule === 'billing-inquiry' && e.chart_number && e.patient_name && (
                           <p className="text-sm text-gray-600">{e.patient_name}</p>
                         )}
                         {activeModule === 'refund-requests' && e.chart_number && e.patient_name && (
                           <p className="text-sm text-gray-600">{e.patient_name}</p>
+                        )}
+                        {(activeModule === 'completed-procedure' || activeModule === 'claims-documents') && e.checked_by && (
+                          <p className="text-sm text-gray-600">Checked by: {e.checked_by}</p>
                         )}
                         <StatusBadge status={e.status || (activeModule === 'daily-recon' ? 'Pending' : e.status)} />
                         {!canEdit && <Lock className="w-4 h-4 text-gray-400" title="Locked (past Friday cutoff)" />}
@@ -6392,7 +6409,13 @@ if (activeModule === 'it-requests') {
                       {activeModule !== 'daily-recon' && (e.amount || e.amount_requested || e.amount_in_question) && (
                         <p className="text-lg font-bold text-emerald-600 mt-2">${Number(e.amount || e.amount_requested || e.amount_in_question).toFixed(2)}</p>
                       )}
-                      
+
+{(activeModule === 'completed-procedure' || activeModule === 'claims-documents') && e.admin_notes && (
+                        <div className={`mt-2 p-2 rounded-lg text-sm ${e.status === 'Needs Revisions' ? 'bg-orange-100 text-orange-700 border border-orange-200' : 'bg-emerald-100 text-emerald-700 border border-emerald-200'}`}>
+                          <span className="font-medium">Admin Feedback: </span>{e.admin_notes}
+                        </div>
+                      )}
+
                       {docs.length > 0 && (
                         <div className="mt-3 space-y-1" onClick={ev => ev.stopPropagation()}>
                           <p className="text-xs font-medium text-gray-500">Attached Files:</p>
