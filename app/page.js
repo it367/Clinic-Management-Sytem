@@ -241,6 +241,9 @@ const [checklistEditForm, setChecklistEditForm] = useState({
     status: entry?.status || 'Pending',
     admin_notes: entry?.admin_notes || ''
   });
+
+const [isEditing, setIsEditing] = useState(false);
+  
   useEffect(() => {
     if (entry) {
       setEditForm({
@@ -329,6 +332,14 @@ const handleOrderSave = () => {
 const handleChecklistSave = () => {
     if (onUpdateChecklist) {
       onUpdateChecklist(entry.id, module?.id, checklistEditForm);
+    }
+    setIsEditing(false);
+    onClose();
+  };
+
+    const handleRefundSave = () => {
+    if (onUpdateRefundRequest) {
+      onUpdateRefundRequest(entry.id, refundEditForm);
     }
     setIsEditing(false);
     onClose();
@@ -833,7 +844,63 @@ const handleChecklistSave = () => {
                   <p className="text-gray-700">{entry.admin_notes}</p>
                 </div>
               )}
-
+              {/* Review Section for Checklist - Rev Rangers / Super Admin */}
+              {canReviewChecklist && (
+                <div className="mt-6 pt-4 border-t border-gray-200">
+                  {!isEditing ? (
+                    <button
+                      onClick={() => setIsEditing(true)}
+                      className="w-full py-3 bg-gradient-to-r from-teal-500 to-emerald-500 text-white rounded-xl font-medium hover:shadow-lg transition-all flex items-center justify-center gap-2"
+                    >
+                      <Edit3 className="w-4 h-4" /> Review & Update Status
+                    </button>
+                  ) : (
+                    <div className="space-y-4 p-4 rounded-xl border bg-teal-50 border-teal-200">
+                      <h4 className="font-semibold flex items-center gap-2 text-teal-800">
+                        <Edit3 className="w-4 h-4" /> Review Checklist Entry
+                      </h4>
+                      <div>
+                        <label className="text-xs font-medium text-gray-600 mb-1.5 block">Status</label>
+                        <select
+                          value={checklistEditForm.status}
+                          onChange={ev => setChecklistEditForm({ ...checklistEditForm, status: ev.target.value })}
+                          className="w-full p-2.5 border-2 border-gray-200 rounded-xl outline-none focus:border-blue-400 bg-white"
+                        >
+                          <option value="Pending">Pending</option>
+                          <option value="Approved">Approved</option>
+                          <option value="Needs Revisions">Needs Revisions</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-gray-600 mb-1.5 block">Admin Notes</label>
+                        <textarea
+                          value={checklistEditForm.admin_notes}
+                          onChange={ev => setChecklistEditForm({ ...checklistEditForm, admin_notes: ev.target.value })}
+                          placeholder="Enter review notes or feedback..."
+                          rows={3}
+                          className="w-full p-2.5 border-2 border-gray-200 rounded-xl outline-none focus:border-blue-400 bg-white resize-none"
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handleChecklistSave}
+                          className="flex-1 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl font-medium hover:shadow-lg transition-all"
+                        >
+                          Save Review
+                        </button>
+                        <button
+                          onClick={() => setIsEditing(false)}
+                          className="px-4 py-2.5 bg-gray-200 rounded-xl font-medium hover:bg-gray-300 transition-all"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* IT Requests */}
           {module?.id === 'it-requests' && (
