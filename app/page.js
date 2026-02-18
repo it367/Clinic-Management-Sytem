@@ -4146,7 +4146,7 @@ onDelete={isITViewOnly ? null : async (recordId) => {
       
       const filteredData = filterByRange(data);
       
-      if (filteredData.length === 0) {
+if (filteredData.length === 0 && analyticsModule !== 'checklist-overview') {
         return (
           <div className="bg-white rounded-2xl shadow-lg p-12 border border-gray-100 text-center">
             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
