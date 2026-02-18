@@ -4035,7 +4035,7 @@ onDelete={isITViewOnly ? null : async (recordId) => {
   <div className="space-y-6">
     {/* Module Selector */}
     <div className="bg-white rounded-2xl shadow-lg p-4 border border-gray-100">
-<div className="flex flex-wrap items-center gap-2">
+<div className="flex items-center gap-2 overflow-x-auto pb-1">
         <button
           onClick={() => setAnalyticsModule('checklist-overview')}
           className={`px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 transition-all ${analyticsModule === 'checklist-overview' ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
@@ -4226,7 +4226,11 @@ if (filteredData.length === 0 && analyticsModule !== 'checklist-overview') {
         for (let d = 1; d <= daysInMonth; d++) {
           allDates.push(`${cYear}-${String(cMonth).padStart(2, '0')}-${String(d).padStart(2, '0')}`);
         }
-        const pastDates = allDates.filter(d => d <= hawaiiToday);
+        const pastDates = allDates.filter(d => {
+          if (d > hawaiiToday) return false;
+          const dayOfWeek = new Date(d + 'T12:00:00').getDay();
+          return dayOfWeek !== 0 && dayOfWeek !== 6; // Exclude Sun & Sat
+        });
 
         // KPI: Today
         let todaySubmitted = 0, todayApproved = 0, todayRevisions = 0;
@@ -4241,7 +4245,7 @@ if (filteredData.length === 0 && analyticsModule !== 'checklist-overview') {
         });
 
         // KPI: This week (last 7 business days in pastDates)
-        const weekDates = pastDates.slice(-7);
+        const weekDates = pastDates.slice(-5);
         let weekTotal = 0, weekSubmitted = 0;
         weekDates.forEach(date => {
           activeLocs.forEach(loc => {
@@ -4430,15 +4434,13 @@ if (filteredData.length === 0 && analyticsModule !== 'checklist-overview') {
                     {[...pastDates].reverse().map(dateStr => {
                       const dayDate = new Date(dateStr + 'T12:00:00');
                       const isToday = dateStr === hawaiiToday;
-                      const dayOfWeek = dayDate.getDay();
-                      const isSunday = dayOfWeek === 0;
                       let daySubmitted = 0, dayTotal = 0;
 
                       return (
-                        <tr key={dateStr} className={`${isToday ? 'bg-blue-50' : isSunday ? 'bg-gray-50/50' : 'hover:bg-gray-50'} transition-colors`}>
-                          <td className={`sticky left-0 z-10 px-3 py-2 whitespace-nowrap border-b border-gray-100 ${isToday ? 'bg-blue-50' : isSunday ? 'bg-gray-50' : 'bg-white'}`}>
+                      <tr key={dateStr} className={`${isToday ? 'bg-blue-50' : 'hover:bg-gray-50'} transition-colors`}>
+                          <td className={`sticky left-0 z-10 px-3 py-2 whitespace-nowrap border-b border-gray-100 ${isToday ? 'bg-blue-50' : 'bg-white'}`}>
                             <div className="flex items-center gap-2">
-                              <span className={`font-medium ${isToday ? 'text-blue-700' : isSunday ? 'text-gray-400' : 'text-gray-700'}`}>
+                              <span className={`font-medium ${isToday ? 'text-blue-700' : 'text-gray-700'}`}>
                                 {dayDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                               </span>
                               {isToday && <span className="text-[10px] bg-blue-500 text-white px-1.5 py-0.5 rounded-full font-bold">TODAY</span>}
