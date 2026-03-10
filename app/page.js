@@ -1659,13 +1659,11 @@ useEffect(() => {
 
 // Load data when analytics module changes
 useEffect(() => {
-  const userIsAdmin = currentUser?.role === 'super_admin' || currentUser?.role === 'finance_admin' || currentUser?.role === 'rev_rangers';
-if (userIsAdmin && adminView === 'analytics' && analyticsModule && analyticsModule !== 'checklist-overview') {
-    if (!moduleData[analyticsModule]) {
-      loadModuleData(analyticsModule);
-    }
+  const userIsAdmin = currentUser?.role === 'super_admin' || currentUser?.role === 'finance_admin' || currentUser?.role === 'rev_rangers' || currentUser?.role === 'it';
+  if (userIsAdmin && adminView === 'analytics' && analyticsModule && analyticsModule !== 'checklist-overview') {
+    loadModuleData(analyticsModule);
   }
-}, [analyticsModule, adminView]);
+}, [analyticsModule, adminView, adminLocation]);
 const isAdmin = currentUser?.role === 'super_admin' || currentUser?.role === 'finance_admin' || currentUser?.role === 'it' || currentUser?.role === 'rev_rangers';
 const isSuperAdmin = currentUser?.role === 'super_admin' || currentUser?.role === 'it';
 const isChecklistReviewer = currentUser?.role === 'super_admin' || currentUser?.role === 'rev_rangers';
@@ -5420,6 +5418,111 @@ const totalDeposited = filteredData.reduce((sum, r) => {
         );
       }
       
+// Hospital Cases Analytics (same as Billing Inquiry)
+      if (analyticsModule === 'hospital-cases') {
+        const totalAmount = filteredData.reduce((sum, r) => sum + (parseFloat(r.amount_in_question) || 0), 0);
+        const avgAmount = filteredData.length > 0 ? totalAmount / filteredData.length : 0;
+        const pendingCount = filteredData.filter(r => r.status === 'Pending' || !r.status).length;
+        const resolvedCount = filteredData.filter(r => r.status === 'Resolved').length;
+        const inProgressCount = filteredData.filter(r => r.status === 'In Progress').length;
+        
+        const byType = {};
+        INQUIRY_TYPES.forEach(t => byType[t] = { count: 0, amount: 0 });
+        filteredData.forEach(r => {
+          const type = r.inquiry_type || 'Other';
+          if (!byType[type]) byType[type] = { count: 0, amount: 0 };
+          byType[type].count += 1;
+          byType[type].amount += parseFloat(r.amount_in_question) || 0;
+        });
+        
+        const byLocation = {};
+        filteredData.forEach(r => {
+          const loc = r.locations?.name || 'Unknown';
+          if (!byLocation[loc]) byLocation[loc] = { count: 0, amount: 0 };
+          byLocation[loc].count += 1;
+          byLocation[loc].amount += parseFloat(r.amount_in_question) || 0;
+        });
+        
+        return (
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-4 text-white shadow-lg">
+                <p className="text-indigo-100 text-sm font-medium">Total Cases</p>
+                <p className="text-2xl font-bold mt-1">{filteredData.length}</p>
+                <p className="text-indigo-200 text-xs mt-2">{analyticsRange}</p>
+              </div>
+              <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-4 text-white shadow-lg">
+                <p className="text-emerald-100 text-sm font-medium">Total Amount</p>
+                <p className="text-2xl font-bold mt-1">${totalAmount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                <p className="text-emerald-200 text-xs mt-2">In question</p>
+              </div>
+              <div className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl p-4 text-white shadow-lg">
+                <p className="text-violet-100 text-sm font-medium">Avg. Amount</p>
+                <p className="text-2xl font-bold mt-1">${avgAmount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                <p className="text-violet-200 text-xs mt-2">Per case</p>
+              </div>
+              <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-4 text-white shadow-lg">
+                <p className="text-amber-100 text-sm font-medium">Resolution Rate</p>
+                <p className="text-2xl font-bold mt-1">{filteredData.length > 0 ? ((resolvedCount / filteredData.length) * 100).toFixed(0) : 0}%</p>
+                <p className="text-amber-200 text-xs mt-2">{resolvedCount} resolved</p>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+              <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <PieChart className="w-5 h-5 text-indigo-500" /> Case Types
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {Object.entries(byType).filter(([_, stats]) => stats.count > 0).map(([type, stats]) => (
+                  <div key={type} className="p-4 rounded-xl bg-indigo-50 border border-indigo-100">
+                    <p className="font-medium text-gray-800">{type}</p>
+                    <p className="text-2xl font-bold text-indigo-600 mt-1">{stats.count}</p>
+                    <p className="text-sm text-gray-500">${stats.amount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+              <h3 className="font-semibold text-gray-800 mb-4">Status Distribution</h3>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-center">
+                  <p className="text-3xl font-bold text-amber-600">{pendingCount}</p>
+                  <p className="text-sm text-gray-600 mt-1">Pending</p>
+                </div>
+                <div className="p-4 rounded-xl bg-blue-50 border border-blue-200 text-center">
+                  <p className="text-3xl font-bold text-blue-600">{inProgressCount}</p>
+                  <p className="text-sm text-gray-600 mt-1">In Progress</p>
+                </div>
+                <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-center">
+                  <p className="text-3xl font-bold text-emerald-600">{resolvedCount}</p>
+                  <p className="text-sm text-gray-600 mt-1">Resolved</p>
+                </div>
+              </div>
+            </div>
+
+            {Object.keys(byLocation).length > 1 && (
+              <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+                <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                  <Building2 className="w-5 h-5 text-indigo-500" /> By Location
+                </h3>
+                <div className="space-y-3">
+                  {Object.entries(byLocation).sort((a, b) => b[1].count - a[1].count).map(([loc, stats]) => (
+                    <div key={loc} className="flex items-center justify-between p-3 rounded-xl bg-gray-50">
+                      <span className="font-medium text-gray-800">{loc}</span>
+                      <div className="text-right">
+                        <p className="font-bold text-indigo-600">{stats.count} cases</p>
+                        <p className="text-sm text-gray-500">${stats.amount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        );
+      }
+
       return <p className="text-gray-500 text-center py-12">Select a module to view analytics.</p>;
     })()}
   </div>
