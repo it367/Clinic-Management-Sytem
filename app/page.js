@@ -20,6 +20,10 @@ const MODULES = [
   { id: 'refund-requests', name: 'Refund Requests', icon: RefreshCw, color: 'rose', table: 'refund_requests' },
 ];
 
+const HOSPITAL_MODULES = [
+  { id: 'hospital-cases', name: 'Hospital Cases', icon: Headphones, color: 'indigo', table: 'hospital_cases' },
+];
+
 const SUPPORT_MODULES = [
   { id: 'it-requests', name: 'IT Requests', icon: Monitor, color: 'cyan', table: 'it_requests' },
 ];
@@ -27,7 +31,7 @@ const SUPPORT_MODULES = [
 const CHECKLIST_ENABLED = false; // Feature flag: set to true to re-enable Office Task Checklist
 const DAILY_RECON_ENABLED = false; // Feature flag: set to true to re-enable Daily Reconciliation
 
-const ALL_MODULES = [...CHECKLIST_MODULES, ...MODULES, ...SUPPORT_MODULES];
+const ALL_MODULES = [...CHECKLIST_MODULES, ...MODULES, ...HOSPITAL_MODULES, ...SUPPORT_MODULES];
 
 const MODULE_COLORS = {
   'daily-recon': { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', accent: 'bg-emerald-500', light: 'bg-emerald-100' },
@@ -37,7 +41,8 @@ const MODULE_COLORS = {
   'refund-requests': { bg: 'bg-rose-50', border: 'border-rose-200', text: 'text-rose-700', accent: 'bg-rose-500', light: 'bg-rose-100' },
 'it-requests': { bg: 'bg-cyan-50', border: 'border-cyan-200', text: 'text-cyan-700', accent: 'bg-cyan-500', light: 'bg-cyan-100' },
   'completed-procedure': { bg: 'bg-teal-50', border: 'border-teal-200', text: 'text-teal-700', accent: 'bg-teal-500', light: 'bg-teal-100' },
-  'claims-documents': { bg: 'bg-sky-50', border: 'border-sky-200', text: 'text-sky-700', accent: 'bg-sky-500', light: 'bg-sky-100' },
+'claims-documents': { bg: 'bg-sky-50', border: 'border-sky-200', text: 'text-sky-700', accent: 'bg-sky-500', light: 'bg-sky-100' },
+  'hospital-cases': { bg: 'bg-indigo-50', border: 'border-indigo-200', text: 'text-indigo-700', accent: 'bg-indigo-500', light: 'bg-indigo-100' },
 };
 
 const IT_STATUSES = ['For Review', 'In Progress', 'On-hold', 'Resolved'];
@@ -217,7 +222,7 @@ function FileViewer({ file, onClose }) {
   );
 }
 
-function EntryPreview({ entry, module, onClose, colors, onViewDocument, currentUser, itUsers, financeAdminUsers, onUpdateStatus, onDelete, onUpdateBillingInquiry, onUpdateBillsPayment, onUpdateOrderRequest, onUpdateRefundRequest, onUpdateChecklist }) {
+function EntryPreview({ entry, module, onClose, colors, onViewDocument, currentUser, itUsers, financeAdminUsers, onUpdateStatus, onDelete, onUpdateBillingInquiry, onUpdateBillsPayment, onUpdateOrderRequest, onUpdateRefundRequest, onUpdateChecklist, onUpdateHospitalCase }) {
   const [editForm, setEditForm] = useState({
     status: entry?.status || 'For Review',
     assigned_to: entry?.assigned_to || '',
@@ -271,6 +276,16 @@ setRefundEditForm({
         reviewed_by: entry.reviewed_by || '',
         reviewed_at: entry.reviewed_at || ''
       });
+if (entry && module?.id === 'hospital-cases') {
+        setBillingEditForm({
+          status: entry.status || 'Pending',
+          billing_team_reviewed: entry.billing_team_reviewed || '',
+          date_reviewed: entry.date_reviewed || '',
+          result: entry.result || '',
+          paid: null
+        });
+      }
+      
       setChecklistEditForm({
         status: entry.status || 'Pending',
         admin_notes: entry.admin_notes || ''
@@ -292,6 +307,8 @@ const isBillingInquiry = module?.id === 'billing-inquiry';
   const canEditIT = isITRequest && currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'it');
 const canEditBilling = (isBillingInquiry || isBillsPayment) && currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'finance_admin' || (currentUser.role === 'rev_rangers' && isBillingInquiry));
 const canEditOrders = isOrderRequest && currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'finance_admin');
+  const isHospitalCase = module?.id === 'hospital-cases';
+  const canEditHospital = isHospitalCase && currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'rev_rangers');
   const isRefundRequest = module?.id === 'refund-requests';
   const canEditRefunds = isRefundRequest && currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'finance_admin' || currentUser.role === 'rev_rangers');
 const isChecklistModule = module?.id === 'completed-procedure' || module?.id === 'claims-documents';
@@ -512,6 +529,79 @@ const handleChecklistSave = () => {
                         >
                           Cancel
                         </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+{/* Hospital Cases */}
+          {module?.id === 'hospital-cases' && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div><span className="text-gray-600 text-sm block">Patient Name</span><span className="font-medium">{entry.patient_name || '-'}</span></div>
+                <div><span className="text-gray-600 text-sm block">Chart Number</span><span className="font-medium">{entry.chart_number || '-'}</span></div>
+                <div><span className="text-gray-600 text-sm block">Parent Name</span><span className="font-medium">{entry.parent_name || '-'}</span></div>
+                <div><span className="text-gray-600 text-sm block">Date of Request</span><span className="font-medium">{formatDate(entry.date_of_request)}</span></div>
+                <div><span className="text-gray-600 text-sm block">Inquiry Type</span><span className="font-medium">{entry.inquiry_type || '-'}</span></div>
+                <div><span className="text-gray-600 text-sm block">Amount in Question</span><span className="font-medium text-emerald-600">{formatCurrency(entry.amount_in_question)}</span></div>
+                <div><span className="text-gray-600 text-sm block">Contact Method</span><span className="font-medium">{entry.best_contact_method || '-'}</span></div>
+                <div><span className="text-gray-600 text-sm block">Best Time to Contact</span><span className="font-medium">{entry.best_contact_time || '-'}</span></div>
+                <div className="col-span-2"><span className="text-gray-600 text-sm block">Description</span><p className="font-medium bg-gray-50 p-3 rounded-lg mt-1">{entry.description || '-'}</p></div>
+              </div>
+
+              {!isEditing && (entry.billing_team_reviewed || entry.date_reviewed || entry.result) && (
+                <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-200">
+                  <h4 className="font-semibold text-indigo-800 mb-3 flex items-center gap-2">
+                    <FileText className="w-4 h-4" /> Review Details
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div><span className="text-gray-600 text-sm block">Reviewed By</span><span className="font-medium">{entry.billing_team_reviewed || '-'}</span></div>
+                    <div><span className="text-gray-600 text-sm block">Date Reviewed</span><span className="font-medium">{formatDate(entry.date_reviewed)}</span></div>
+                    <div className="col-span-2"><span className="text-gray-600 text-sm block">Result</span><span className="font-medium">{entry.result || '-'}</span></div>
+                  </div>
+                </div>
+              )}
+
+              {canEditHospital && (
+                <div className="mt-6 pt-4 border-t border-gray-200">
+                  {!isEditing ? (
+                    <button onClick={() => setIsEditing(true)} className="w-full py-3 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-xl font-medium hover:shadow-lg transition-all flex items-center justify-center gap-2">
+                      <Edit3 className="w-4 h-4" /> Review & Update Status
+                    </button>
+                  ) : (
+                    <div className="space-y-4 bg-indigo-50 p-4 rounded-xl border border-indigo-200">
+                      <h4 className="font-semibold text-indigo-800 flex items-center gap-2"><Edit3 className="w-4 h-4" /> Review Hospital Case</h4>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-xs font-medium text-gray-600 mb-1.5 block">Status</label>
+                          <select value={billingEditForm.status} onChange={e => setBillingEditForm({ ...billingEditForm, status: e.target.value })} className="w-full p-2.5 border-2 border-gray-200 rounded-xl outline-none focus:border-indigo-400 bg-white">
+                            <option value="Pending">Pending</option>
+                            <option value="In Progress">In Progress</option>
+                            <option value="Resolved">Resolved</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-gray-600 mb-1.5 block">Reviewed By</label>
+                          <select value={billingEditForm.billing_team_reviewed} onChange={e => setBillingEditForm({ ...billingEditForm, billing_team_reviewed: e.target.value })} className="w-full p-2.5 border-2 border-gray-200 rounded-xl outline-none focus:border-indigo-400 bg-white">
+                            <option value="">Select Reviewer...</option>
+                            {financeAdminUsers?.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-gray-600 mb-1.5 block">Date Reviewed</label>
+                          <input type="date" value={billingEditForm.date_reviewed} onChange={e => setBillingEditForm({ ...billingEditForm, date_reviewed: e.target.value })} className="w-full p-2.5 border-2 border-gray-200 rounded-xl outline-none focus:border-indigo-400 bg-white" />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-gray-600 mb-1.5 block">Result</label>
+                        <textarea value={billingEditForm.result} onChange={e => setBillingEditForm({ ...billingEditForm, result: e.target.value })} placeholder="Enter review result or notes..." rows={3} className="w-full p-2.5 border-2 border-gray-200 rounded-xl outline-none focus:border-indigo-400 bg-white resize-none" />
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={() => { if (onUpdateHospitalCase) { onUpdateHospitalCase(entry.id, billingEditForm); } setIsEditing(false); onClose(); }} className="flex-1 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl font-medium hover:shadow-lg transition-all">Save Review</button>
+                        <button onClick={() => setIsEditing(false)} className="px-4 py-2.5 bg-gray-200 rounded-xl font-medium hover:bg-gray-300 transition-all">Cancel</button>
                       </div>
                     </div>
                   )}
@@ -1409,7 +1499,8 @@ const loadChecklistAnalyticsData = async () => {
   'refund-requests': { patient_name: '', chart_number: '', parent_name: '', rp_address: '', date_of_request: today, type: '', description: '', amount_requested: '', best_contact_method: '', contact_info: '', eassist_audited: '', status: 'Pending' },
 'it-requests': { date_reported: today, urgency: '', requester_name: '', device_system: '', description_of_issue: '', best_contact_method: '', best_contact_time: '', assigned_to: '', status: 'Open', resolution_notes: '', completed_by: '' },
     'completed-procedure': { checked_by: '', notes: '' },
-    'claims-documents': { checked_by: '', notes: '' }
+'claims-documents': { checked_by: '', notes: '' },
+    'hospital-cases': { patient_name: '', chart_number: '', parent_name: '', date_of_request: today, inquiry_type: '', description: '', amount_in_question: '', best_contact_method: '', best_contact_time: '', billing_team_reviewed: '', date_reviewed: '', status: 'Pending', result: '' }
   });
 
   const [files, setFiles] = useState({
@@ -1420,7 +1511,8 @@ const loadChecklistAnalyticsData = async () => {
     'refund-requests': { documentation: [] },
 'it-requests': { documentation: [] },
     'completed-procedure': { documentation: [] },
-    'claims-documents': { documentation: [] }
+'claims-documents': { documentation: [] },
+    'hospital-cases': { documentation: [] }
   });
 
 useEffect(() => {
@@ -1533,7 +1625,7 @@ useEffect(() => { if (currentUser) setNameForm(currentUser.name || ''); }, [curr
 useEffect(() => { setCurrentPage(1); setRecordSearch(''); }, [activeModule, adminLocation]);
 
 useEffect(() => {
-  if (adminView === 'rev-entry' && activeModule !== 'daily-recon' && activeModule !== 'billing-inquiry' && activeModule !== 'refund-requests') {
+if (adminView === 'rev-entry' && activeModule !== 'daily-recon' && activeModule !== 'billing-inquiry' && activeModule !== 'refund-requests' && activeModule !== 'hospital-cases') {
     setAdminView('records');
   }
 }, [activeModule]);
@@ -2474,6 +2566,24 @@ if (moduleId === 'daily-recon') {
         status: 'Pending'
       };
 
+} else if (moduleId === 'hospital-cases') {
+  entryData = {
+    ...entryData,
+    patient_name: form.patient_name,
+    chart_number: form.chart_number,
+    parent_name: form.parent_name,
+    date_of_request: form.date_of_request || null,
+    inquiry_type: form.inquiry_type,
+    description: form.description,
+    amount_in_question: parseFloat(form.amount_in_question) || null,
+    best_contact_method: form.best_contact_method || null,
+    best_contact_time: form.best_contact_time,
+    billing_team_reviewed: form.billing_team_reviewed,
+    date_reviewed: form.date_reviewed || null,
+    status: form.status || 'Pending',
+    result: form.result
+  };
+  
   } else if (moduleId === 'completed-procedure') {
       entryData = {
         ...entryData,
@@ -2632,6 +2742,32 @@ const updateBillingInquiry = async (entryId, formData) => {
   loadModuleData('billing-inquiry');
 };
 
+const updateHospitalCase = async (entryId, formData) => {
+  const confirmed = await showConfirm('Update Hospital Case', 'Are you sure you want to update this hospital case?', 'Update', 'indigo');
+  if (!confirmed) return;
+
+  const updateData = {
+    status: formData.status,
+    billing_team_reviewed: formData.billing_team_reviewed || null,
+    date_reviewed: formData.date_reviewed || null,
+    result: formData.result || null,
+    updated_by: currentUser.id
+  };
+
+  const { error } = await supabase
+    .from('hospital_cases')
+    .update(updateData)
+    .eq('id', entryId);
+
+  if (error) {
+    showMessage('error', 'Failed to update hospital case');
+    return;
+  }
+
+  showMessage('success', '✓ Hospital case updated!');
+  loadModuleData('hospital-cases');
+};
+  
 const updateBillsPayment = async (entryId, formData) => {
   const confirmed = await showConfirm('Update Bills Payment', 'Are you sure you want to update this payment record?', 'Update', 'violet');
   if (!confirmed) return;
@@ -3166,6 +3302,19 @@ const getTotalPages = () => {
       checked_by: entry.checked_by || '',
       notes: entry.notes || ''
     });
+
+    } else if (activeModule === 'hospital-cases') {
+    setStaffEditForm({
+      patient_name: entry.patient_name || '',
+      chart_number: entry.chart_number || '',
+      parent_name: entry.parent_name || '',
+      date_of_request: entry.date_of_request || '',
+      inquiry_type: entry.inquiry_type || '',
+      description: entry.description || '',
+      amount_in_question: entry.amount_in_question || '',
+      best_contact_method: entry.best_contact_method || '',
+      best_contact_time: entry.best_contact_time || ''
+    });
   } else if (activeModule === 'it-requests') {
     setStaffEditForm({
       date_reported: entry.date_reported || '',
@@ -3257,6 +3406,19 @@ if (activeModule === 'daily-recon') {
       contact_info: staffEditForm.contact_info || null
     };
 
+} else if (activeModule === 'hospital-cases') {
+    updateData = { ...updateData,
+      patient_name: staffEditForm.patient_name,
+      chart_number: staffEditForm.chart_number,
+      parent_name: staffEditForm.parent_name,
+      date_of_request: staffEditForm.date_of_request || null,
+      inquiry_type: staffEditForm.inquiry_type,
+      description: staffEditForm.description,
+      amount_in_question: parseFloat(staffEditForm.amount_in_question) || null,
+      best_contact_method: staffEditForm.best_contact_method || null,
+      best_contact_time: staffEditForm.best_contact_time
+    };
+  
 } else if (activeModule === 'completed-procedure') {
     updateData = { ...updateData,
       checked_by: staffEditForm.checked_by,
@@ -3592,6 +3754,11 @@ onUpdateRefundRequest={async (entryId, formData) => {
     await updateChecklistEntry(entryId, moduleId, formData);
     setViewingEntry(null);
   }}
+
+onUpdateHospitalCase={async (entryId, formData) => {
+    await updateHospitalCase(entryId, formData);
+    setViewingEntry(null);
+  }}
 onDelete={isITViewOnly ? null : async (recordId) => {
     const deleted = await deleteRecord(activeModule, recordId);
     if (deleted) setViewingEntry(null);
@@ -3728,6 +3895,24 @@ onDelete={isITViewOnly ? null : async (recordId) => {
           })}
           </>
           )}
+<div className="border-t my-4"></div>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">Hospital</p>
+          {HOSPITAL_MODULES.map(m => {
+            const colors = MODULE_COLORS[m.id];
+            const isActive = activeModule === m.id && adminView !== 'users' && adminView !== 'export' && adminView !== 'settings' && view !== 'settings';
+            return (
+              <button
+                key={m.id}
+                onClick={() => { setActiveModule(m.id); setAdminView('records'); setView('entry'); setSidebarOpen(false); }}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${isActive ? `${colors.bg} ${colors.text} ${colors.border} border-2` : 'text-gray-600 hover:bg-gray-50'}`}
+              >
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isActive ? colors.light : 'bg-gray-100'}`}>
+                  <m.icon className={`w-4 h-4 ${isActive ? colors.text : 'text-gray-500'}`} />
+                </div>
+                <span className="text-sm font-medium">{m.name}</span>
+              </button>
+            );
+          })}
 
 {(currentUser?.role === 'super_admin' || currentUser?.role === 'it' || !isAdmin || isOfficeManager) && (
             <>
@@ -3809,7 +3994,7 @@ onDelete={isITViewOnly ? null : async (recordId) => {
 
 {/* Tabs */}
           <div className="flex gap-2 px-4 pb-3 overflow-x-auto">
-{isAdmin && currentUser?.role === 'rev_rangers' && (activeModule === 'billing-inquiry' || activeModule === 'refund-requests' || (DAILY_RECON_ENABLED && activeModule === 'daily-recon')) ? (
+{isAdmin && currentUser?.role === 'rev_rangers' && (activeModule === 'billing-inquiry' || activeModule === 'refund-requests' || activeModule === 'hospital-cases' || (DAILY_RECON_ENABLED && activeModule === 'daily-recon')) ? (
               [{ id: 'rev-entry', label: '+ New Entry' }, { id: 'records', label: 'Records' }].map(tab => (
                 <button key={tab.id} onClick={() => setAdminView(tab.id)} className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${adminView === tab.id ? 'bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow-lg' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{tab.label}</button>
               ))
@@ -4053,7 +4238,7 @@ onDelete={isITViewOnly ? null : async (recordId) => {
         </>)}
 {[
           ...(DAILY_RECON_ENABLED ? [CHECKLIST_MODULES.find(m => m.id === 'daily-recon')] : []),
-          ...(currentUser?.role === 'rev_rangers' ? MODULES.filter(m => m.id === 'billing-inquiry' || m.id === 'refund-requests') : MODULES)
+         ...(currentUser?.role === 'rev_rangers' ? [...MODULES.filter(m => m.id === 'billing-inquiry' || m.id === 'refund-requests'), ...HOSPITAL_MODULES] : [...MODULES, ...HOSPITAL_MODULES])
         ].map(m => {
           const colors = MODULE_COLORS[m.id];
           const isActive = analyticsModule === m.id;
@@ -5735,6 +5920,52 @@ const totalDeposited = filteredData.reduce((sum, r) => {
   </div>
 )}
 
+{/* Rev Rangers: Hospital Cases Entry */}
+{isAdmin && adminView === 'rev-entry' && currentUser?.role === 'rev_rangers' && activeModule === 'hospital-cases' && (
+  <div className="space-y-4">
+    {adminLocation === 'all' ? (
+      <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-amber-200">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center">
+            <Building2 className="w-6 h-6 text-amber-600" />
+          </div>
+          <div>
+            <h2 className="font-semibold text-gray-800">Select a Location</h2>
+            <p className="text-sm text-amber-600">Please select a specific location from the sidebar filter before entering data.</p>
+          </div>
+        </div>
+      </div>
+    ) : (
+      <>
+        <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-l-indigo-500">
+          <h2 className="font-semibold mb-2 text-gray-800 flex items-center gap-2">
+            <Headphones className="w-5 h-5 text-indigo-500" /> Hospital Case — {adminLocation}
+          </h2>
+          <div className="grid grid-cols-2 gap-4">
+            <InputField label="Patient Name" value={forms['hospital-cases'].patient_name} onChange={e => updateForm('hospital-cases', 'patient_name', e.target.value)} />
+            <InputField label="Chart Number" value={forms['hospital-cases'].chart_number} onChange={e => updateForm('hospital-cases', 'chart_number', e.target.value)} />
+            <InputField label="Parent Name" value={forms['hospital-cases'].parent_name} onChange={e => updateForm('hospital-cases', 'parent_name', e.target.value)} />
+            <InputField label="Date of Request" type="date" value={forms['hospital-cases'].date_of_request} onChange={e => updateForm('hospital-cases', 'date_of_request', e.target.value)} />
+            <InputField label="Type of Inquiry" value={forms['hospital-cases'].inquiry_type} onChange={e => updateForm('hospital-cases', 'inquiry_type', e.target.value)} options={INQUIRY_TYPES} />
+            <InputField label="Amount in Question" prefix="$" value={forms['hospital-cases'].amount_in_question} onChange={e => updateForm('hospital-cases', 'amount_in_question', e.target.value)} />
+            <InputField label="Best Contact Method" value={forms['hospital-cases'].best_contact_method} onChange={e => updateForm('hospital-cases', 'best_contact_method', e.target.value)} options={CONTACT_METHODS} />
+            <InputField label="Best Time to Contact" value={forms['hospital-cases'].best_contact_time} onChange={e => updateForm('hospital-cases', 'best_contact_time', e.target.value)} />
+          </div>
+          <div className="mt-4">
+            <InputField label="Description" large value={forms['hospital-cases'].description} onChange={e => updateForm('hospital-cases', 'description', e.target.value)} />
+          </div>
+        </div>
+        <div className="bg-white rounded-2xl shadow-lg p-6">
+          <FileUpload label="Supporting Documentation" files={files['hospital-cases'].documentation} onFilesChange={f => updateFiles('hospital-cases', 'documentation', f)} onViewFile={setViewingFile} />
+        </div>
+        <button onClick={() => saveEntry('hospital-cases')} disabled={saving} className="w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl text-lg font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50">
+          {saving ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Save Entry'}
+        </button>
+      </>
+    )}
+  </div>
+)}
+  
 {/* Records View - Admin */}
 {isAdmin && adminView === 'records' && (
   <div className="space-y-4">
@@ -6116,6 +6347,48 @@ if (activeModule === 'it-requests') {
                     <div className="flex items-center gap-1" onClick={ev => ev.stopPropagation()}>
                       <button onClick={() => setViewingEntry(e)} className="p-2 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors" title="Preview"><Eye className="w-4 h-4" /></button>
                       <button onClick={() => deleteRecord(activeModule, e.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+
+// Hospital Cases
+            if (activeModule === 'hospital-cases') {
+              return (
+                <div key={e.id} className={`p-4 rounded-xl border-2 ${currentColors?.border} ${currentColors?.bg} hover:shadow-md transition-all ${selectedRecords.includes(e.id) ? 'ring-2 ring-purple-500' : ''}`}>
+                  <div className="flex justify-between items-start gap-4">
+                    <div className="flex items-start gap-3 flex-1">
+                      <button onClick={() => toggleRecordSelection(e.id)} className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 mt-1 transition-all ${selectedRecords.includes(e.id) ? 'bg-purple-600 border-purple-600' : 'border-gray-300 hover:border-purple-400'}`}>
+                        {selectedRecords.includes(e.id) && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                      </button>
+                      <div className="flex-1 cursor-pointer" onClick={() => setViewingEntry(e)}>
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          {e.chart_number && <span className="font-bold text-indigo-600">Chart# {e.chart_number}</span>}
+                          <StatusBadge status={e.status} />
+                        </div>
+                        <p className="font-medium text-gray-800">{e.patient_name || 'No Patient Name'}</p>
+                        <p className="text-sm text-gray-500 mt-1">
+                          {e.locations?.name} • {e.inquiry_type || 'No Type'} • {e.date_of_request ? new Date(e.date_of_request).toLocaleDateString() : new Date(e.created_at).toLocaleDateString()}
+                        </p>
+                        {e.amount_in_question > 0 && <p className="text-lg font-bold text-emerald-600 mt-2">${Number(e.amount_in_question || 0).toFixed(2)}</p>}
+                        {docs.length > 0 && (
+                          <div className="mt-3 flex flex-wrap gap-2" onClick={ev => ev.stopPropagation()}>
+                            {docs.map(doc => (
+                              <div key={doc.id} className="flex items-center gap-1 bg-white px-2 py-1 rounded-lg border text-xs">
+                                <File className="w-3 h-3 text-gray-400" />
+                                <span className="text-gray-600 max-w-24 truncate">{doc.file_name}</span>
+                                <button onClick={() => viewDocument(doc)} className="p-0.5 text-blue-500 hover:bg-blue-100 rounded"><Eye className="w-3 h-3" /></button>
+                                <button onClick={() => downloadDocument(doc)} className="p-0.5 text-emerald-500 hover:bg-emerald-100 rounded"><Download className="w-3 h-3" /></button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1" onClick={ev => ev.stopPropagation()}>
+                      <button onClick={() => setViewingEntry(e)} className="p-2 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"><Eye className="w-4 h-4" /></button>
+                      <button onClick={() => deleteRecord(activeModule, e.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
                     </div>
                   </div>
                 </div>
@@ -6915,6 +7188,32 @@ if (activeModule === 'it-requests') {
   </>
 )}
 
+{activeModule === 'hospital-cases' && (
+  <>
+    <div className={`bg-white rounded-2xl shadow-lg p-6 border-l-4 ${currentColors?.accent}`}>
+      <h2 className="font-semibold mb-4 text-gray-800 flex items-center gap-2">
+        <Headphones className="w-5 h-5 text-indigo-500" /> Hospital Case
+      </h2>
+      <div className="grid grid-cols-2 gap-4">
+        <InputField label="Patient Name" value={forms['hospital-cases'].patient_name} onChange={e => updateForm('hospital-cases', 'patient_name', e.target.value)} />
+        <InputField label="Chart Number" value={forms['hospital-cases'].chart_number} onChange={e => updateForm('hospital-cases', 'chart_number', e.target.value)} />
+        <InputField label="Parent Name" value={forms['hospital-cases'].parent_name} onChange={e => updateForm('hospital-cases', 'parent_name', e.target.value)} />
+        <InputField label="Date of Request" type="date" value={forms['hospital-cases'].date_of_request} onChange={e => updateForm('hospital-cases', 'date_of_request', e.target.value)} />
+        <InputField label="Type of Inquiry" value={forms['hospital-cases'].inquiry_type} onChange={e => updateForm('hospital-cases', 'inquiry_type', e.target.value)} options={INQUIRY_TYPES} />
+        <InputField label="Amount in Question" prefix="$" value={forms['hospital-cases'].amount_in_question} onChange={e => updateForm('hospital-cases', 'amount_in_question', e.target.value)} />
+        <InputField label="Best Contact Method" value={forms['hospital-cases'].best_contact_method} onChange={e => updateForm('hospital-cases', 'best_contact_method', e.target.value)} options={CONTACT_METHODS} />
+        <InputField label="Best Time to Contact" value={forms['hospital-cases'].best_contact_time} onChange={e => updateForm('hospital-cases', 'best_contact_time', e.target.value)} />
+      </div>
+      <div className="mt-4">
+        <InputField label="Description" large value={forms['hospital-cases'].description} onChange={e => updateForm('hospital-cases', 'description', e.target.value)} />
+      </div>
+    </div>
+    <div className="bg-white rounded-2xl shadow-lg p-6">
+      <FileUpload label="Supporting Documentation" files={files['hospital-cases'].documentation} onFilesChange={f => updateFiles('hospital-cases', 'documentation', f)} onViewFile={setViewingFile} />
+    </div>
+  </>
+)}
+
  {activeModule === 'refund-requests' && (
   <>
     <div className={`bg-white rounded-2xl shadow-lg p-6 border-l-4 ${currentColors?.accent}`}>
@@ -7159,6 +7458,22 @@ if (activeModule === 'it-requests') {
                         </div>
                         <div className="col-span-2">
                           <InputField label="Notes" large value={staffEditForm.notes} onChange={ev => updateStaffEditForm('notes', ev.target.value)} placeholder="Enter notes..." />
+                        </div>
+                      </div>
+                    )}
+
+{activeModule === 'hospital-cases' && (
+                      <div className="grid grid-cols-2 gap-3">
+                        <InputField label="Patient Name" value={staffEditForm.patient_name} onChange={ev => updateStaffEditForm('patient_name', ev.target.value)} />
+                        <InputField label="Chart Number" value={staffEditForm.chart_number} onChange={ev => updateStaffEditForm('chart_number', ev.target.value)} />
+                        <InputField label="Parent Name" value={staffEditForm.parent_name} onChange={ev => updateStaffEditForm('parent_name', ev.target.value)} />
+                        <InputField label="Date of Request" type="date" value={staffEditForm.date_of_request} onChange={ev => updateStaffEditForm('date_of_request', ev.target.value)} />
+                        <InputField label="Type of Inquiry" value={staffEditForm.inquiry_type} onChange={ev => updateStaffEditForm('inquiry_type', ev.target.value)} options={INQUIRY_TYPES} />
+                        <InputField label="Amount in Question" prefix="$" value={staffEditForm.amount_in_question} onChange={ev => updateStaffEditForm('amount_in_question', ev.target.value)} />
+                        <InputField label="Contact Method" value={staffEditForm.best_contact_method} onChange={ev => updateStaffEditForm('best_contact_method', ev.target.value)} options={CONTACT_METHODS} />
+                        <InputField label="Best Time to Contact" value={staffEditForm.best_contact_time} onChange={ev => updateStaffEditForm('best_contact_time', ev.target.value)} />
+                        <div className="col-span-2">
+                          <InputField label="Description" large value={staffEditForm.description} onChange={ev => updateStaffEditForm('description', ev.target.value)} />
                         </div>
                       </div>
                     )}
