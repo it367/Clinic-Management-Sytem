@@ -25,6 +25,7 @@ const SUPPORT_MODULES = [
 ];
 
 const CHECKLIST_ENABLED = false; // Feature flag: set to true to re-enable Office Task Checklist
+const DAILY_RECON_ENABLED = false; // Feature flag: set to true to re-enable Daily Reconciliation
 
 const ALL_MODULES = [...CHECKLIST_MODULES, ...MODULES, ...SUPPORT_MODULES];
 
@@ -292,7 +293,7 @@ const isBillingInquiry = module?.id === 'billing-inquiry';
 const canEditBilling = (isBillingInquiry || isBillsPayment) && currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'finance_admin' || (currentUser.role === 'rev_rangers' && isBillingInquiry));
 const canEditOrders = isOrderRequest && currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'finance_admin');
   const isRefundRequest = module?.id === 'refund-requests';
-  const canEditRefunds = isRefundRequest && currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'finance_admin');
+  const canEditRefunds = isRefundRequest && currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'finance_admin' || currentUser.role === 'rev_rangers');
 const isChecklistModule = module?.id === 'completed-procedure' || module?.id === 'claims-documents';
   const canReviewChecklist = isChecklistModule && currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'rev_rangers');
   
@@ -1268,7 +1269,7 @@ const [downloadingZip, setDownloadingZip] = useState(false);
   const [exportLocation, setExportLocation] = useState('all');
   const [exportRange, setExportRange] = useState('This Month');
 const [analyticsRange, setAnalyticsRange] = useState('This Month');
-const [analyticsModule, setAnalyticsModule] = useState('daily-recon');
+const [analyticsModule, setAnalyticsModule] = useState('billing-inquiry');
   const [chatMessages, setChatMessages] = useState([{
     role: 'assistant',
     content: "👋 Hi! I'm your AI assistant. I can help with:\n\n• Data summaries & reports\n• Weekly comparisons\n• Location analytics\n• IT request status\n\nWhat would you like to know?"
@@ -1454,10 +1455,10 @@ if (sessionData.user.role === 'super_admin' || sessionData.user.role === 'financ
   loadFinanceAdminUsers();
 if (sessionData.user.role === 'rev_rangers') {
         setAdminView('analytics');
-        setAnalyticsModule('daily-recon');
+        setAnalyticsModule('billing-inquiry');
       } else {
         setAdminView('analytics');
-        setAnalyticsModule('daily-recon');
+        setAnalyticsModule('billing-inquiry');
       }
 }
       }
@@ -1531,8 +1532,8 @@ useEffect(() => { if (currentUser) setNameForm(currentUser.name || ''); }, [curr
 
 useEffect(() => { setCurrentPage(1); setRecordSearch(''); }, [activeModule, adminLocation]);
 
-  useEffect(() => {
-  if (adminView === 'rev-entry' && activeModule !== 'daily-recon') {
+useEffect(() => {
+  if (adminView === 'rev-entry' && activeModule !== 'daily-recon' && activeModule !== 'billing-inquiry' && activeModule !== 'refund-requests') {
     setAdminView('records');
   }
 }, [activeModule]);
@@ -1725,7 +1726,7 @@ const loadFinanceAdminUsers = async () => {
   const { data, error } = await supabase
     .from('users')
     .select('id, name')
-    .eq('role', 'finance_admin')
+    .in('role', ['finance_admin', 'rev_rangers'])
     .eq('is_active', true)
     .order('name');
   
@@ -2064,10 +2065,10 @@ if (user.role === 'super_admin' || user.role === 'finance_admin' || user.role ==
       loadLoginHistory(user.id);
 if (user.role === 'rev_rangers') {
         setAdminView('analytics');
-        setAnalyticsModule('daily-recon');
+        setAnalyticsModule('billing-inquiry');
       } else {
         setAdminView('analytics');
-        setAnalyticsModule('daily-recon');
+        setAnalyticsModule('billing-inquiry');
       }
     }
 
@@ -3347,8 +3348,8 @@ const getStaffTotalPages = () => {
 const currentColors = MODULE_COLORS[activeModule];
   const currentModule = ALL_MODULES.find(m => m.id === activeModule);
 
-  const visibleModules = currentUser?.role === 'rev_rangers'
-    ? MODULES.filter(m => m.id === 'billing-inquiry')
+const visibleModules = currentUser?.role === 'rev_rangers'
+    ? MODULES.filter(m => m.id === 'billing-inquiry' || m.id === 'refund-requests')
     : currentUser?.role === 'finance_admin'
     ? MODULES.filter(m => m.id !== 'billing-inquiry')
     : MODULES;
@@ -3808,7 +3809,7 @@ onDelete={isITViewOnly ? null : async (recordId) => {
 
 {/* Tabs */}
           <div className="flex gap-2 px-4 pb-3 overflow-x-auto">
-{isAdmin && currentUser?.role === 'rev_rangers' && activeModule === 'daily-recon' ? (
+{isAdmin && currentUser?.role === 'rev_rangers' && (activeModule === 'billing-inquiry' || activeModule === 'refund-requests' || (DAILY_RECON_ENABLED && activeModule === 'daily-recon')) ? (
               [{ id: 'rev-entry', label: '+ New Entry' }, { id: 'records', label: 'Records' }].map(tab => (
                 <button key={tab.id} onClick={() => setAdminView(tab.id)} className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${adminView === tab.id ? 'bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow-lg' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{tab.label}</button>
               ))
@@ -4050,9 +4051,9 @@ onDelete={isITViewOnly ? null : async (recordId) => {
         </button>
         <div className="w-px h-5 bg-gray-300 mx-0.5 flex-shrink-0"></div>
         </>)}
- {[
-          CHECKLIST_MODULES.find(m => m.id === 'daily-recon'),
-          ...(currentUser?.role === 'rev_rangers' ? MODULES.filter(m => m.id === 'billing-inquiry') : MODULES)
+{[
+          ...(DAILY_RECON_ENABLED ? [CHECKLIST_MODULES.find(m => m.id === 'daily-recon')] : []),
+          ...(currentUser?.role === 'rev_rangers' ? MODULES.filter(m => m.id === 'billing-inquiry' || m.id === 'refund-requests') : MODULES)
         ].map(m => {
           const colors = MODULE_COLORS[m.id];
           const isActive = analyticsModule === m.id;
@@ -5620,6 +5621,110 @@ const totalDeposited = filteredData.reduce((sum, r) => {
         </div>
         <button
           onClick={() => saveEntry('daily-recon')}
+          disabled={saving}
+          className="w-full py-4 bg-gradient-to-r from-amber-600 to-orange-600 text-white rounded-xl text-lg font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
+        >
+          {saving ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Save Entry'}
+        </button>
+      </>
+    )}
+  </div>
+)}
+
+{/* Rev Rangers: Billing Inquiry Entry */}
+{isAdmin && adminView === 'rev-entry' && currentUser?.role === 'rev_rangers' && activeModule === 'billing-inquiry' && (
+  <div className="space-y-4">
+    {adminLocation === 'all' ? (
+      <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-amber-200">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center">
+            <Building2 className="w-6 h-6 text-amber-600" />
+          </div>
+          <div>
+            <h2 className="font-semibold text-gray-800">Select a Location</h2>
+            <p className="text-sm text-amber-600">Please select a specific location from the sidebar filter before entering data.</p>
+          </div>
+        </div>
+      </div>
+    ) : (
+      <>
+        <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-l-blue-500">
+          <h2 className="font-semibold mb-2 text-gray-800 flex items-center gap-2">
+            <Receipt className="w-5 h-5 text-blue-500" /> Billing Inquiry — {adminLocation}
+          </h2>
+          <p className="text-sm text-gray-500 mb-4">Patient Accounting Inquiry</p>
+          <div className="grid grid-cols-2 gap-4">
+            <InputField label="Patient Name" value={forms['billing-inquiry'].patient_name} onChange={e => updateForm('billing-inquiry', 'patient_name', e.target.value)} />
+            <InputField label="Chart Number" value={forms['billing-inquiry'].chart_number} onChange={e => updateForm('billing-inquiry', 'chart_number', e.target.value)} />
+            <InputField label="Parent Name" value={forms['billing-inquiry'].parent_name} onChange={e => updateForm('billing-inquiry', 'parent_name', e.target.value)} />
+            <InputField label="Date of Request" type="date" value={forms['billing-inquiry'].date_of_request} onChange={e => updateForm('billing-inquiry', 'date_of_request', e.target.value)} />
+            <InputField label="Type of Inquiry" value={forms['billing-inquiry'].inquiry_type} onChange={e => updateForm('billing-inquiry', 'inquiry_type', e.target.value)} options={INQUIRY_TYPES} />
+            <InputField label="Amount in Question" prefix="$" value={forms['billing-inquiry'].amount_in_question} onChange={e => updateForm('billing-inquiry', 'amount_in_question', e.target.value)} />
+            <InputField label="Best Contact Method" value={forms['billing-inquiry'].best_contact_method} onChange={e => updateForm('billing-inquiry', 'best_contact_method', e.target.value)} options={CONTACT_METHODS} />
+            <InputField label="Best Time to Contact" value={forms['billing-inquiry'].best_contact_time} onChange={e => updateForm('billing-inquiry', 'best_contact_time', e.target.value)} />
+          </div>
+          <div className="mt-4">
+            <InputField label="Description" large value={forms['billing-inquiry'].description} onChange={e => updateForm('billing-inquiry', 'description', e.target.value)} />
+          </div>
+        </div>
+        <div className="bg-white rounded-2xl shadow-lg p-6">
+          <FileUpload label="Supporting Documentation" files={files['billing-inquiry'].documentation} onFilesChange={f => updateFiles('billing-inquiry', 'documentation', f)} onViewFile={setViewingFile} />
+        </div>
+        <button
+          onClick={() => saveEntry('billing-inquiry')}
+          disabled={saving}
+          className="w-full py-4 bg-gradient-to-r from-amber-600 to-orange-600 text-white rounded-xl text-lg font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
+        >
+          {saving ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Save Entry'}
+        </button>
+      </>
+    )}
+  </div>
+)}
+
+{/* Rev Rangers: Refund Requests Entry */}
+{isAdmin && adminView === 'rev-entry' && currentUser?.role === 'rev_rangers' && activeModule === 'refund-requests' && (
+  <div className="space-y-4">
+    {adminLocation === 'all' ? (
+      <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-amber-200">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center">
+            <Building2 className="w-6 h-6 text-amber-600" />
+          </div>
+          <div>
+            <h2 className="font-semibold text-gray-800">Select a Location</h2>
+            <p className="text-sm text-amber-600">Please select a specific location from the sidebar filter before entering data.</p>
+          </div>
+        </div>
+      </div>
+    ) : (
+      <>
+        <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-l-rose-500">
+          <h2 className="font-semibold mb-2 text-gray-800 flex items-center gap-2">
+            <RefreshCw className="w-5 h-5 text-rose-500" /> Refund Request — {adminLocation}
+          </h2>
+          <p className="text-sm text-gray-500 mb-4">Patient Refund Request Log</p>
+          <div className="grid grid-cols-2 gap-4">
+            <InputField label="Patient Name" value={forms['refund-requests'].patient_name} onChange={e => updateForm('refund-requests', 'patient_name', e.target.value)} />
+            <InputField label="Chart Number" value={forms['refund-requests'].chart_number} onChange={e => updateForm('refund-requests', 'chart_number', e.target.value)} />
+            <InputField label="Parent Name" value={forms['refund-requests'].parent_name} onChange={e => updateForm('refund-requests', 'parent_name', e.target.value)} />
+            <InputField label="RP Address" value={forms['refund-requests'].rp_address} onChange={e => updateForm('refund-requests', 'rp_address', e.target.value)} />
+            <InputField label="Date of Request" type="date" value={forms['refund-requests'].date_of_request} onChange={e => updateForm('refund-requests', 'date_of_request', e.target.value)} />
+            <InputField label="Type Transaction" value={forms['refund-requests'].type} onChange={e => updateForm('refund-requests', 'type', e.target.value)} options={REFUND_TYPES} />
+            <InputField label="Amount Requested" prefix="$" value={forms['refund-requests'].amount_requested} onChange={e => updateForm('refund-requests', 'amount_requested', e.target.value)} />
+            <InputField label="Best Contact Method" value={forms['refund-requests'].best_contact_method} onChange={e => updateForm('refund-requests', 'best_contact_method', e.target.value)} options={CONTACT_METHODS} />
+            <InputField label="Contact Info" value={forms['refund-requests'].contact_info} onChange={e => updateForm('refund-requests', 'contact_info', e.target.value)} placeholder="Phone number or email" />
+            <InputField label="eAssist Audited" value={forms['refund-requests'].eassist_audited} onChange={e => updateForm('refund-requests', 'eassist_audited', e.target.value)} options={['Yes', 'No', 'N/A']} />
+          </div>
+          <div className="mt-4">
+            <InputField label="Description" large value={forms['refund-requests'].description} onChange={e => updateForm('refund-requests', 'description', e.target.value)} />
+          </div>
+        </div>
+        <div className="bg-white rounded-2xl shadow-lg p-6">
+          <FileUpload label="Supporting Documentation" files={files['refund-requests'].documentation} onFilesChange={f => updateFiles('refund-requests', 'documentation', f)} onViewFile={setViewingFile} />
+        </div>
+        <button
+          onClick={() => saveEntry('refund-requests')}
           disabled={saving}
           className="w-full py-4 bg-gradient-to-r from-amber-600 to-orange-600 text-white rounded-xl text-lg font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
         >
