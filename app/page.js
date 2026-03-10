@@ -18,11 +18,9 @@ const MODULES = [
   { id: 'bills-payment', name: 'Bills Payment', icon: CreditCard, color: 'violet', table: 'bills_payment' },
   { id: 'order-requests', name: 'Order Requests', icon: Package, color: 'amber', table: 'order_requests' },
   { id: 'refund-requests', name: 'Refund Requests', icon: RefreshCw, color: 'rose', table: 'refund_requests' },
+    { id: 'hospital-cases', name: 'Hospital Cases', icon: Building2, color: 'indigo', table: 'hospital_cases' },
 ];
 
-const HOSPITAL_MODULES = [
-  { id: 'hospital-cases', name: 'Hospital Cases', icon: Headphones, color: 'indigo', table: 'hospital_cases' },
-];
 
 const SUPPORT_MODULES = [
   { id: 'it-requests', name: 'IT Requests', icon: Monitor, color: 'cyan', table: 'it_requests' },
@@ -31,7 +29,7 @@ const SUPPORT_MODULES = [
 const CHECKLIST_ENABLED = false; // Feature flag: set to true to re-enable Office Task Checklist
 const DAILY_RECON_ENABLED = false; // Feature flag: set to true to re-enable Daily Reconciliation
 
-const ALL_MODULES = [...CHECKLIST_MODULES, ...MODULES, ...HOSPITAL_MODULES, ...SUPPORT_MODULES];
+const ALL_MODULES = [...CHECKLIST_MODULES, ...MODULES, ...SUPPORT_MODULES];
 
 const MODULE_COLORS = {
   'daily-recon': { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', accent: 'bg-emerald-500', light: 'bg-emerald-100' },
@@ -3511,7 +3509,7 @@ const currentColors = MODULE_COLORS[activeModule];
   const currentModule = ALL_MODULES.find(m => m.id === activeModule);
 
 const visibleModules = currentUser?.role === 'rev_rangers'
-    ? MODULES.filter(m => m.id === 'billing-inquiry' || m.id === 'refund-requests')
+    ? MODULES.filter(m => m.id === 'billing-inquiry' || m.id === 'refund-requests' || m.id === 'hospital-cases')
     : currentUser?.role === 'finance_admin'
     ? MODULES.filter(m => m.id !== 'billing-inquiry')
     : MODULES;
@@ -3895,24 +3893,7 @@ onDelete={isITViewOnly ? null : async (recordId) => {
           })}
           </>
           )}
-<div className="border-t my-4"></div>
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">Hospital</p>
-          {HOSPITAL_MODULES.map(m => {
-            const colors = MODULE_COLORS[m.id];
-            const isActive = activeModule === m.id && adminView !== 'users' && adminView !== 'export' && adminView !== 'settings' && view !== 'settings';
-            return (
-              <button
-                key={m.id}
-                onClick={() => { setActiveModule(m.id); setAdminView('records'); setView('entry'); setSidebarOpen(false); }}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${isActive ? `${colors.bg} ${colors.text} ${colors.border} border-2` : 'text-gray-600 hover:bg-gray-50'}`}
-              >
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isActive ? colors.light : 'bg-gray-100'}`}>
-                  <m.icon className={`w-4 h-4 ${isActive ? colors.text : 'text-gray-500'}`} />
-                </div>
-                <span className="text-sm font-medium">{m.name}</span>
-              </button>
-            );
-          })}
+
 
 {(currentUser?.role === 'super_admin' || currentUser?.role === 'it' || !isAdmin || isOfficeManager) && (
             <>
@@ -4238,7 +4219,7 @@ onDelete={isITViewOnly ? null : async (recordId) => {
         </>)}
 {[
           ...(DAILY_RECON_ENABLED ? [CHECKLIST_MODULES.find(m => m.id === 'daily-recon')] : []),
-         ...(currentUser?.role === 'rev_rangers' ? [...MODULES.filter(m => m.id === 'billing-inquiry' || m.id === 'refund-requests'), ...HOSPITAL_MODULES] : [...MODULES, ...HOSPITAL_MODULES])
+     ...(currentUser?.role === 'rev_rangers' ? MODULES.filter(m => m.id === 'billing-inquiry' || m.id === 'refund-requests' || m.id === 'hospital-cases') : MODULES)
         ].map(m => {
           const colors = MODULE_COLORS[m.id];
           const isActive = analyticsModule === m.id;
@@ -5939,7 +5920,7 @@ const totalDeposited = filteredData.reduce((sum, r) => {
       <>
         <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-l-indigo-500">
           <h2 className="font-semibold mb-2 text-gray-800 flex items-center gap-2">
-            <Headphones className="w-5 h-5 text-indigo-500" /> Hospital Case — {adminLocation}
+           <Building2 className="w-5 h-5 text-indigo-500" /> Hospital Case — {adminLocation}
           </h2>
           <div className="grid grid-cols-2 gap-4">
             <InputField label="Patient Name" value={forms['hospital-cases'].patient_name} onChange={e => updateForm('hospital-cases', 'patient_name', e.target.value)} />
@@ -7192,7 +7173,7 @@ if (activeModule === 'it-requests') {
   <>
     <div className={`bg-white rounded-2xl shadow-lg p-6 border-l-4 ${currentColors?.accent}`}>
       <h2 className="font-semibold mb-4 text-gray-800 flex items-center gap-2">
-        <Headphones className="w-5 h-5 text-indigo-500" /> Hospital Case
+       <Building2 className="w-5 h-5 text-indigo-500" /> Hospital Case
       </h2>
       <div className="grid grid-cols-2 gap-4">
         <InputField label="Patient Name" value={forms['hospital-cases'].patient_name} onChange={e => updateForm('hospital-cases', 'patient_name', e.target.value)} />
