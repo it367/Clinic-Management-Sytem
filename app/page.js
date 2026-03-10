@@ -4326,19 +4326,42 @@ onDelete={isITViewOnly ? null : async (recordId) => {
         data = data.filter(r => r.locations?.name === adminLocation);
       }
       
-      // Filter by date range
+// Filter by date range using proper calendar boundaries
       const now = new Date();
       const filterByRange = (records) => {
         return records.filter(r => {
           const date = new Date(r.created_at);
-          const diffDays = (now - date) / (1000 * 60 * 60 * 24);
+          const year = now.getFullYear();
+          const month = now.getMonth();
           switch(analyticsRange) {
-            case 'This Week': return diffDays <= 7;
-            case 'Last 2 Weeks': return diffDays <= 14;
-            case 'This Month': return diffDays <= 30;
-            case 'Last Month': return diffDays <= 60;
-            case 'This Quarter': return diffDays <= 90;
-            case 'This Year': return diffDays <= 365;
+            case 'This Week': {
+              const dayOfWeek = now.getDay();
+              const weekStart = new Date(year, month, now.getDate() - dayOfWeek);
+              weekStart.setHours(0, 0, 0, 0);
+              return date >= weekStart;
+            }
+            case 'Last 2 Weeks': {
+              const twoWeeksAgo = new Date(year, month, now.getDate() - 14);
+              twoWeeksAgo.setHours(0, 0, 0, 0);
+              return date >= twoWeeksAgo;
+            }
+            case 'This Month': {
+              const monthStart = new Date(year, month, 1);
+              return date >= monthStart;
+            }
+            case 'Last Month': {
+              const lastMonthStart = new Date(year, month - 1, 1);
+              const thisMonthStart = new Date(year, month, 1);
+              return date >= lastMonthStart && date < thisMonthStart;
+            }
+            case 'This Quarter': {
+              const quarterStart = new Date(year, Math.floor(month / 3) * 3, 1);
+              return date >= quarterStart;
+            }
+            case 'This Year': {
+              const yearStart = new Date(year, 0, 1);
+              return date >= yearStart;
+            }
             default: return true;
           }
         });
