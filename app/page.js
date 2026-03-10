@@ -1690,9 +1690,9 @@ useEffect(() => {
         setModuleData(prev => ({ ...prev, [analyticsModule]: [] }));
       }
     };
-    loadAnalyticsData();
+loadAnalyticsData();
   }
-}, [analyticsModule, adminView]);
+}, [analyticsModule, adminView, currentUser]);
 const isAdmin = currentUser?.role === 'super_admin' || currentUser?.role === 'finance_admin' || currentUser?.role === 'it' || currentUser?.role === 'rev_rangers';
 const isSuperAdmin = currentUser?.role === 'super_admin' || currentUser?.role === 'it';
 const isChecklistReviewer = currentUser?.role === 'super_admin' || currentUser?.role === 'rev_rangers';
