@@ -24,6 +24,8 @@ const SUPPORT_MODULES = [
   { id: 'it-requests', name: 'IT Requests', icon: Monitor, color: 'cyan', table: 'it_requests' },
 ];
 
+const CHECKLIST_ENABLED = false; // Feature flag: set to true to re-enable Office Task Checklist
+
 const ALL_MODULES = [...CHECKLIST_MODULES, ...MODULES, ...SUPPORT_MODULES];
 
 const MODULE_COLORS = {
@@ -1451,11 +1453,12 @@ if (sessionData.user.role === 'super_admin' || sessionData.user.role === 'financ
   loadItUsers();
   loadFinanceAdminUsers();
 if (sessionData.user.role === 'rev_rangers') {
-    setAdminView('analytics');
-    setAnalyticsModule('daily-recon');
-  } else {
-    setAdminView('analytics');
-  }
+        setAdminView('analytics');
+        setAnalyticsModule('daily-recon');
+      } else {
+        setAdminView('analytics');
+        setAnalyticsModule('daily-recon');
+      }
 }
       }
     } catch (e) {
@@ -2064,6 +2067,7 @@ if (user.role === 'rev_rangers') {
         setAnalyticsModule('daily-recon');
       } else {
         setAdminView('analytics');
+        setAnalyticsModule('daily-recon');
       }
     }
 
@@ -3647,7 +3651,7 @@ onDelete={isITViewOnly ? null : async (recordId) => {
             </>
           )}
 
-{(isOfficeManager || currentUser?.role === 'super_admin' || currentUser?.role === 'rev_rangers' || currentUser?.role === 'it' || currentUser?.role === 'finance_admin') && currentUser?.role !== 'staff' && (
+{CHECKLIST_ENABLED && (isOfficeManager || currentUser?.role === 'super_admin' || currentUser?.role === 'rev_rangers' || currentUser?.role === 'it' || currentUser?.role === 'finance_admin') && currentUser?.role !== 'staff' && (
             <>
               <p className={`text-xs font-semibold uppercase tracking-wider mb-3 px-3 flex items-center gap-2 ${
                 isOfficeManager && CHECKLIST_MODULES.every(m => checklistStatus[m.id]?.submitted)
@@ -4035,15 +4039,17 @@ onDelete={isITViewOnly ? null : async (recordId) => {
   <div className="space-y-6">
     {/* Module Selector */}
     <div className="bg-white rounded-2xl shadow-lg p-4 border border-gray-100">
-<div className="flex items-center gap-2 overflow-x-auto pb-1">
+<div className="flex items-center gap-1 overflow-x-auto bg-gray-100 rounded-xl p-1">
+        {CHECKLIST_ENABLED && (<>
         <button
           onClick={() => setAnalyticsModule('checklist-overview')}
-          className={`px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 transition-all ${analyticsModule === 'checklist-overview' ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+          className={`px-3.5 py-2 rounded-lg text-sm font-medium flex items-center gap-1.5 transition-all whitespace-nowrap ${analyticsModule === 'checklist-overview' ? 'bg-white text-emerald-700 shadow-sm ring-1 ring-gray-200' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
         >
-          <ClipboardList className="w-4 h-4" />
-          Daily Checklist
+          <ClipboardList className="w-3.5 h-3.5" />
+          Checklist
         </button>
-        <div className="w-px h-8 bg-gray-300 mx-1"></div>
+        <div className="w-px h-5 bg-gray-300 mx-0.5 flex-shrink-0"></div>
+        </>)}
  {[
           CHECKLIST_MODULES.find(m => m.id === 'daily-recon'),
           ...(currentUser?.role === 'rev_rangers' ? MODULES.filter(m => m.id === 'billing-inquiry') : MODULES)
@@ -6330,7 +6336,7 @@ if (activeModule === 'it-requests') {
           {/* Entry Form - Staff */}
           {!isAdmin && view === 'entry' && (
             <div className="space-y-4">
-{activeModule === 'daily-recon' && (
+{activeModule === 'daily-recon' && CHECKLIST_ENABLED && (
                 <>
                   {checklistStatus['daily-recon']?.submitted ? (
                     <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-l-emerald-500">
@@ -6459,7 +6465,7 @@ if (activeModule === 'it-requests') {
                 </>
               )}
 
-{activeModule === 'completed-procedure' && (
+{activeModule === 'completed-procedure' && CHECKLIST_ENABLED && (
                 <>
 {checklistStatus['completed-procedure']?.submitted ? (
                     <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-l-emerald-500">
@@ -6586,7 +6592,7 @@ if (activeModule === 'it-requests') {
                 </>
               )}
 
-              {activeModule === 'claims-documents' && (
+{activeModule === 'claims-documents' && CHECKLIST_ENABLED && (
                 <>
 {checklistStatus['claims-documents']?.submitted ? (
                     <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-l-emerald-500">
@@ -6831,7 +6837,7 @@ if (activeModule === 'it-requests') {
   </>
 )}
 
-{!((activeModule === 'daily-recon' && (checklistStatus['daily-recon']?.submitted || isChecklistPastDeadline())) ||
+{!CHECKLIST_ENABLED && !((activeModule === 'daily-recon' && (checklistStatus['daily-recon']?.submitted || isChecklistPastDeadline())) ||
                  (activeModule === 'completed-procedure' && (checklistStatus['completed-procedure']?.submitted || isChecklistPastDeadline())) ||
                  (activeModule === 'claims-documents' && (checklistStatus['claims-documents']?.submitted || isChecklistPastDeadline()))) && (
                 <button
