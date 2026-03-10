@@ -1661,9 +1661,38 @@ useEffect(() => {
 useEffect(() => {
   const userIsAdmin = currentUser?.role === 'super_admin' || currentUser?.role === 'finance_admin' || currentUser?.role === 'rev_rangers' || currentUser?.role === 'it';
   if (userIsAdmin && adminView === 'analytics' && analyticsModule && analyticsModule !== 'checklist-overview') {
-    loadModuleData(analyticsModule);
+    // Load ALL data for analytics (no location filter) so analytics can filter client-side
+    const loadAnalyticsData = async () => {
+      const module = ALL_MODULES.find(m => m.id === analyticsModule);
+      if (!module) return;
+      const { data, error } = await supabase
+        .from(module.table)
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(1500);
+      if (data && data.length > 0) {
+        const locationIds = [...new Set(data.map(d => d.location_id).filter(Boolean))];
+        const { data: locsData } = await supabase.from('locations').select('id, name').in('id', locationIds);
+        const locMap = {};
+        locsData?.forEach(l => { locMap[l.id] = l; });
+        const userIds = [...new Set([...data.map(d => d.created_by), ...data.map(d => d.updated_by)].filter(Boolean))];
+        const { data: usersData } = await supabase.from('users').select('id, name').in('id', userIds);
+        const userMap = {};
+        usersData?.forEach(u => { userMap[u.id] = u; });
+        const enrichedData = data.map(d => ({
+          ...d,
+          locations: locMap[d.location_id] || null,
+          creator: userMap[d.created_by] || null,
+          updater: userMap[d.updated_by] || null
+        }));
+        setModuleData(prev => ({ ...prev, [analyticsModule]: enrichedData }));
+      } else {
+        setModuleData(prev => ({ ...prev, [analyticsModule]: [] }));
+      }
+    };
+    loadAnalyticsData();
   }
-}, [analyticsModule, adminView, adminLocation]);
+}, [analyticsModule, adminView]);
 const isAdmin = currentUser?.role === 'super_admin' || currentUser?.role === 'finance_admin' || currentUser?.role === 'it' || currentUser?.role === 'rev_rangers';
 const isSuperAdmin = currentUser?.role === 'super_admin' || currentUser?.role === 'it';
 const isChecklistReviewer = currentUser?.role === 'super_admin' || currentUser?.role === 'rev_rangers';
