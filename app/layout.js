@@ -8,6 +8,11 @@ export const metadata = {
   generator: 'Next.js',
   applicationName: 'KidShine CMS',
   keywords: ['clinic', 'management', 'dental', 'pediatric'],
+
+  icons: {
+    icon: '/favicon.ico',
+  },
+  
 }
 export default function RootLayout({ children }) {
   return (
