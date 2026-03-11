@@ -9,15 +9,15 @@ export const metadata = {
   applicationName: 'KidShine CMS',
   keywords: ['clinic', 'management', 'dental', 'pediatric'],
 
-  icons: {
-    icon: '/favicon.ico',
-  },
   
 }
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
-      <body>{children}</body>
-    </html>
+<html lang="en">
+        <head>
+          <link rel="icon" href="/favicon.ico" sizes="any" />
+        </head>
+        <body>{children}</body>
+      </html>
   )
 }
