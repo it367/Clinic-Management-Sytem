@@ -10,7 +10,7 @@ export const metadata = {
   keywords: ['clinic', 'management', 'dental', 'pediatric'],
 
   icons: {
-    icon: '/public/favicon.ico',
+    icon: '/favicon.ico',
   },
   
 }
