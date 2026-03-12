@@ -2582,7 +2582,7 @@ if (moduleId === 'daily-recon') {
         parent_name: form.parent_name,
         rp_address: form.rp_address,
         date_of_request: form.date_of_request,
-        type: form.type || null,
+type: form.type || 'Other',
         description: form.description,
         amount_requested: parseFloat(form.amount_requested) || 0,
         best_contact_method: form.best_contact_method || null,
