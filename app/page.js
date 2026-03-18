@@ -1,4 +1,4 @@
-//Clinic Management System v0.73
+//Clinic Management System v0.76
 // Devoloper: Mark Murillo
 // Company: Kidshine Hawaii
 
@@ -6,7 +6,7 @@
 import { useState, useEffect, useRef } from 'react';
 import JSZip from 'jszip';
 import { supabase } from '../lib/supabase';
-import { DollarSign, FileText, Building2, Bot, Send, Loader2, LogOut, User, Upload, X, File, Shield, Receipt, CreditCard, Package, RefreshCw, Monitor, Menu, Eye, EyeOff, FolderOpen, Edit3, Users, Plus, Trash2, Lock, Download, Settings, MessageCircle, Sparkles, AlertCircle, Maximize2, Minimize2, Headphones, Search, TrendingUp, TrendingDown, Calendar, PieChart, BarChart3, ClipboardList, Paperclip, CheckCircle, Circle } from 'lucide-react';
+import { DollarSign, FileText, Building2, Bot, Send, Loader2, LogOut, User, Upload, X, File, Shield, Receipt, CreditCard, Package, RefreshCw, Monitor, Menu, Eye, EyeOff, FolderOpen, Edit3, Users, Plus, Trash2, Lock, Download, Settings, MessageCircle, Sparkles, AlertCircle, Maximize2, Minimize2, Headphones, Search, TrendingUp, TrendingDown, Calendar, PieChart, BarChart3, ClipboardList, Paperclip, CheckCircle, Circle, BookOpen } from 'lucide-react';
 import { MODULE_COLORS, STATUS_COLORS, ROLE_STYLES, BTN, CARD, INPUT, LAYOUT, ANALYTICS_CARDS, ICON_BOX, URGENCY_COLORS, CONFIRM_COLORS, FILE_UPLOAD, CHECKBOX } from './styles';
 const CHECKLIST_MODULES = [
   { id: 'daily-recon', name: 'Daily Reconciliation', icon: DollarSign, color: 'emerald', table: 'daily_recon' },
@@ -1274,6 +1274,12 @@ const [selectAll, setSelectAll] = useState(false);
 const [selectedDocuments, setSelectedDocuments] = useState([]);
 const [docSelectAll, setDocSelectAll] = useState(false);
 const [downloadingZip, setDownloadingZip] = useState(false);
+const [sops, setSOPs] = useState([]);
+const [sopSearch, setSOPSearch] = useState('');
+const [sopFiles, setSOPFiles] = useState([]);
+const [sopTitle, setSOPTitle] = useState('');
+const [sopDescription, setSOPDescription] = useState('');
+const [sopSortOrder, setSOPSortOrder] = useState('desc');
   const [showAddUser, setShowAddUser] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [newUser, setNewUser] = useState({ name: '', username: '', email: '', password: '', role: 'staff', locations: [] });
@@ -1716,6 +1722,53 @@ const { data: usersData, error: usersError } = await supabase
       uploader: uploaderMap[doc.uploaded_by] || null
     }));
     setDocuments(docsWithUploaders);
+  };
+  // === SOP Functions ===
+  const loadSOPs = async () => {
+    const { data, error } = await supabase.from('sops').select('*').order('created_at', { ascending: false });
+    if (!data || error) { setSOPs([]); return; }
+    const uploaderIds = [...new Set(data.map(d => d.uploaded_by).filter(Boolean))];
+    let uploaderMap = {};
+    if (uploaderIds.length > 0) {
+      const { data: usersData } = await supabase.from('users').select('id, name').in('id', uploaderIds);
+      usersData?.forEach(u => { uploaderMap[u.id] = u; });
+    }
+    setSOPs(data.map(s => ({ ...s, uploader: uploaderMap[s.uploaded_by] || null })));
+  };
+  const uploadSOP = async () => {
+    if (!sopTitle.trim()) { showMessage('error', 'Please enter a title'); return; }
+    if (sopFiles.length === 0) { showMessage('error', 'Please select a file'); return; }
+    setSaving(true);
+    try {
+      for (const file of sopFiles) {
+        const filePath = `sops/${Date.now()}_${file.name}`;
+        const { error: uploadError } = await supabase.storage.from('clinic-documents').upload(filePath, file.file || file);
+        if (uploadError) { showMessage('error', 'Upload failed: ' + uploadError.message); setSaving(false); return; }
+        await supabase.from('sops').insert({ title: sopTitle.trim(), description: sopDescription.trim() || null, file_name: file.name, file_type: file.type, file_size: file.size, storage_path: filePath, uploaded_by: currentUser.id });
+      }
+      setSOPTitle(''); setSOPDescription(''); setSOPFiles([]);
+      showMessage('success', '✓ SOP uploaded successfully');
+      loadSOPs();
+    } catch (err) { showMessage('error', 'Failed to upload SOP'); }
+    setSaving(false);
+  };
+  const deleteSOP = async (sop) => {
+    const confirmed = await showConfirm('Delete SOP', `Are you sure you want to delete "${sop.title}"? This cannot be undone.`, 'Delete', 'red');
+    if (!confirmed) return;
+    await supabase.storage.from('clinic-documents').remove([sop.storage_path]);
+    await supabase.from('sops').delete().eq('id', sop.id);
+    showMessage('success', '✓ SOP deleted');
+    loadSOPs();
+  };
+  const viewSOP = async (sop) => {
+    const { data } = await supabase.storage.from('clinic-documents').createSignedUrl(sop.storage_path, 3600);
+    if (data?.signedUrl) { setViewingFile({ ...sop, url: data.signedUrl, name: sop.file_name, type: sop.file_type }); }
+    else { showMessage('error', 'Could not load document'); }
+  };
+  const downloadSOP = async (sop) => {
+    const { data } = await supabase.storage.from('clinic-documents').createSignedUrl(sop.storage_path, 3600);
+    if (data?.signedUrl) { const a = document.createElement('a'); a.href = data.signedUrl; a.download = sop.file_name; a.click(); }
+    else { showMessage('error', 'Could not download document'); }
   };
   const loadModuleData = async (moduleId) => {
     setLoading(true);
@@ -3015,6 +3068,15 @@ onDelete={isITViewOnly ? null : async (recordId) => {
               })}
             </>
           )}
+{!isAdmin && (
+  <>
+    <div className="border-t my-4"></div>
+    <button onClick={() => { setView('sop'); loadSOPs(); setSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${view === 'sop' ? 'bg-blue-50 text-blue-700 border-2 border-blue-200' : 'text-gray-600 hover:bg-gray-50'}`}>
+      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${view === 'sop' ? 'bg-blue-100' : 'bg-gray-100'}`}><BookOpen className="w-4 h-4" /></div>
+      <span className="text-sm font-medium">SOPs</span>
+    </button>
+  </>
+)}
 {isAdmin && (
             <>
               <div className="border-t my-4"></div>
@@ -3026,6 +3088,10 @@ onDelete={isITViewOnly ? null : async (recordId) => {
               <button onClick={() => { setAdminView('export'); setSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${adminView === 'export' ? 'bg-purple-50 text-purple-700 border-2 border-purple-200' : 'text-gray-600 hover:bg-gray-50'}`}>
                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${adminView === 'export' ? 'bg-purple-100' : 'bg-gray-100'}`}><Download className="w-4 h-4" /></div>
                 <span className="text-sm font-medium">Export</span>
+              </button>
+              <button onClick={() => { setAdminView('sop'); loadSOPs(); setSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${adminView === 'sop' ? 'bg-purple-50 text-purple-700 border-2 border-purple-200' : 'text-gray-600 hover:bg-gray-50'}`}>
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${adminView === 'sop' ? 'bg-purple-100' : 'bg-gray-100'}`}><BookOpen className="w-4 h-4" /></div>
+                <span className="text-sm font-medium">SOPs</span>
               </button>
 {(currentUser?.role === 'super_admin' || currentUser?.role === 'it' || currentUser?.role === 'rev_rangers') && (
                 <button onClick={() => { setAdminView('users'); loadUsers(); setSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${adminView === 'users' ? 'bg-purple-50 text-purple-700 border-2 border-purple-200' : 'text-gray-600 hover:bg-gray-50'}`}>
@@ -3057,7 +3123,7 @@ onDelete={isITViewOnly ? null : async (recordId) => {
               <button onClick={() => setSidebarOpen(!sidebarOpen)} className="lg:hidden p-2 hover:bg-gray-100 rounded-xl"><Menu className="w-5 h-5" /></button>
               <div>
 <h1 className="font-bold text-gray-800 text-lg">
-                  {isAdmin ? (adminView === 'users' ? 'User Management' : adminView === 'export' ? 'Export Data' : adminView === 'documents' ? 'All Documents' : adminView === 'settings' ? 'Settings' : adminView === 'analytics' ? 'Analytics' : adminView === 'rev-entry' ? `New Entry: ${currentModule?.name}` : currentUser?.role === 'rev_rangers' ? `Review: ${currentModule?.name}` : currentModule?.name) : (view === 'settings' ? 'Settings' : currentModule?.name)}
+                  {isAdmin ? (adminView === 'users' ? 'User Management' : adminView === 'export' ? 'Export Data' : adminView === 'documents' ? 'All Documents' : adminView === 'sop' ? 'Standard Operating Procedures' : adminView === 'settings' ? 'Settings' : adminView === 'analytics' ? 'Analytics' : adminView === 'rev-entry' ? `New Entry: ${currentModule?.name}` : currentUser?.role === 'rev_rangers' ? `Review: ${currentModule?.name}` : currentModule?.name) : (view === 'settings' ? 'Settings' : view === 'sop' ? 'Standard Operating Procedures' : currentModule?.name)}
                 </h1>
                 <p className="text-sm text-gray-500">{isAdmin ? (adminLocation === 'all' ? 'All Locations' : adminLocation) : selectedLocation}</p>
               </div>
@@ -4535,6 +4601,107 @@ const totalDeposited = filteredData.reduce((sum, r) => {
               </button>
             </div>
           )}
+{/* SOP View - Admin */}
+{isAdmin && adminView === 'sop' && (
+  <div className="space-y-4">
+    <div className={CARD.base}>
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center"><BookOpen className="w-6 h-6 text-white" /></div>
+        <div><h2 className="font-semibold text-gray-800">Upload SOP</h2><p className="text-sm text-gray-500">Add standard operating procedure documents</p></div>
+      </div>
+      <div className="grid grid-cols-2 gap-4 mb-4">
+        <div className="flex flex-col"><label className={INPUT.label}>Title *</label><input type="text" value={sopTitle} onChange={e => setSOPTitle(e.target.value)} placeholder="e.g., Front Desk Opening Procedure" className={`${INPUT.wrapper} p-2.5`} /></div>
+        <div className="flex flex-col"><label className={INPUT.label}>Description (optional)</label><input type="text" value={sopDescription} onChange={e => setSOPDescription(e.target.value)} placeholder="Brief description..." className={`${INPUT.wrapper} p-2.5`} /></div>
+      </div>
+      <div className="mb-4">
+        <label className={INPUT.label}>Document File *</label>
+        <div className={`${FILE_UPLOAD.dropzone} ${sopFiles.length > 0 ? '' : ''}`}>
+          <label className="flex flex-col items-center justify-center gap-2 cursor-pointer text-gray-500 hover:text-blue-600">
+            <div className={FILE_UPLOAD.uploadIcon}><Upload className="w-5 h-5 text-blue-600" /></div>
+            <span className="text-sm font-medium">{sopFiles.length > 0 ? sopFiles[0].name : 'Click to select file'}</span>
+            <input type="file" onChange={e => { if (e.target.files[0]) setSOPFiles([{ file: e.target.files[0], name: e.target.files[0].name, type: e.target.files[0].type, size: e.target.files[0].size }]); }} className="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,image/*" />
+          </label>
+        </div>
+      </div>
+      <button onClick={uploadSOP} disabled={saving} className={`w-full py-3 ${BTN.admin} flex items-center justify-center gap-2`}>
+        {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}{saving ? 'Uploading...' : 'Upload SOP'}
+      </button>
+    </div>
+    <div className={CARD.base}>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-semibold text-gray-800">{sops.filter(s => !sopSearch.trim() || s.title.toLowerCase().includes(sopSearch.toLowerCase()) || s.file_name.toLowerCase().includes(sopSearch.toLowerCase()) || s.description?.toLowerCase().includes(sopSearch.toLowerCase())).length} SOPs</h3>
+        <button onClick={() => setSOPSortOrder(sopSortOrder === 'desc' ? 'asc' : 'desc')} className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1">{sopSortOrder === 'desc' ? '↓ Newest' : '↑ Oldest'}</button>
+      </div>
+      <div className="relative mb-4">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <input type="text" value={sopSearch} onChange={e => setSOPSearch(e.target.value)} placeholder="Search SOPs by title, description, or filename..." className={INPUT.search} />
+        {sopSearch && <button onClick={() => setSOPSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>}
+      </div>
+      <div className="space-y-3">
+        {sops.filter(s => { if (!sopSearch.trim()) return true; const q = sopSearch.toLowerCase(); return s.title.toLowerCase().includes(q) || s.file_name.toLowerCase().includes(q) || s.description?.toLowerCase().includes(q); }).sort((a, b) => sopSortOrder === 'desc' ? new Date(b.created_at) - new Date(a.created_at) : new Date(a.created_at) - new Date(b.created_at)).map(sop => (
+          <div key={sop.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200 hover:bg-gray-100 transition-all">
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center flex-shrink-0"><BookOpen className="w-5 h-5 text-indigo-600" /></div>
+              <div className="min-w-0">
+                <p className="font-semibold text-gray-800 truncate">{sop.title}</p>
+                {sop.description && <p className="text-sm text-gray-500 truncate">{sop.description}</p>}
+                <p className="text-xs text-gray-400">{sop.file_name} • {sop.uploader?.name || 'Unknown'} • {new Date(sop.created_at).toLocaleDateString()}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1 flex-shrink-0 ml-3">
+              <button onClick={() => viewSOP(sop)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors" title="View"><Eye className="w-4 h-4" /></button>
+              <button onClick={() => downloadSOP(sop)} className="p-2 text-emerald-500 hover:bg-emerald-50 rounded-lg transition-colors" title="Download"><Download className="w-4 h-4" /></button>
+              <button onClick={() => deleteSOP(sop)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
+            </div>
+          </div>
+        ))}
+        {sops.filter(s => { if (!sopSearch.trim()) return true; const q = sopSearch.toLowerCase(); return s.title.toLowerCase().includes(q) || s.file_name.toLowerCase().includes(q) || s.description?.toLowerCase().includes(q); }).length === 0 && (
+          <div className="text-center py-12 text-gray-400"><BookOpen className="w-12 h-12 mx-auto mb-3 opacity-50" /><p className="font-medium">No SOPs found</p><p className="text-sm">{sopSearch ? 'Try a different search term' : 'Upload your first SOP above'}</p></div>
+        )}
+      </div>
+    </div>
+  </div>
+)}
+{/* SOP View - Staff / Office Manager */}
+{!isAdmin && view === 'sop' && (
+  <div className="space-y-4">
+    <div className={CARD.base}>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center"><BookOpen className="w-5 h-5 text-indigo-600" /></div>
+          <h3 className="font-semibold text-gray-800">{sops.filter(s => !sopSearch.trim() || s.title.toLowerCase().includes(sopSearch.toLowerCase()) || s.file_name.toLowerCase().includes(sopSearch.toLowerCase())).length} SOPs</h3>
+        </div>
+        <button onClick={() => setSOPSortOrder(sopSortOrder === 'desc' ? 'asc' : 'desc')} className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1">{sopSortOrder === 'desc' ? '↓ Newest' : '↑ Oldest'}</button>
+      </div>
+      <div className="relative mb-4">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <input type="text" value={sopSearch} onChange={e => setSOPSearch(e.target.value)} placeholder="Search SOPs..." className={INPUT.search} />
+        {sopSearch && <button onClick={() => setSOPSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>}
+      </div>
+      <div className="space-y-3">
+        {sops.filter(s => { if (!sopSearch.trim()) return true; const q = sopSearch.toLowerCase(); return s.title.toLowerCase().includes(q) || s.file_name.toLowerCase().includes(q) || s.description?.toLowerCase().includes(q); }).sort((a, b) => sopSortOrder === 'desc' ? new Date(b.created_at) - new Date(a.created_at) : new Date(a.created_at) - new Date(b.created_at)).map(sop => (
+          <div key={sop.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200 hover:bg-gray-100 transition-all">
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center flex-shrink-0"><BookOpen className="w-5 h-5 text-indigo-600" /></div>
+              <div className="min-w-0">
+                <p className="font-semibold text-gray-800 truncate">{sop.title}</p>
+                {sop.description && <p className="text-sm text-gray-500 truncate">{sop.description}</p>}
+                <p className="text-xs text-gray-400">{sop.file_name} • {new Date(sop.created_at).toLocaleDateString()}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1 flex-shrink-0 ml-3">
+              <button onClick={() => viewSOP(sop)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors" title="View"><Eye className="w-4 h-4" /></button>
+              <button onClick={() => downloadSOP(sop)} className="p-2 text-emerald-500 hover:bg-emerald-50 rounded-lg transition-colors" title="Download"><Download className="w-4 h-4" /></button>
+            </div>
+          </div>
+        ))}
+        {sops.filter(s => { if (!sopSearch.trim()) return true; const q = sopSearch.toLowerCase(); return s.title.toLowerCase().includes(q) || s.file_name.toLowerCase().includes(q) || s.description?.toLowerCase().includes(q); }).length === 0 && (
+          <div className="text-center py-12 text-gray-400"><BookOpen className="w-12 h-12 mx-auto mb-3 opacity-50" /><p className="font-medium">No SOPs available</p><p className="text-sm">{sopSearch ? 'Try a different search term' : 'No documents have been uploaded yet'}</p></div>
+        )}
+      </div>
+    </div>
+  </div>
+)}
 {/* Settings */}
 {((isAdmin && adminView === 'settings') || (!isAdmin && view === 'settings')) && (
   <div className="space-y-6">
