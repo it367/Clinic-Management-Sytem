@@ -14,6 +14,7 @@ export const MODULE_COLORS = {
   'it-requests': { bg: 'bg-cyan-50', border: 'border-cyan-200', text: 'text-cyan-700', accent: 'bg-cyan-500', light: 'bg-cyan-100' },
   'completed-procedure': { bg: 'bg-teal-50', border: 'border-teal-200', text: 'text-teal-700', accent: 'bg-teal-500', light: 'bg-teal-100' },
   'claims-documents': { bg: 'bg-sky-50', border: 'border-sky-200', text: 'text-sky-700', accent: 'bg-sky-500', light: 'bg-sky-100' },
+  'hospital-cases': { bg: 'bg-indigo-50', border: 'border-indigo-200', text: 'text-indigo-700', accent: 'bg-indigo-500', light: 'bg-indigo-100' },
 };
 
 // ============================================================
