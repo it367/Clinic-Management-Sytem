@@ -19,7 +19,7 @@ const MODULES = [
   { id: 'bills-payment', name: 'Bills Payment', icon: CreditCard, color: 'violet', table: 'bills_payment' },
   { id: 'order-requests', name: 'Order Requests', icon: Package, color: 'amber', table: 'order_requests' },
   { id: 'refund-requests', name: 'Refund Requests', icon: RefreshCw, color: 'rose', table: 'refund_requests' },
-  { id: 'hospital-cases', name: 'Hospital Cases', icon: Headphones, color: 'indigo', table: 'hospital_cases' },
+  { id: 'hospital-cases', name: 'Hospital Cases', icon: Building2, color: 'indigo', table: 'hospital_cases' },
 ];
 
 const SUPPORT_MODULES = [
