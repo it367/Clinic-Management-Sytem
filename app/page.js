@@ -1,4 +1,4 @@
-//Clinic Management System v0.87
+//Clinic Management System v0.73
 // Devoloper: Mark Murillo
 // Company: Kidshine Hawaii
 
@@ -19,6 +19,7 @@ const MODULES = [
   { id: 'bills-payment', name: 'Bills Payment', icon: CreditCard, color: 'violet', table: 'bills_payment' },
   { id: 'order-requests', name: 'Order Requests', icon: Package, color: 'amber', table: 'order_requests' },
   { id: 'refund-requests', name: 'Refund Requests', icon: RefreshCw, color: 'rose', table: 'refund_requests' },
+  { id: 'hospital-cases', name: 'Hospital Cases', icon: Headphones, color: 'indigo', table: 'hospital_cases' },
 ];
 
 const SUPPORT_MODULES = [
@@ -30,7 +31,8 @@ const ALL_MODULES = [...CHECKLIST_MODULES, ...MODULES, ...SUPPORT_MODULES];
 // MODULE_COLORS imported from styles
 
 const IT_STATUSES = ['For Review', 'In Progress', 'On-hold', 'Resolved'];
-const INQUIRY_TYPES = ['Claim', 'Referral', 'Patient Balance'];
+const INQUIRY_TYPES = ['Patient Refund', 'Insurance Refund', 'Patient Balance', 'Payment Plan', 'Other'];
+const HOSPITAL_CASE_TYPES = ['Claim', 'Referral', 'Patient Balance'];
 const REFUND_TYPES = ['Refund', 'Credit', 'Adjustment'];
 const CONTACT_METHODS = ['Phone', 'Email', 'Text'];
 const DATE_RANGES = ['This Week', 'Last 2 Weeks', 'This Month', 'Last Month', 'This Quarter', 'This Year', 'Custom'];
@@ -42,7 +44,7 @@ const MODULE_FIELD_CONFIG = {
     getEntryData: (form, user) => ({
       patient_name: form.patient_name, chart_number: form.chart_number, parent_name: form.parent_name,
       date_of_request: form.date_of_request || null, inquiry_type: form.inquiry_type,
-      description: form.description,
+      description: form.description, amount_in_question: parseFloat(form.amount_in_question) || null,
       best_contact_method: form.best_contact_method || null, best_contact_time: form.best_contact_time,
       billing_team_reviewed: form.billing_team_reviewed, date_reviewed: form.date_reviewed || null,
       status: form.status || 'Pending', result: form.result
@@ -51,12 +53,13 @@ const MODULE_FIELD_CONFIG = {
       patient_name: entry.patient_name || '', chart_number: entry.chart_number || '',
       parent_name: entry.parent_name || '', date_of_request: entry.date_of_request || '',
       inquiry_type: entry.inquiry_type || '', description: entry.description || '',
-      best_contact_method: entry.best_contact_method || '',
+      amount_in_question: entry.amount_in_question || '', best_contact_method: entry.best_contact_method || '',
       best_contact_time: entry.best_contact_time || ''
     }),
     getUpdateData: (f) => ({
       patient_name: f.patient_name, chart_number: f.chart_number, parent_name: f.parent_name,
       date_of_request: f.date_of_request || null, inquiry_type: f.inquiry_type, description: f.description,
+      amount_in_question: parseFloat(f.amount_in_question) || null,
       best_contact_method: f.best_contact_method || null, best_contact_time: f.best_contact_time
     })
   },
@@ -152,6 +155,26 @@ const MODULE_FIELD_CONFIG = {
       description_of_issue: f.description_of_issue,
       best_contact_method: f.best_contact_method || null, best_contact_time: f.best_contact_time
     })
+  },
+  'hospital-cases': {
+    getEntryData: (form, user) => ({
+      patient_name: form.patient_name, chart_number: form.chart_number, parent_name: form.parent_name,
+      date_of_request: form.date_of_request || null, inquiry_type: form.inquiry_type,
+      description: form.description,
+      best_contact_method: form.best_contact_method || null, best_contact_time: form.best_contact_time,
+      status: 'Pending'
+    }),
+    getEditInitial: (entry) => ({
+      patient_name: entry.patient_name || '', chart_number: entry.chart_number || '',
+      parent_name: entry.parent_name || '', date_of_request: entry.date_of_request || '',
+      inquiry_type: entry.inquiry_type || '', description: entry.description || '',
+      best_contact_method: entry.best_contact_method || '', best_contact_time: entry.best_contact_time || ''
+    }),
+    getUpdateData: (f) => ({
+      patient_name: f.patient_name, chart_number: f.chart_number, parent_name: f.parent_name,
+      date_of_request: f.date_of_request || null, inquiry_type: f.inquiry_type, description: f.description,
+      best_contact_method: f.best_contact_method || null, best_contact_time: f.best_contact_time
+    })
   }
 };
 
@@ -161,7 +184,7 @@ const ENTRY_PREVIEW_CONFIG = {
     previewFields: [
       { label: 'Patient Name', key: 'patient_name' }, { label: 'Chart Number', key: 'chart_number' },
       { label: 'Parent Name', key: 'parent_name' }, { label: 'Date of Request', key: 'date_of_request', format: 'date' },
-      { label: 'Inquiry Type', key: 'inquiry_type' },
+      { label: 'Inquiry Type', key: 'inquiry_type' }, { label: 'Amount in Question', key: 'amount_in_question', format: 'currency', colorClass: 'text-emerald-600' },
       { label: 'Contact Method', key: 'best_contact_method' }, { label: 'Best Time to Contact', key: 'best_contact_time' },
       { label: 'Description', key: 'description', colSpan: 2, isBlock: true }
     ],
@@ -236,6 +259,26 @@ const ENTRY_PREVIEW_CONFIG = {
       ],
       extraFields: [{ type: 'textarea', label: 'Comment / Result', key: 'result', placeholder: 'Enter review comments or result...' }]
     }
+  },
+  'hospital-cases': {
+    previewFields: [
+      { label: 'Patient Name', key: 'patient_name' }, { label: 'Chart Number', key: 'chart_number' },
+      { label: 'Parent Name', key: 'parent_name' }, { label: 'Date of Request', key: 'date_of_request', format: 'date' },
+      { label: 'Inquiry Type', key: 'inquiry_type' },
+      { label: 'Contact Method', key: 'best_contact_method' }, { label: 'Best Time to Contact', key: 'best_contact_time' },
+      { label: 'Description', key: 'description', colSpan: 2, isBlock: true }
+    ],
+    reviewReadOnly: { show: (e) => e.reviewed_by || e.date_reviewed || e.result, bgColor: 'bg-indigo-50', borderColor: 'border-indigo-200', textColor: 'text-indigo-800', title: 'Review Details',
+      fields: [{ label: 'Reviewed By', key: 'reviewed_by' }, { label: 'Date Reviewed', key: 'date_reviewed', format: 'date' }, { label: 'Result', key: 'result', colSpan: 2 }] },
+    adminEdit: { btnGradient: 'from-indigo-500 to-purple-500', btnLabel: 'Review & Update Status', editBg: 'bg-indigo-50', editBorder: 'border-indigo-200', editTextColor: 'text-indigo-800', editTitle: 'Review Hospital Case', focusColor: 'focus:border-indigo-400',
+      statuses: ['Pending', 'In Progress', 'Reviewed'], formKey: 'hospital', saveHandler: 'handleHospitalSave',
+      fields: [
+        { type: 'select', label: 'Status', key: 'status' },
+        { type: 'reviewerSelect', label: 'Reviewed By', key: 'reviewed_by' },
+        { type: 'date', label: 'Date Reviewed', key: 'date_reviewed' }
+      ],
+      extraFields: [{ type: 'textarea', label: 'Result', key: 'result', placeholder: 'Enter review result or notes...' }]
+    }
   }
 };
 
@@ -257,6 +300,7 @@ const ADMIN_CARD_CONFIG = {
     getTitle: (e) => e.chart_number ? <span className="font-bold text-blue-600">Chart# {e.chart_number}</span> : null,
     getSubtitle: (e) => e.patient_name || 'No Patient Name',
     getDetail: (e) => `${e.locations?.name} • ${e.inquiry_type || 'No Type'} • ${e.date_of_request ? new Date(e.date_of_request).toLocaleDateString() : new Date(e.created_at).toLocaleDateString()}`,
+    getAmount: (e) => e.amount_in_question > 0 ? `$${Number(e.amount_in_question || 0).toFixed(2)}` : null,
   },
   'refund-requests': {
     getTitle: (e) => e.chart_number ? <span className="font-bold text-rose-600">Chart# {e.chart_number}</span> : null,
@@ -276,6 +320,11 @@ const ADMIN_CARD_CONFIG = {
     getExtra: (e) => e.paid === true ? <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-md text-xs font-medium">Paid</span> : null,
     getDetail: (e) => `${e.locations?.name} • ${e.bill_date ? new Date(e.bill_date).toLocaleDateString() : new Date(e.created_at).toLocaleDateString()}${e.due_date ? ` • Due: ${new Date(e.due_date).toLocaleDateString()}` : ''}`,
     getAmount: (e) => `$${Number(e.amount || 0).toFixed(2)}`,
+  },
+  'hospital-cases': {
+    getTitle: (e) => e.chart_number ? <span className="font-bold text-indigo-600">Chart# {e.chart_number}</span> : null,
+    getSubtitle: (e) => e.patient_name || 'No Patient Name',
+    getDetail: (e) => `${e.locations?.name} • ${e.inquiry_type || 'No Type'} • ${e.date_of_request ? new Date(e.date_of_request).toLocaleDateString() : new Date(e.created_at).toLocaleDateString()}`,
   }
 };
 
@@ -302,6 +351,7 @@ const STAFF_FORM_CONFIG = {
       { label: 'Parent Name', key: 'parent_name' },
       { label: 'Date of Request', key: 'date_of_request', type: 'date' },
       { label: 'Type of Inquiry', key: 'inquiry_type', options: INQUIRY_TYPES },
+      { label: 'Amount in Question', key: 'amount_in_question', prefix: '$' },
       { label: 'Best Contact Method', key: 'best_contact_method', options: CONTACT_METHODS },
       { label: 'Best Time to Contact', key: 'best_contact_time' },
     ],
@@ -351,6 +401,20 @@ const STAFF_FORM_CONFIG = {
     ],
     largeField: { label: 'Description', key: 'description' },
     fileLabel: 'Supporting Documentation', fileKey: 'documentation'
+  },
+  'hospital-cases': {
+    title: 'Hospital Case',
+    fields: [
+      { label: 'Patient Name', key: 'patient_name' },
+      { label: 'Chart Number', key: 'chart_number' },
+      { label: 'Parent Name', key: 'parent_name' },
+      { label: 'Date of Request', key: 'date_of_request', type: 'date' },
+      { label: 'Type of Inquiry', key: 'inquiry_type', options: HOSPITAL_CASE_TYPES },
+      { label: 'Best Contact Method', key: 'best_contact_method', options: CONTACT_METHODS },
+      { label: 'Best Time to Contact', key: 'best_contact_time' },
+    ],
+    largeField: { label: 'Description', key: 'description' },
+    fileLabel: 'Supporting Documentation', fileKey: 'documentation'
   }
 };
 
@@ -377,6 +441,17 @@ const STAFF_EDIT_FIELDS_CONFIG = {
       { label: 'Patient Name', key: 'patient_name' }, { label: 'Chart Number', key: 'chart_number' },
       { label: 'Parent Name', key: 'parent_name' }, { label: 'Date of Request', key: 'date_of_request', type: 'date' },
       { label: 'Type of Inquiry', key: 'inquiry_type', options: INQUIRY_TYPES },
+      { label: 'Amount in Question', key: 'amount_in_question', prefix: '$' },
+      { label: 'Contact Method', key: 'best_contact_method', options: CONTACT_METHODS },
+      { label: 'Best Time to Contact', key: 'best_contact_time' },
+    ],
+    largeField: { label: 'Description', key: 'description' }
+  },
+  'hospital-cases': {
+    fields: [
+      { label: 'Patient Name', key: 'patient_name' }, { label: 'Chart Number', key: 'chart_number' },
+      { label: 'Parent Name', key: 'parent_name' }, { label: 'Date of Request', key: 'date_of_request', type: 'date' },
+      { label: 'Type of Inquiry', key: 'inquiry_type', options: HOSPITAL_CASE_TYPES },
       { label: 'Contact Method', key: 'best_contact_method', options: CONTACT_METHODS },
       { label: 'Best Time to Contact', key: 'best_contact_time' },
     ],
@@ -637,7 +712,7 @@ function FileViewer({ file, onClose }) {
   );
 }
 
-function EntryPreview({ entry, module, onClose, colors, onViewDocument, currentUser, itUsers, financeAdminUsers, onUpdateStatus, onDelete, onUpdateBillingInquiry, onUpdateBillsPayment, onUpdateOrderRequest, onUpdateRefundRequest, onUpdateChecklist }) {
+function EntryPreview({ entry, module, onClose, colors, onViewDocument, currentUser, itUsers, financeAdminUsers, onUpdateStatus, onDelete, onUpdateBillingInquiry, onUpdateBillsPayment, onUpdateOrderRequest, onUpdateRefundRequest, onUpdateHospitalCase, onUpdateChecklist }) {
   const [editForm, setEditForm] = useState({
     status: entry?.status || 'For Review',
     assigned_to: entry?.assigned_to || '',
@@ -758,6 +833,13 @@ const handleChecklistSave = () => {
     setIsEditing(false);
     onClose();
   };
+  const handleHospitalSave = () => {
+    if (onUpdateHospitalCase) {
+      onUpdateHospitalCase(entry.id, billingEditForm);
+    }
+    setIsEditing(false);
+    onClose();
+  };
   return (
     <div className={LAYOUT.modalOverlay} onClick={onClose}>
       <div className={LAYOUT.modalCard} onClick={e => e.stopPropagation()}>
@@ -830,7 +912,7 @@ const handleChecklistSave = () => {
             const saveFn = config.adminEdit?.saveHandler === 'handleBillingSave' ? handleBillingSave
               : config.adminEdit?.saveHandler === 'handleBillsPaymentSave' ? handleBillsPaymentSave
               : config.adminEdit?.saveHandler === 'handleOrderSave' ? handleOrderSave
-              : config.adminEdit?.saveHandler === 'handleRefundSave' ? handleRefundSave : null;
+              : config.adminEdit?.saveHandler === 'handleRefundSave' ? handleRefundSave : config.adminEdit?.saveHandler === 'handleHospitalSave' ? handleHospitalSave : null;
             return (
               <div className="space-y-4">
                 {config.header && config.header(entry) && (() => {
@@ -1406,10 +1488,11 @@ const loadChecklistAnalyticsData = async () => {
   const today = new Date().toISOString().split('T')[0];
   const [forms, setForms] = useState({
     'daily-recon': { recon_date: today, cash: '', credit_card: '', checks_otc: '', insurance_checks: '', care_credit: '', vcc: '', efts: '', deposit_cash: '', deposit_credit_card: '', deposit_checks: '', deposit_insurance: '', deposit_care_credit: '', deposit_vcc: '', deposit_efts: '', notes: '', entered_by: '' },
-    'billing-inquiry': { patient_name: '', chart_number: '', parent_name: '', date_of_request: today, inquiry_type: '', description: '', best_contact_method: '', best_contact_time: '', billing_team_reviewed: '', date_reviewed: '', status: 'Pending', result: '' },
+    'billing-inquiry': { patient_name: '', chart_number: '', parent_name: '', date_of_request: today, inquiry_type: '', description: '', amount_in_question: '', best_contact_method: '', best_contact_time: '', billing_team_reviewed: '', date_reviewed: '', status: 'Pending', result: '' },
 'bills-payment': { bill_date: today, vendor: '', transaction_id: '', description: '', amount: '', due_date: '', paid: '' },
     'order-requests': { date_entered: today, vendor: '', invoice_number: '', invoice_date: '', due_date: '', amount: '', entered_by: '', notes: '' },
   'refund-requests': { patient_name: '', chart_number: '', parent_name: '', rp_address: '', date_of_request: today, type: '', description: '', amount_requested: '', best_contact_method: '', contact_info: '', eassist_audited: '', status: 'Pending' },
+    'hospital-cases': { patient_name: '', chart_number: '', parent_name: '', date_of_request: today, inquiry_type: '', description: '', best_contact_method: '', best_contact_time: '' },
 'it-requests': { date_reported: today, urgency: '', requester_name: '', device_system: '', description_of_issue: '', best_contact_method: '', best_contact_time: '', assigned_to: '', status: 'Open', resolution_notes: '', completed_by: '' },
     'completed-procedure': { checked_by: '', notes: '' },
     'claims-documents': { checked_by: '', notes: '' }
@@ -1420,6 +1503,7 @@ const loadChecklistAnalyticsData = async () => {
     'bills-payment': { documentation: [] },
     'order-requests': { orderInvoices: [] },
     'refund-requests': { documentation: [] },
+    'hospital-cases': { documentation: [] },
 'it-requests': { documentation: [] },
     'completed-procedure': { documentation: [] },
     'claims-documents': { documentation: [] }
@@ -2315,6 +2399,7 @@ const MODULE_UPDATE_MAP = {
   'bills-payment': { table: 'bills_payment', title: 'Bills Payment', color: 'violet', getData: (f, uid) => ({ status: f.status, ap_reviewed: f.billing_team_reviewed || null, date_reviewed: f.date_reviewed || null, paid: f.paid, updated_by: uid }) },
   'order-requests': { table: 'order_requests', title: 'Order Request', color: 'amber', getData: (f, uid) => ({ status: f.status, reviewed_by: f.reviewed_by || null, reviewed_at: f.status === 'Reviewed' ? new Date().toISOString() : null, updated_by: uid }) },
   'refund-requests': { table: 'refund_requests', title: 'Refund Request', color: 'rose', getData: (f, uid) => ({ status: f.status, reviewed_by: f.reviewed_by || null, reviewed_at: f.status === 'Reviewed' ? new Date().toISOString() : null, result: f.result || null, updated_by: uid }) },
+  'hospital-cases': { table: 'hospital_cases', title: 'Hospital Case', color: 'indigo', getData: (f, uid) => ({ status: f.status, reviewed_by: f.reviewed_by || null, date_reviewed: f.date_reviewed || null, result: f.result || null, updated_by: uid }) },
 };
 const updateModuleRecord = async (moduleId, entryId, formData) => {
   const cfg = MODULE_UPDATE_MAP[moduleId];
@@ -2330,6 +2415,7 @@ const updateBillingInquiry = (id, form) => updateModuleRecord('billing-inquiry',
 const updateBillsPayment = (id, form) => updateModuleRecord('bills-payment', id, form);
 const updateOrderRequest = (id, form) => updateModuleRecord('order-requests', id, form);
 const updateRefundRequest = (id, form) => updateModuleRecord('refund-requests', id, form);
+const updateHospitalCase = (id, form) => updateModuleRecord('hospital-cases', id, form);
 const updateChecklistEntry = async (entryId, moduleId, formData) => {
   const confirmed = await showConfirm('Update Checklist Entry', `Are you sure you want to update the status to "${formData.status}"?`, 'Update', 'blue');
   if (!confirmed) return;
@@ -2791,7 +2877,7 @@ if (!currentUser) {
           >
             {loginLoading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Login →'}
           </button>
-<p className="text-xs text-center text-gray-400">BETA Version 0.87</p>
+<p className="text-xs text-center text-gray-400">BETA Version 0.73</p>
         </div>
       </div>
     </div>
@@ -2921,6 +3007,10 @@ onUpdateOrderRequest={async (entryId, formData) => {
   }}
 onUpdateRefundRequest={async (entryId, formData) => {
     await updateRefundRequest(entryId, formData);
+    setViewingEntry(null);
+  }}
+  onUpdateHospitalCase={async (entryId, formData) => {
+    await updateHospitalCase(entryId, formData);
     setViewingEntry(null);
   }}
   onUpdateChecklist={async (entryId, moduleId, formData) => {
@@ -5983,7 +6073,7 @@ return (
 {sidebarOpen && <div className={LAYOUT.sidebarOverlay} onClick={() => setSidebarOpen(false)} />}
 {/* Version Footer */}
       <div className="fixed bottom-6 left-4 lg:left-[310px] z-[25] pointer-events-none">
-        <p className="text-xs text-gray-400 opacity-70">CMS v0.87</p>
+        <p className="text-xs text-gray-400 opacity-70">CMS v0.73</p>
       </div>
     </div>
   );
