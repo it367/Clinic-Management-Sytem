@@ -1,4 +1,4 @@
-//Clinic Management System v0.76
+//Clinic Management System v0.73
 // Devoloper: Mark Murillo
 // Company: Kidshine Hawaii
 
@@ -610,18 +610,27 @@ function FileUpload({ label, files, onFilesChange, onViewFile, disabled }) {
 function FileViewer({ file, onClose }) {
   if (!file) return null;
   const isImage = file.type?.startsWith('image/') || file.name?.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+  const isPDF = file.type === 'application/pdf' || file.name?.match(/\.pdf$/i);
+  const isOfficeDoc = file.name?.match(/\.(doc|docx|xls|xlsx|ppt|pptx)$/i);
   return (
     <div className={LAYOUT.modalOverlay} onClick={onClose}>
-      <div className="bg-white rounded-2xl max-w-4xl max-h-[90vh] w-full overflow-auto shadow-2xl" onClick={e => e.stopPropagation()}>
-        <div className="flex justify-between items-center p-4 border-b sticky top-0 bg-white/90 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl max-w-5xl max-h-[90vh] w-full overflow-auto shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="flex justify-between items-center p-4 border-b sticky top-0 bg-white/90 backdrop-blur-sm z-10">
           <h3 className="font-semibold truncate text-gray-800">{file.name}</h3>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-xl transition-colors"><X className="w-5 h-5" /></button>
+          <div className="flex items-center gap-2">
+            <a href={file.url} download={file.name} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors" title="Download"><Download className="w-5 h-5" /></a>
+            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-xl transition-colors"><X className="w-5 h-5" /></button>
+          </div>
         </div>
-        <div className="p-6">
-          {isImage ? <img src={file.url} alt={file.name} className="max-w-full rounded-xl mx-auto shadow-lg" /> : (
+        <div className={isImage ? 'p-6' : ''}>
+          {isImage ? <img src={file.url} alt={file.name} className="max-w-full rounded-xl mx-auto shadow-lg" /> : isPDF ? (
+            <iframe src={file.url} className="w-full" style={{ height: '80vh' }} title={file.name} />
+          ) : isOfficeDoc ? (
+            <iframe src={`https://docs.google.com/gview?url=${encodeURIComponent(file.url)}&embedded=true`} className="w-full" style={{ height: '80vh' }} title={file.name} />
+          ) : (
             <div className="text-center py-12 text-gray-500">
               <div className="w-20 h-20 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4"><File className="w-10 h-10 text-gray-400" /></div>
-              <p className="mb-4">Preview not available</p>
+              <p className="mb-4">Preview not available for this file type</p>
               <a href={file.url} download={file.name} className={`inline-block px-6 py-3 ${BTN.primary}`}>Download File</a>
             </div>
           )}
