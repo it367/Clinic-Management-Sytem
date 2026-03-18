@@ -2794,7 +2794,7 @@ const getStaffTotalPages = () => {
   if (staffRecordsPerPage === 'all') return 1;
   return Math.ceil(allEntries.length / staffRecordsPerPage);
 };
-const currentColors = MODULE_COLORS[activeModule];
+const currentColors = MODULE_COLORS[activeModule] || { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-700', accent: 'bg-gray-500', light: 'bg-gray-100' };
   const currentModule = ALL_MODULES.find(m => m.id === activeModule);
   const visibleModules = currentUser?.role === 'rev_rangers'
     ? MODULES.filter(m => m.id === 'billing-inquiry')
@@ -3085,7 +3085,7 @@ onDelete={isITViewOnly ? null : async (recordId) => {
                 Office Task Checklist
               </p>
               {CHECKLIST_MODULES.map(m => {
-                const colors = MODULE_COLORS[m.id];
+                const colors = MODULE_COLORS[m.id] || { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-700', accent: 'bg-gray-500', light: 'bg-gray-100' };
                 const isActive = activeModule === m.id && adminView !== 'users' && adminView !== 'export' && adminView !== 'settings' && view !== 'settings';
                 const submitted = isOfficeManager && checklistStatus[m.id]?.submitted;
                 return (
@@ -3127,7 +3127,7 @@ onDelete={isITViewOnly ? null : async (recordId) => {
           <>
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">Modules</p>
           {visibleModules.map(m => {
-            const colors = MODULE_COLORS[m.id];
+            const colors = MODULE_COLORS[m.id] || { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-700', accent: 'bg-gray-500', light: 'bg-gray-100' };
             const isActive = activeModule === m.id && adminView !== 'users' && adminView !== 'export' && adminView !== 'settings' && view !== 'settings';
             return (
               <button
@@ -3149,7 +3149,7 @@ onDelete={isITViewOnly ? null : async (recordId) => {
               <div className="border-t my-4"></div>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">Support</p>
               {SUPPORT_MODULES.map(m => {
-                const colors = MODULE_COLORS[m.id];
+                const colors = MODULE_COLORS[m.id] || { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-700', accent: 'bg-gray-500', light: 'bg-gray-100' };
                 const isActive = activeModule === m.id && adminView !== 'users' && adminView !== 'export' && adminView !== 'settings' && view !== 'settings';
                 return (
                   <button
@@ -3471,7 +3471,7 @@ onDelete={isITViewOnly ? null : async (recordId) => {
           CHECKLIST_MODULES.find(m => m.id === 'daily-recon'),
           ...(currentUser?.role === 'rev_rangers' ? MODULES.filter(m => m.id === 'billing-inquiry') : MODULES)
         ].map(m => {
-          const colors = MODULE_COLORS[m.id];
+          const colors = MODULE_COLORS[m.id] || { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-700', accent: 'bg-gray-500', light: 'bg-gray-100' };
           const isActive = analyticsModule === m.id;
           return (
             <button
