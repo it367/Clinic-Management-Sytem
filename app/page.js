@@ -1,4 +1,4 @@
-//Clinic Management System v0.73
+//Clinic Management System v0.84
 // Devoloper: Mark Murillo
 // Company: Kidshine Hawaii
 
@@ -2481,7 +2481,7 @@ if (!currentUser) {
           >
             {loginLoading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Login →'}
           </button>
-<p className="text-xs text-center text-gray-400">BETA Version 0.73</p>
+<p className="text-xs text-center text-gray-400">BETA Version 0.84</p>
         </div>
       </div>
     </div>
@@ -4337,7 +4337,7 @@ if (filteredData.length === 0) {
 {sidebarOpen && <div className={LAYOUT.sidebarOverlay} onClick={() => setSidebarOpen(false)} />}
 {/* Version Footer */}
       <div className="fixed bottom-6 left-4 lg:left-[310px] z-[25] pointer-events-none">
-        <p className="text-xs text-gray-400 opacity-70">CMS v0.73</p>
+        <p className="text-xs text-gray-400 opacity-70">CMS v0.84</p>
       </div>
     </div>
   );
