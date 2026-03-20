@@ -1,4 +1,4 @@
-//Clinic Management System v0.84
+//Clinic Management System v0.86
 // Devoloper: Mark Murillo
 // Company: Kidshine Hawaii
 
@@ -2481,7 +2481,7 @@ if (!currentUser) {
           >
             {loginLoading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Login →'}
           </button>
-<p className="text-xs text-center text-gray-400">BETA Version 0.84</p>
+<p className="text-xs text-center text-gray-400">BETA Version 0.86</p>
         </div>
       </div>
     </div>
@@ -3005,7 +3005,7 @@ onDelete={isITViewOnly ? null : async (recordId) => {
     <div className={CARD.analytics}>
 <div className="flex items-center gap-2 overflow-x-auto pb-1">
  {[
-          ...(currentUser?.role === 'rev_rangers' ? MODULES.filter(m => m.id === 'billing-inquiry') : MODULES)
+          ...(currentUser?.role === 'rev_rangers' ? MODULES.filter(m => m.id === 'billing-inquiry' || m.id === 'hospital-cases') : MODULES)
         ].map(m => {
           const colors = MODULE_COLORS[m.id] || { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-700', accent: 'bg-gray-500', light: 'bg-gray-100' };
           const isActive = analyticsModule === m.id;
@@ -3426,6 +3426,159 @@ if (filteredData.length === 0) {
                       <div className="text-right">
                         <p className="font-bold text-rose-600">{stats.count} requests</p>
                         <p className="text-sm text-gray-500">${stats.total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        );
+      }
+      if (analyticsModule === 'hospital-cases') {
+        const pendingCount = filteredData.filter(r => r.status === 'Pending' || !r.status).length;
+        const inProgressCount = filteredData.filter(r => r.status === 'In Progress').length;
+        const reviewedCount = filteredData.filter(r => r.status === 'Reviewed').length;
+        const avgResolutionDays = (() => {
+          const reviewed = filteredData.filter(r => r.date_reviewed && r.created_at);
+          if (reviewed.length === 0) return 0;
+          const totalDays = reviewed.reduce((sum, r) => {
+            const created = new Date(r.created_at);
+            const resolved = new Date(r.date_reviewed);
+            return sum + Math.max(0, (resolved - created) / (1000 * 60 * 60 * 24));
+          }, 0);
+          return (totalDays / reviewed.length).toFixed(1);
+        })();
+        const byType = {};
+        HOSPITAL_CASE_TYPES.forEach(t => byType[t] = { count: 0, pending: 0 });
+        filteredData.forEach(r => {
+          const type = r.inquiry_type || 'Other';
+          if (!byType[type]) byType[type] = { count: 0, pending: 0 };
+          byType[type].count += 1;
+          if (r.status === 'Pending' || !r.status) byType[type].pending += 1;
+        });
+        const byLocation = {};
+        filteredData.forEach(r => {
+          const loc = r.locations?.name || 'Unknown';
+          if (!byLocation[loc]) byLocation[loc] = { count: 0, pending: 0, reviewed: 0 };
+          byLocation[loc].count += 1;
+          if (r.status === 'Pending' || !r.status) byLocation[loc].pending += 1;
+          if (r.status === 'Reviewed') byLocation[loc].reviewed += 1;
+        });
+        const byContact = {};
+        filteredData.forEach(r => {
+          const method = r.best_contact_method || 'Not Specified';
+          if (!byContact[method]) byContact[method] = 0;
+          byContact[method] += 1;
+        });
+        const recentCases = filteredData.filter(r => {
+          const d = new Date(r.created_at);
+          return (now - d) / (1000 * 60 * 60 * 24) <= 7;
+        }).length;
+        const prevWeekCases = filteredData.filter(r => {
+          const d = new Date(r.created_at);
+          const days = (now - d) / (1000 * 60 * 60 * 24);
+          return days > 7 && days <= 14;
+        }).length;
+        const trend = prevWeekCases > 0 ? (((recentCases - prevWeekCases) / prevWeekCases) * 100).toFixed(0) : 0;
+        return (
+          <>
+            {renderKPICards([
+              { color: 'indigo', label: 'Total Cases', value: filteredData.length, detail: analyticsRange },
+              { color: 'amber', label: 'Pending Review', value: pendingCount, detail: `${filteredData.length > 0 ? ((pendingCount / filteredData.length) * 100).toFixed(0) : 0}% of total` },
+              { color: 'emerald', label: 'Reviewed', value: reviewedCount, detail: `${filteredData.length > 0 ? ((reviewedCount / filteredData.length) * 100).toFixed(0) : 0}% resolved` },
+              { color: 'blue', label: 'Avg. Resolution', value: `${avgResolutionDays}d`, detail: 'Days to review' },
+            ])}
+            {/* Weekly Trend */}
+            <div className={CARD.base}>
+              <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                {Number(trend) >= 0 ? <TrendingUp className="w-5 h-5 text-indigo-500" /> : <TrendingDown className="w-5 h-5 text-emerald-500" />}
+                Weekly Trend
+              </h3>
+              <div className="flex items-center gap-6">
+                <div className="p-4 rounded-xl bg-indigo-50 border border-indigo-200 flex-1 text-center">
+                  <p className="text-3xl font-bold text-indigo-600">{recentCases}</p>
+                  <p className="text-sm text-gray-600 mt-1">This Week</p>
+                </div>
+                <div className="p-4 rounded-xl bg-gray-50 border border-gray-200 flex-1 text-center">
+                  <p className="text-3xl font-bold text-gray-600">{prevWeekCases}</p>
+                  <p className="text-sm text-gray-600 mt-1">Last Week</p>
+                </div>
+                <div className={`p-4 rounded-xl flex-1 text-center ${Number(trend) > 0 ? 'bg-red-50 border border-red-200' : Number(trend) < 0 ? 'bg-emerald-50 border border-emerald-200' : 'bg-gray-50 border border-gray-200'}`}>
+                  <p className={`text-3xl font-bold ${Number(trend) > 0 ? 'text-red-600' : Number(trend) < 0 ? 'text-emerald-600' : 'text-gray-600'}`}>{Number(trend) > 0 ? '+' : ''}{trend}%</p>
+                  <p className="text-sm text-gray-600 mt-1">Change</p>
+                </div>
+              </div>
+            </div>
+            {/* Status Distribution */}
+            <div className={CARD.base}>
+              <h3 className="font-semibold text-gray-800 mb-4">Status Distribution</h3>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-center">
+                  <p className="text-3xl font-bold text-amber-600">{pendingCount}</p>
+                  <p className="text-sm text-gray-600 mt-1">Pending</p>
+                </div>
+                <div className="p-4 rounded-xl bg-blue-50 border border-blue-200 text-center">
+                  <p className="text-3xl font-bold text-blue-600">{inProgressCount}</p>
+                  <p className="text-sm text-gray-600 mt-1">In Progress</p>
+                </div>
+                <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-center">
+                  <p className="text-3xl font-bold text-emerald-600">{reviewedCount}</p>
+                  <p className="text-sm text-gray-600 mt-1">Reviewed</p>
+                </div>
+              </div>
+            </div>
+            {/* Case Type Breakdown */}
+            <div className={CARD.base}>
+              <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <PieChart className="w-5 h-5 text-indigo-500" /> By Case Type
+              </h3>
+              <div className="grid grid-cols-3 gap-4">
+                {Object.entries(byType).filter(([_, s]) => s.count > 0).map(([type, stats]) => (
+                  <div key={type} className="p-4 rounded-xl bg-indigo-50 border border-indigo-100">
+                    <p className="font-medium text-gray-800">{type}</p>
+                    <p className="text-2xl font-bold text-indigo-600 mt-1">{stats.count}</p>
+                    <p className="text-sm text-gray-500">{stats.pending} pending</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {/* Contact Method Breakdown */}
+            <div className={CARD.base}>
+              <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <BarChart3 className="w-5 h-5 text-indigo-500" /> Preferred Contact Method
+              </h3>
+              <div className="space-y-3">
+                {Object.entries(byContact).sort((a, b) => b[1] - a[1]).map(([method, count]) => {
+                  const pct = filteredData.length > 0 ? (count / filteredData.length * 100).toFixed(0) : 0;
+                  return (
+                    <div key={method} className="flex items-center gap-4">
+                      <span className="font-medium text-gray-700 w-32">{method}</span>
+                      <div className="flex-1 h-8 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full flex items-center justify-end pr-3" style={{ width: `${Math.max(pct, 8)}%` }}>
+                          <span className="text-xs font-bold text-white">{count}</span>
+                        </div>
+                      </div>
+                      <span className="text-sm font-medium text-gray-500 w-12 text-right">{pct}%</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            {/* By Location */}
+            {Object.keys(byLocation).length > 1 && (
+              <div className={CARD.base}>
+                <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                  <Building2 className="w-5 h-5 text-indigo-500" /> By Location
+                </h3>
+                <div className="space-y-3">
+                  {Object.entries(byLocation).sort((a, b) => b[1].count - a[1].count).map(([loc, stats]) => (
+                    <div key={loc} className="flex items-center justify-between p-3 rounded-xl bg-gray-50">
+                      <span className="font-medium text-gray-800">{loc}</span>
+                      <div className="flex items-center gap-4">
+                        <span className="text-sm text-amber-600 font-medium">{stats.pending} pending</span>
+                        <span className="text-sm text-emerald-600 font-medium">{stats.reviewed} reviewed</span>
+                        <span className="font-bold text-indigo-600">{stats.count} cases</span>
                       </div>
                     </div>
                   ))}
@@ -4337,7 +4490,7 @@ if (filteredData.length === 0) {
 {sidebarOpen && <div className={LAYOUT.sidebarOverlay} onClick={() => setSidebarOpen(false)} />}
 {/* Version Footer */}
       <div className="fixed bottom-6 left-4 lg:left-[310px] z-[25] pointer-events-none">
-        <p className="text-xs text-gray-400 opacity-70">CMS v0.84</p>
+        <p className="text-xs text-gray-400 opacity-70">CMS v0.86</p>
       </div>
     </div>
   );
