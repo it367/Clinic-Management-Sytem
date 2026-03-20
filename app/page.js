@@ -1,4 +1,4 @@
-//Clinic Management System v0.73
+//Clinic Management System v0.84
 // Devoloper: Mark Murillo
 // Company: Kidshine Hawaii
 
@@ -6,14 +6,8 @@
 import { useState, useEffect, useRef } from 'react';
 import JSZip from 'jszip';
 import { supabase } from '../lib/supabase';
-import { DollarSign, FileText, Building2, Bot, Send, Loader2, LogOut, User, Upload, X, File, Shield, Receipt, CreditCard, Package, RefreshCw, Monitor, Menu, Eye, EyeOff, FolderOpen, Edit3, Users, Plus, Trash2, Lock, Download, Settings, MessageCircle, Sparkles, AlertCircle, Maximize2, Minimize2, Headphones, Search, TrendingUp, TrendingDown, Calendar, PieChart, BarChart3, ClipboardList, Paperclip, CheckCircle, Circle, BookOpen } from 'lucide-react';
+import { FileText, Building2, Bot, Send, Loader2, LogOut, User, Upload, X, File, Shield, Receipt, CreditCard, Package, RefreshCw, Monitor, Menu, Eye, EyeOff, FolderOpen, Edit3, Users, Plus, Trash2, Lock, Download, Settings, MessageCircle, Sparkles, AlertCircle, Maximize2, Minimize2, Search, TrendingUp, TrendingDown, Calendar, PieChart, BarChart3, BookOpen } from 'lucide-react';
 import { MODULE_COLORS, STATUS_COLORS, ROLE_STYLES, BTN, CARD, INPUT, LAYOUT, ANALYTICS_CARDS, ICON_BOX, URGENCY_COLORS, CONFIRM_COLORS, FILE_UPLOAD, CHECKBOX } from './styles';
-const CHECKLIST_MODULES = [
-  { id: 'daily-recon', name: 'Daily Reconciliation', icon: DollarSign, color: 'emerald', table: 'daily_recon' },
-  { id: 'completed-procedure', name: 'Completed Procedure', icon: ClipboardList, color: 'teal', table: 'completed_procedures' },
-  { id: 'claims-documents', name: 'Claims & Documents', icon: Paperclip, color: 'sky', table: 'claims_documents' },
-];
-
 const MODULES = [
   { id: 'billing-inquiry', name: 'Billing Inquiry', icon: Receipt, color: 'blue', table: 'billing_inquiries' },
   { id: 'bills-payment', name: 'Bills Payment', icon: CreditCard, color: 'violet', table: 'bills_payment' },
@@ -26,7 +20,7 @@ const SUPPORT_MODULES = [
   { id: 'it-requests', name: 'IT Requests', icon: Monitor, color: 'cyan', table: 'it_requests' },
 ];
 
-const ALL_MODULES = [...CHECKLIST_MODULES, ...MODULES, ...SUPPORT_MODULES];
+const ALL_MODULES = [...MODULES, ...SUPPORT_MODULES];
 
 // MODULE_COLORS imported from styles
 
@@ -36,7 +30,6 @@ const HOSPITAL_CASE_TYPES = ['Claim', 'Referral', 'Patient Balance'];
 const REFUND_TYPES = ['Refund', 'Credit', 'Adjustment'];
 const CONTACT_METHODS = ['Phone', 'Email', 'Text'];
 const DATE_RANGES = ['This Week', 'Last 2 Weeks', 'This Month', 'Last Month', 'This Quarter', 'This Year', 'Custom'];
-const RECON_STATUSES = ['Pending', 'Accounted', 'Rejected'];
 
 // MODULE_FIELD_CONFIG: maps moduleId -> fields used in saveEntry / startEditingStaffEntry / saveStaffEntryUpdate
 const MODULE_FIELD_CONFIG = {
@@ -124,16 +117,6 @@ const MODULE_FIELD_CONFIG = {
       amount_requested: parseFloat(f.amount_requested) || 0,
       best_contact_method: f.best_contact_method || null, contact_info: f.contact_info || null
     })
-  },
-  'completed-procedure': {
-    getEntryData: (form, user) => ({ checked_by: form.checked_by || user.name, notes: form.notes, status: 'Pending' }),
-    getEditInitial: (entry) => ({ checked_by: entry.checked_by || '', notes: entry.notes || '' }),
-    getUpdateData: (f) => ({ checked_by: f.checked_by, notes: f.notes })
-  },
-  'claims-documents': {
-    getEntryData: (form, user) => ({ checked_by: form.checked_by || user.name, notes: form.notes, status: 'Pending' }),
-    getEditInitial: (entry) => ({ checked_by: entry.checked_by || '', notes: entry.notes || '' }),
-    getUpdateData: (f) => ({ checked_by: f.checked_by, notes: f.notes })
   },
   'it-requests': {
     getEntryData: (form) => ({
@@ -420,22 +403,6 @@ const STAFF_FORM_CONFIG = {
 
 // Config for staff history edit form fields
 const STAFF_EDIT_FIELDS_CONFIG = {
-  'daily-recon': {
-    staff: [
-      { label: 'Date', key: 'recon_date', type: 'date' },
-      { label: 'Cash', key: 'cash', prefix: '$' },
-      { label: 'Credit Card', key: 'credit_card', prefix: '$' },
-      { label: 'Checks OTC', key: 'checks_otc', prefix: '$' },
-      { label: 'Care Credit', key: 'care_credit', prefix: '$' },
-    ],
-    rev_rangers: [
-      { label: 'Date', key: 'recon_date', type: 'date' },
-      { label: 'Insurance Check', key: 'insurance_checks', prefix: '$' },
-      { label: 'VCC', key: 'vcc', prefix: '$' },
-      { label: 'EFTs', key: 'efts', prefix: '$' },
-    ],
-    notesField: { label: 'Notes', key: 'notes' }
-  },
   'billing-inquiry': {
     fields: [
       { label: 'Patient Name', key: 'patient_name' }, { label: 'Chart Number', key: 'chart_number' },
@@ -488,8 +455,6 @@ const STAFF_EDIT_FIELDS_CONFIG = {
     ],
     largeField: { label: 'Description', key: 'description' }
   },
-  'completed-procedure': { fields: [{ label: 'Checked By', key: 'checked_by' }], largeField: { label: 'Notes', key: 'notes', placeholder: 'Enter notes...' } },
-  'claims-documents': { fields: [{ label: 'Checked By', key: 'checked_by' }], largeField: { label: 'Notes', key: 'notes', placeholder: 'Enter notes...' } },
   'it-requests': {
     fields: [
       { label: 'Date Reported', key: 'date_reported', type: 'date' },
@@ -712,7 +677,7 @@ function FileViewer({ file, onClose }) {
   );
 }
 
-function EntryPreview({ entry, module, onClose, colors, onViewDocument, currentUser, itUsers, financeAdminUsers, onUpdateStatus, onDelete, onUpdateBillingInquiry, onUpdateBillsPayment, onUpdateOrderRequest, onUpdateRefundRequest, onUpdateHospitalCase, onUpdateChecklist }) {
+function EntryPreview({ entry, module, onClose, colors, onViewDocument, currentUser, itUsers, financeAdminUsers, onUpdateStatus, onDelete, onUpdateBillingInquiry, onUpdateBillsPayment, onUpdateOrderRequest, onUpdateRefundRequest, onUpdateHospitalCase }) {
   const [editForm, setEditForm] = useState({
     status: entry?.status || 'For Review',
     assigned_to: entry?.assigned_to || '',
@@ -735,10 +700,6 @@ const [orderEditForm, setOrderEditForm] = useState({
     reviewed_by: entry?.reviewed_by || '',
     reviewed_at: entry?.reviewed_at || '',
     result: entry?.result || ''
-  });
-const [checklistEditForm, setChecklistEditForm] = useState({
-    status: entry?.status || 'Pending',
-    admin_notes: entry?.admin_notes || ''
   });
 const [isEditing, setIsEditing] = useState(false);
   useEffect(() => {
@@ -766,10 +727,6 @@ setRefundEditForm({
         reviewed_at: entry.reviewed_at || '',
         result: entry.result || ''
       });
-      setChecklistEditForm({
-        status: entry.status || 'Pending',
-        admin_notes: entry.admin_notes || ''
-      });
       setIsEditing(false);
     }
   }, [entry]);
@@ -786,8 +743,6 @@ const canEditBilling = (isBillingInquiry || isBillsPayment) && currentUser && (c
 const canEditOrders = isOrderRequest && currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'finance_admin');
   const isRefundRequest = module?.id === 'refund-requests';
   const canEditRefunds = isRefundRequest && currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'finance_admin');
-const isChecklistModule = module?.id === 'completed-procedure' || module?.id === 'claims-documents';
-  const canReviewChecklist = isChecklistModule && currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'rev_rangers');
 const handleSave = () => {
     if (onUpdateStatus) {
       onUpdateStatus(entry.id, editForm.status, {
@@ -815,13 +770,6 @@ const handleBillsPaymentSave = () => {
 const handleOrderSave = () => {
     if (onUpdateOrderRequest) {
       onUpdateOrderRequest(entry.id, orderEditForm);
-    }
-    setIsEditing(false);
-    onClose();
-  };
-const handleChecklistSave = () => {
-    if (onUpdateChecklist) {
-      onUpdateChecklist(entry.id, module?.id, checklistEditForm);
     }
     setIsEditing(false);
     onClose();
@@ -862,41 +810,6 @@ const handleChecklistSave = () => {
           {entry.locations?.name && (
             <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium">
               <Building2 className="w-4 h-4" /> {entry.locations.name}
-            </div>
-          )}
-          {/* Daily Recon */}
-          {module?.id === 'daily-recon' && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 p-4 bg-emerald-50 rounded-xl border border-emerald-200">
-                <h4 className="col-span-2 font-semibold text-emerald-800 flex items-center gap-2"><DollarSign className="w-4 h-4" /> Daily Reconciliation Entry</h4>
-                <div><span className="text-gray-600 text-sm">Date:</span> <span className="font-medium">{entry.recon_date}</span></div>
-                <div><span className="text-gray-600 text-sm">Cash:</span> <span className="font-medium">{formatCurrency(entry.cash)}</span></div>
-                <div><span className="text-gray-600 text-sm">Credit Card:</span> <span className="font-medium">{formatCurrency(entry.credit_card)}</span></div>
-                <div><span className="text-gray-600 text-sm">Checks OTC:</span> <span className="font-medium">{formatCurrency(entry.checks_otc)}</span></div>
-                <div><span className="text-gray-600 text-sm">Insurance:</span> <span className="font-medium">{formatCurrency(entry.insurance_checks)}</span></div>
-                <div><span className="text-gray-600 text-sm">Care Credit:</span> <span className="font-medium">{formatCurrency(entry.care_credit)}</span></div>
-                <div><span className="text-gray-600 text-sm">VCC:</span> <span className="font-medium">{formatCurrency(entry.vcc)}</span></div>
-                <div><span className="text-gray-600 text-sm">EFTs:</span> <span className="font-medium">{formatCurrency(entry.efts)}</span></div>
-                <div className="col-span-2 pt-2 border-t border-emerald-200">
-                  <span className="text-gray-600 text-sm">Total Collected:</span> <span className="font-bold text-emerald-700 text-lg">{formatCurrency(entry.total_collected)}</span>
-                </div>
-              </div>
-              {(entry.deposit_cash > 0 || entry.status === 'Accounted') && (
-                <div className="grid grid-cols-2 gap-4 p-4 bg-blue-50 rounded-xl border border-blue-200">
-                  <h4 className="col-span-2 font-semibold text-blue-800 flex items-center gap-2"><Building2 className="w-4 h-4" /> Bank Deposit</h4>
-                  <div><span className="text-gray-600 text-sm">Cash:</span> <span className="font-medium">{formatCurrency(entry.deposit_cash)}</span></div>
-                  <div><span className="text-gray-600 text-sm">Credit Card:</span> <span className="font-medium">{formatCurrency(entry.deposit_credit_card)}</span></div>
-                  <div><span className="text-gray-600 text-sm">Checks:</span> <span className="font-medium">{formatCurrency(entry.deposit_checks)}</span></div>
-                  <div><span className="text-gray-600 text-sm">Insurance:</span> <span className="font-medium">{formatCurrency(entry.deposit_insurance)}</span></div>
-                  <div><span className="text-gray-600 text-sm">Care Credit:</span> <span className="font-medium">{formatCurrency(entry.deposit_care_credit)}</span></div>
-                  <div><span className="text-gray-600 text-sm">VCC:</span> <span className="font-medium">{formatCurrency(entry.deposit_vcc)}</span></div>
-                  <div><span className="text-gray-600 text-sm">EFTs:</span> <span className="font-medium">{formatCurrency(entry.deposit_efts)}</span></div>
-                  <div className="col-span-2 pt-2 border-t border-blue-200">
-                    <span className="text-gray-600 text-sm">Total Deposit:</span> <span className="font-bold text-blue-700 text-lg">{formatCurrency(entry.total_deposit)}</span>
-                  </div>
-                </div>
-              )}
-              {entry.notes && <div className="p-4 bg-gray-50 rounded-xl"><span className="text-gray-600 text-sm block mb-1">Notes:</span><p className="text-gray-800">{entry.notes}</p></div>}
             </div>
           )}
 {/* Billing Inquiry */}
@@ -975,85 +888,6 @@ const handleChecklistSave = () => {
               </div>
             );
           })()}
-          {(module?.id === 'completed-procedure' || module?.id === 'claims-documents') && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-  <div><span className="text-gray-600 text-sm block">Submitted By</span><span className="font-medium">{entry.checked_by || '-'}</span></div>
-                <div><span className="text-gray-600 text-sm block">Date Submitted</span><span className="font-medium">{new Date(entry.created_at).toLocaleString('en-US', { timeZone: 'Pacific/Honolulu' })}</span></div>
-                <div><span className="text-gray-600 text-sm block">Location</span><span className="font-medium">{entry.locations?.name || '-'}</span></div>
-              </div>
-              {entry.notes && (
-                <div className="col-span-2">
-                  <span className="text-gray-600 text-sm block">Notes</span>
-                  <p className="font-medium bg-gray-50 p-3 rounded-lg mt-1">{entry.notes}</p>
-                </div>
-              )}
-{/* Admin Notes - Read Only */}
-              {!isEditing && entry.admin_notes && (
-                <div className={`p-4 rounded-xl border ${entry.status === 'Needs Revisions' ? 'bg-orange-50 border-orange-200' : 'bg-emerald-50 border-emerald-200'}`}>
-                  <h4 className={`font-semibold mb-2 flex items-center gap-2 ${entry.status === 'Needs Revisions' ? 'text-orange-800' : 'text-emerald-800'}`}>
-                    <FileText className="w-4 h-4" /> Admin Notes
-                  </h4>
-                  <p className="text-gray-700">{entry.admin_notes}</p>
-                </div>
-              )}
-              {/* Review Section for Checklist - Rev Rangers / Super Admin */}
-              {canReviewChecklist && (
-                <div className="mt-6 pt-4 border-t border-gray-200">
-                  {!isEditing ? (
-                    <button
-                      onClick={() => setIsEditing(true)}
-                      className="w-full py-3 bg-gradient-to-r from-teal-500 to-emerald-500 text-white rounded-xl font-medium hover:shadow-lg transition-all flex items-center justify-center gap-2"
-                    >
-                      <Edit3 className="w-4 h-4" /> Review & Update Status
-                    </button>
-                  ) : (
-                    <div className="space-y-4 p-4 rounded-xl border bg-teal-50 border-teal-200">
-                      <h4 className="font-semibold flex items-center gap-2 text-teal-800">
-                        <Edit3 className="w-4 h-4" /> Review Checklist Entry
-                      </h4>
-                      <div>
-                        <label className="text-xs font-medium text-gray-600 mb-1.5 block">Status</label>
-                        <select
-                          value={checklistEditForm.status}
-                          onChange={ev => setChecklistEditForm({ ...checklistEditForm, status: ev.target.value })}
-                          className="w-full p-2.5 border-2 border-gray-200 rounded-xl outline-none focus:border-blue-400 bg-white"
-                        >
-                          <option value="Pending">Pending</option>
-                          <option value="Approved">Approved</option>
-                          <option value="Needs Revisions">Needs Revisions</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="text-xs font-medium text-gray-600 mb-1.5 block">Admin Notes</label>
-                        <textarea
-                          value={checklistEditForm.admin_notes}
-                          onChange={ev => setChecklistEditForm({ ...checklistEditForm, admin_notes: ev.target.value })}
-                          placeholder="Enter review notes or feedback..."
-                          rows={3}
-                          className="w-full p-2.5 border-2 border-gray-200 rounded-xl outline-none focus:border-blue-400 bg-white resize-none"
-                        />
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={handleChecklistSave}
-                          className={`flex-1 py-2.5 ${BTN.save}`}
-                        >
-                          Save Review
-                        </button>
-                        <button
-                          onClick={() => setIsEditing(false)}
-                          className={`px-4 py-2.5 ${BTN.cancel}`}
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
           {/* IT Requests */}
           {module?.id === 'it-requests' && (
             <div className="space-y-4">
@@ -1323,7 +1157,7 @@ const [lastLogin, setLastLogin] = useState(null);
 const [loginHistory, setLoginHistory] = useState([]);
   const [locations, setLocations] = useState([]);
   const [users, setUsers] = useState([]);
-  const [activeModule, setActiveModule] = useState('daily-recon');
+  const [activeModule, setActiveModule] = useState('billing-inquiry');
   const [view, setView] = useState('entry');
   const [adminView, setAdminView] = useState('records');
   const [moduleData, setModuleData] = useState({});
@@ -1334,8 +1168,6 @@ const [loginHistory, setLoginHistory] = useState([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [adminLocation, setAdminLocation] = useState('all');
   const [editingStatus, setEditingStatus] = useState(null);
-  const [editingRecon, setEditingRecon] = useState(null);
-const [reconForm, setReconForm] = useState({});
   const [editingEntry, setEditingEntry] = useState(null);
   const [documents, setDocuments] = useState([]);
   const [docSearch, setDocSearch] = useState('');
@@ -1374,82 +1206,18 @@ const [sopSortOrder, setSOPSortOrder] = useState('desc');
   const [editingUser, setEditingUser] = useState(null);
   const [newUser, setNewUser] = useState({ name: '', username: '', email: '', password: '', role: 'staff', locations: [] });
   const [pwdForm, setPwdForm] = useState({ current: '', new: '', confirm: '' });
-  const [exportModule, setExportModule] = useState('daily-recon');
+  const [exportModule, setExportModule] = useState('billing-inquiry');
   const [exportLocation, setExportLocation] = useState('all');
   const [exportRange, setExportRange] = useState('This Month');
 const [analyticsRange, setAnalyticsRange] = useState('This Month');
-const [analyticsModule, setAnalyticsModule] = useState('daily-recon');
+const [analyticsModule, setAnalyticsModule] = useState('billing-inquiry');
   const [chatMessages, setChatMessages] = useState([{
     role: 'assistant',
     content: "👋 Hi! I'm your AI assistant. I can help with:\n\n• Data summaries & reports\n• Weekly comparisons\n• Location analytics\n• IT request status\n\nWhat would you like to know?"
   }]);
   const [chatInput, setChatInput] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
-const [checklistStatus, setChecklistStatus] = useState({});
- const [checklistLoading, setChecklistLoading] = useState(false);
   const [entryDocuments, setEntryDocuments] = useState({});
-  const [checklistAnalyticsTab, setChecklistAnalyticsTab] = useState('overview');
-  const [checklistCalendarDate, setChecklistCalendarDate] = useState(() => {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  });
-  const getHawaiiToday = () => {
-    const now = new Date();
-    const hawaiiTime = new Date(now.toLocaleString('en-US', { timeZone: 'Pacific/Honolulu' }));
-    const year = hawaiiTime.getFullYear();
-    const month = String(hawaiiTime.getMonth() + 1).padStart(2, '0');
-    const day = String(hawaiiTime.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-  const isChecklistPastDeadline = () => {
-    const now = new Date();
-    const hawaiiTime = new Date(now.toLocaleString('en-US', { timeZone: 'Pacific/Honolulu' }));
-    return hawaiiTime.getHours() === 23 && hawaiiTime.getMinutes() >= 59;
-  };
-    const canEditChecklistEntry = (createdAt) => {
-    const now = new Date();
-    const hawaiiNow = new Date(now.toLocaleString('en-US', { timeZone: 'Pacific/Honolulu' }));
-    const recordDate = new Date(createdAt);
-    const recordHawaii = new Date(recordDate.toLocaleString('en-US', { timeZone: 'Pacific/Honolulu' }));
-    return hawaiiNow.getFullYear() === recordHawaii.getFullYear() &&
-           hawaiiNow.getMonth() === recordHawaii.getMonth() &&
-           hawaiiNow.getDate() === recordHawaii.getDate() &&
-           !isChecklistPastDeadline();
-  };
-  const loadChecklistStatus = async (locationId) => {
-    if (!locationId) return;
-    setChecklistLoading(true);
-    const hawaiiToday = getHawaiiToday();
-    const dayStart = `${hawaiiToday}T00:00:00-10:00`;
-    const dayEnd = `${hawaiiToday}T23:59:59-10:00`;
-    const status = {};
-    for (const mod of CHECKLIST_MODULES) {
-      const { data, error } = await supabase
-        .from(mod.table)
-        .select('*')
-        .eq('location_id', locationId)
-        .gte('created_at', dayStart)
-        .lte('created_at', dayEnd)
-        .order('created_at', { ascending: false })
-        .limit(1);
-      if (data && data.length > 0) {
-        const { data: userData } = await supabase
-          .from('users')
-          .select('id, name')
-          .eq('id', data[0].created_by)
-          .maybeSingle();
-        status[mod.id] = {
-          submitted: true,
-          entry: { ...data[0], creator: userData || null },
-          status: data[0].status || 'Pending'
-        };
-      } else {
-        status[mod.id] = { submitted: false, entry: null, status: null };
-      }
-    }
-    setChecklistStatus(status);
-    setChecklistLoading(false);
-  };
   const enrichWithLocationsAndUsers = async (data, includeUpdater = false) => {
     const locIds = [...new Set(data.map(d => d.location_id).filter(Boolean))];
     const { data: locsData } = await supabase.from('locations').select('id, name').in('id', locIds).eq('is_active', true);
@@ -1458,20 +1226,6 @@ const [checklistStatus, setChecklistStatus] = useState({});
     const { data: usersData } = await supabase.from('users').select('id, name').in('id', userIds);
     const userMap = {}; usersData?.forEach(u => { userMap[u.id] = u; });
     return data.map(d => ({ ...d, locations: locMap[d.location_id] || null, creator: userMap[d.created_by] || null, ...(includeUpdater ? { updater: userMap[d.updated_by] || null } : {}) }));
-  };
-const loadChecklistAnalyticsData = async () => {
-    for (const mod of CHECKLIST_MODULES) {
-      if (moduleData[mod.id]?.length > 0 && moduleData[mod.id]?._allLocations) continue;
-      const { data } = await supabase.from(mod.table).select('*').order('created_at', { ascending: false }).limit(1500);
-      if (data && data.length > 0) {
-        const enriched = await enrichWithLocationsAndUsers(data);
-        enriched._allLocations = true;
-        setModuleData(prev => ({ ...prev, [mod.id]: enriched }));
-      } else {
-        const empty = []; empty._allLocations = true;
-        setModuleData(prev => ({ ...prev, [mod.id]: empty }));
-      }
-    }
   };
   const loadEntryDocuments = async (recordType, recordId) => {
     const key = `${recordType}-${recordId}`;
@@ -1487,26 +1241,20 @@ const loadChecklistAnalyticsData = async () => {
   };
   const today = new Date().toISOString().split('T')[0];
   const [forms, setForms] = useState({
-    'daily-recon': { recon_date: today, cash: '', credit_card: '', checks_otc: '', insurance_checks: '', care_credit: '', vcc: '', efts: '', deposit_cash: '', deposit_credit_card: '', deposit_checks: '', deposit_insurance: '', deposit_care_credit: '', deposit_vcc: '', deposit_efts: '', notes: '', entered_by: '' },
     'billing-inquiry': { patient_name: '', chart_number: '', parent_name: '', date_of_request: today, inquiry_type: '', description: '', amount_in_question: '', best_contact_method: '', best_contact_time: '', billing_team_reviewed: '', date_reviewed: '', status: 'Pending', result: '' },
 'bills-payment': { bill_date: today, vendor: '', transaction_id: '', description: '', amount: '', due_date: '', paid: '' },
     'order-requests': { date_entered: today, vendor: '', invoice_number: '', invoice_date: '', due_date: '', amount: '', entered_by: '', notes: '' },
   'refund-requests': { patient_name: '', chart_number: '', parent_name: '', rp_address: '', date_of_request: today, type: '', description: '', amount_requested: '', best_contact_method: '', contact_info: '', eassist_audited: '', status: 'Pending' },
     'hospital-cases': { patient_name: '', chart_number: '', parent_name: '', date_of_request: today, inquiry_type: '', description: '', best_contact_method: '', best_contact_time: '' },
 'it-requests': { date_reported: today, urgency: '', requester_name: '', device_system: '', description_of_issue: '', best_contact_method: '', best_contact_time: '', assigned_to: '', status: 'Open', resolution_notes: '', completed_by: '' },
-    'completed-procedure': { checked_by: '', notes: '' },
-    'claims-documents': { checked_by: '', notes: '' }
   });
   const [files, setFiles] = useState({
-  'daily-recon': { documents: [] },
     'billing-inquiry': { documentation: [] },
     'bills-payment': { documentation: [] },
     'order-requests': { orderInvoices: [] },
     'refund-requests': { documentation: [] },
     'hospital-cases': { documentation: [] },
 'it-requests': { documentation: [] },
-    'completed-procedure': { documentation: [] },
-    'claims-documents': { documentation: [] }
   });
 useEffect(() => {
   loadLocations();
@@ -1530,12 +1278,7 @@ if (sessionData.user.role === 'super_admin' || sessionData.user.role === 'financ
   loadUsers();
   loadItUsers();
   loadFinanceAdminUsers();
-if (sessionData.user.role === 'rev_rangers') {
-    setAdminView('analytics');
-    setAnalyticsModule('daily-recon');
-  } else {
-    setAdminView('analytics');
-  }
+setAdminView('analytics');
 }
       }
     } catch (e) {
@@ -1592,26 +1335,8 @@ useEffect(() => { if (currentUser) setNameForm(currentUser.name || ''); }, [curr
       loadModuleData(activeModule);
     }
   }, [currentUser, selectedLocation, activeModule, adminLocation]);
-  useEffect(() => {
-    if (currentUser && selectedLocation && (isOfficeManager || currentUser?.role === 'staff')) {
-      const loc = locations.find(l => l.name === selectedLocation);
-      if (loc) loadChecklistStatus(loc.id);
-    }
-  }, [currentUser, selectedLocation, locations]);
 useEffect(() => { setCurrentPage(1); setRecordSearch(''); }, [activeModule, adminLocation]);
-  useEffect(() => {
-  if (adminView === 'rev-entry' && activeModule !== 'daily-recon') {
-    setAdminView('records');
-  }
-}, [activeModule]);
   useEffect(() => { setStaffCurrentPage(1); setStaffRecordSearch(''); setEditingStaffEntry(null); }, [activeModule, selectedLocation]);
-  useEffect(() => {
-  if (currentUser && (activeModule === 'completed-procedure' || activeModule === 'claims-documents')) {
-    if (!forms[activeModule].checked_by) {
-      setForms(prev => ({ ...prev, [activeModule]: { ...prev[activeModule], checked_by: currentUser.name } }));
-    }
-  }
-}, [activeModule, currentUser]);
 useEffect(() => { setSelectedRecords([]); setSelectAll(false); }, [activeModule, adminLocation, currentPage, recordSearch]);
   useEffect(() => { setSelectedDocuments([]); setDocSelectAll(false); }, [adminView, docSearch]);
 useEffect(() => {
@@ -1623,14 +1348,8 @@ useEffect(() => {
   }
 }, [viewingEntry, activeModule]);
 useEffect(() => {
-  const userIsAdmin = currentUser?.role === 'super_admin' || currentUser?.role === 'finance_admin' || currentUser?.role === 'rev_rangers' || currentUser?.role === 'it';
-  if (userIsAdmin && adminView === 'analytics' && analyticsModule === 'checklist-overview') {
-    loadChecklistAnalyticsData();
-  }
-}, [analyticsModule, adminView]);
-useEffect(() => {
   const userIsAdmin = currentUser?.role === 'super_admin' || currentUser?.role === 'finance_admin' || currentUser?.role === 'rev_rangers';
-if (userIsAdmin && adminView === 'analytics' && analyticsModule && analyticsModule !== 'checklist-overview') {
+if (userIsAdmin && adminView === 'analytics' && analyticsModule) {
     if (!moduleData[analyticsModule]) {
       loadModuleData(analyticsModule);
     }
@@ -1638,7 +1357,6 @@ if (userIsAdmin && adminView === 'analytics' && analyticsModule && analyticsModu
 }, [analyticsModule, adminView]);
 const isAdmin = currentUser?.role === 'super_admin' || currentUser?.role === 'finance_admin' || currentUser?.role === 'it' || currentUser?.role === 'rev_rangers';
 const isSuperAdmin = currentUser?.role === 'super_admin' || currentUser?.role === 'it';
-const isChecklistReviewer = currentUser?.role === 'super_admin' || currentUser?.role === 'rev_rangers';
 const isOfficeManager = currentUser?.role === 'office_manager';
 const isITViewOnly = currentUser?.role === 'it' && activeModule !== 'it-requests';
 const showConfirm = (title, message, confirmText = 'Confirm', confirmColor = 'blue') => {
@@ -2037,12 +1755,7 @@ if (user.role === 'super_admin' || user.role === 'finance_admin' || user.role ==
       loadItUsers();
       loadFinanceAdminUsers();
       loadLoginHistory(user.id);
-if (user.role === 'rev_rangers') {
-        setAdminView('analytics');
-        setAnalyticsModule('daily-recon');
-      } else {
-        setAdminView('analytics');
-      }
+setAdminView('analytics');
     }
     showMessage('success', '✓ Login successful!');
   } catch (err) {
@@ -2304,18 +2017,7 @@ const locationName = currentUser.role === 'rev_rangers' ? adminLocation : select
       return;
     }
     let entryData = { location_id: loc.id, created_by: currentUser.id, updated_by: currentUser.id };
-if (moduleId === 'daily-recon') {
-  const isRevRangers = currentUser.role === 'rev_rangers';
-  entryData = { ...entryData, recon_date: form.recon_date,
-    cash: isRevRangers ? 0 : (parseFloat(form.cash) || 0), credit_card: isRevRangers ? 0 : (parseFloat(form.credit_card) || 0),
-    checks_otc: isRevRangers ? 0 : (parseFloat(form.checks_otc) || 0), insurance_checks: isRevRangers ? (parseFloat(form.insurance_checks) || 0) : 0,
-    care_credit: isRevRangers ? 0 : (parseFloat(form.care_credit) || 0), vcc: isRevRangers ? (parseFloat(form.vcc) || 0) : 0,
-    efts: isRevRangers ? (parseFloat(form.efts) || 0) : 0,
-    deposit_cash: parseFloat(form.deposit_cash) || 0, deposit_credit_card: parseFloat(form.deposit_credit_card) || 0,
-    deposit_checks: parseFloat(form.deposit_checks) || 0, deposit_insurance: parseFloat(form.deposit_insurance) || 0,
-    deposit_care_credit: parseFloat(form.deposit_care_credit) || 0, deposit_vcc: parseFloat(form.deposit_vcc) || 0,
-    deposit_efts: parseFloat(form.deposit_efts) || 0, notes: form.notes, entered_by: currentUser.name };
-} else if (MODULE_FIELD_CONFIG[moduleId]) {
+if (MODULE_FIELD_CONFIG[moduleId]) {
   entryData = { ...entryData, ...MODULE_FIELD_CONFIG[moduleId].getEntryData(form, currentUser) };
 }
     const { data: newEntry, error } = await supabase.from(module.table).insert(entryData).select().single();
@@ -2327,72 +2029,8 @@ if (moduleId === 'daily-recon') {
     setForms(prev => ({ ...prev, [moduleId]: { ...resetForm, [Object.keys(resetForm).find(k => k.includes('date'))]: today } }));
     setFiles(prev => ({ ...prev, [moduleId]: Object.fromEntries(Object.entries(files[moduleId]).map(([k]) => [k, []])) }));
     loadModuleData(moduleId);
-    if (CHECKLIST_MODULES.some(m => m.id === moduleId) && selectedLocation) {
-      const loc2 = locations.find(l => l.name === selectedLocation);
-      if (loc2) loadChecklistStatus(loc2.id);
-    }
     setSaving(false);
   };
-const updateDailyRecon = async (entryId) => {
-  if (!reconForm[entryId]) return;
-const confirmed = await showConfirm('Update Daily Recon', 'Are you sure you want to update this Daily Recon entry?', 'Update', 'green');
-if (!confirmed) return;
-  const form = reconForm[entryId];
-  const updateData = {
-    deposit_cash: parseFloat(form.deposit_cash) || 0,
-    deposit_credit_card: parseFloat(form.deposit_credit_card) || 0,
-    deposit_checks: parseFloat(form.deposit_checks) || 0,
-    deposit_insurance: parseFloat(form.deposit_insurance) || 0,
-    deposit_care_credit: parseFloat(form.deposit_care_credit) || 0,
-    deposit_vcc: parseFloat(form.deposit_vcc) || 0,
-    deposit_efts: parseFloat(form.deposit_efts) || 0,
-    status: form.status || 'Pending',
-    reviewed_by: currentUser.id,
-    reviewed_at: new Date().toISOString(),
-    updated_by: currentUser.id
-  };
-  const { error } = await supabase
-    .from('daily_recon')
-    .update(updateData)
-    .eq('id', entryId);
-  if (error) {
-    showMessage('error', 'Failed to update record');
-    return;
-  }
-  showMessage('success', '✓ Daily Recon updated!');
-  setEditingRecon(null);
-  setReconForm(prev => {
-    const newForm = { ...prev };
-    delete newForm[entryId];
-    return newForm;
-  });
-  loadModuleData('daily-recon');
-};
-const startEditingRecon = (entry) => {
-  setEditingRecon(entry.id);
-  setReconForm(prev => ({
-    ...prev,
-    [entry.id]: {
-      deposit_cash: entry.deposit_cash || '',
-      deposit_credit_card: entry.deposit_credit_card || '',
-      deposit_checks: entry.deposit_checks || '',
-      deposit_insurance: entry.deposit_insurance || '',
-      deposit_care_credit: entry.deposit_care_credit || '',
-      deposit_vcc: entry.deposit_vcc || '',
-      deposit_efts: entry.deposit_efts || '',
-      status: entry.status || 'Pending'
-    }
-  }));
-};
-const updateReconForm = (entryId, field, value) => {
-  setReconForm(prev => ({
-    ...prev,
-    [entryId]: {
-      ...prev[entryId],
-      [field]: value
-    }
-  }));
-};
 // Generic module update: maps moduleId -> { table, title, color, getUpdateData }
 const MODULE_UPDATE_MAP = {
   'billing-inquiry': { table: 'billing_inquiries', title: 'Billing Inquiry', color: 'blue', getData: (f, uid) => ({ status: f.status, billing_team_reviewed: f.billing_team_reviewed || null, date_reviewed: f.date_reviewed || null, result: f.result || null, updated_by: uid }) },
@@ -2416,16 +2054,6 @@ const updateBillsPayment = (id, form) => updateModuleRecord('bills-payment', id,
 const updateOrderRequest = (id, form) => updateModuleRecord('order-requests', id, form);
 const updateRefundRequest = (id, form) => updateModuleRecord('refund-requests', id, form);
 const updateHospitalCase = (id, form) => updateModuleRecord('hospital-cases', id, form);
-const updateChecklistEntry = async (entryId, moduleId, formData) => {
-  const confirmed = await showConfirm('Update Checklist Entry', `Are you sure you want to update the status to "${formData.status}"?`, 'Update', 'blue');
-  if (!confirmed) return;
-  const module = ALL_MODULES.find(m => m.id === moduleId);
-  if (!module) return;
-  const { error } = await supabase.from(module.table).update({ status: formData.status, admin_notes: formData.admin_notes || null, updated_by: currentUser.id }).eq('id', entryId);
-  if (error) { showMessage('error', 'Failed to update: ' + error.message); return; }
-  showMessage('success', '✓ Checklist entry updated!');
-  loadModuleData(moduleId);
-};
 const updateEntryStatus = async (moduleId, entryId, newStatus, additionalFields = {}) => {
 const confirmed = await showConfirm('Update Status', `Are you sure you want to update the status to "${newStatus}"?`, 'Update', 'blue');
 if (!confirmed) return;
@@ -2712,13 +2340,7 @@ const getTotalPages = () => {
 };
   const startEditingStaffEntry = (entry) => {
   setEditingStaffEntry(entry.id);
-  if (activeModule === 'daily-recon') {
-    if (currentUser.role === 'rev_rangers') {
-      setStaffEditForm({ recon_date: entry.recon_date || '', insurance_checks: entry.insurance_checks || '', vcc: entry.vcc || '', efts: entry.efts || '', notes: entry.notes || '' });
-    } else {
-      setStaffEditForm({ recon_date: entry.recon_date || '', cash: entry.cash || '', credit_card: entry.credit_card || '', checks_otc: entry.checks_otc || '', care_credit: entry.care_credit || '', notes: entry.notes || '' });
-    }
-  } else if (MODULE_FIELD_CONFIG[activeModule]) {
+  if (MODULE_FIELD_CONFIG[activeModule]) {
     setStaffEditForm(MODULE_FIELD_CONFIG[activeModule].getEditInitial(entry));
   }
 };
@@ -2732,18 +2354,7 @@ const saveStaffEntryUpdate = async () => {
   setSaving(true);
   const module = ALL_MODULES.find(m => m.id === activeModule);
   let updateData = { updated_by: currentUser.id };
-  if (activeModule === 'daily-recon') {
-    if (currentUser.role === 'rev_rangers') {
-      updateData = { ...updateData, recon_date: staffEditForm.recon_date,
-        insurance_checks: parseFloat(staffEditForm.insurance_checks) || 0, vcc: parseFloat(staffEditForm.vcc) || 0,
-        efts: parseFloat(staffEditForm.efts) || 0, notes: staffEditForm.notes };
-    } else {
-      updateData = { ...updateData, recon_date: staffEditForm.recon_date,
-        cash: parseFloat(staffEditForm.cash) || 0, credit_card: parseFloat(staffEditForm.credit_card) || 0,
-        checks_otc: parseFloat(staffEditForm.checks_otc) || 0, care_credit: parseFloat(staffEditForm.care_credit) || 0,
-        notes: staffEditForm.notes };
-    }
-  } else if (MODULE_FIELD_CONFIG[activeModule]) {
+  if (MODULE_FIELD_CONFIG[activeModule]) {
     updateData = { ...updateData, ...MODULE_FIELD_CONFIG[activeModule].getUpdateData(staffEditForm) };
   }
   const { error } = await supabase.from(module.table).update(updateData).eq('id', editingStaffEntry);
@@ -2752,16 +2363,9 @@ const saveStaffEntryUpdate = async () => {
   setEditingStaffEntry(null);
   setStaffEditForm({});
   loadModuleData(activeModule);
-  if (CHECKLIST_MODULES.some(m => m.id === activeModule) && selectedLocation) {
-    const loc = locations.find(l => l.name === selectedLocation);
-    if (loc) loadChecklistStatus(loc.id);
-  }
   setSaving(false);
 };
 const getStaffEntries = () => {
-  if (currentUser?.role === 'staff' && CHECKLIST_MODULES.some(m => m.id === activeModule)) {
-    return [];
-  }
   let data = moduleData[activeModule] || [];
   if (staffRecordSearch.trim()) {
     const search = staffRecordSearch.toLowerCase();
@@ -2877,7 +2481,7 @@ if (!currentUser) {
           >
             {loginLoading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Login →'}
           </button>
-<p className="text-xs text-center text-gray-400">BETA Version 0.73</p>
+<p className="text-xs text-center text-gray-400">BETA Version 0.84</p>
         </div>
       </div>
     </div>
@@ -3013,10 +2617,6 @@ onUpdateRefundRequest={async (entryId, formData) => {
     await updateHospitalCase(entryId, formData);
     setViewingEntry(null);
   }}
-  onUpdateChecklist={async (entryId, moduleId, formData) => {
-    await updateChecklistEntry(entryId, moduleId, formData);
-    setViewingEntry(null);
-  }}
 onDelete={isITViewOnly ? null : async (recordId) => {
     const deleted = await deleteRecord(activeModule, recordId);
     if (deleted) setViewingEntry(null);
@@ -3069,57 +2669,6 @@ onDelete={isITViewOnly ? null : async (recordId) => {
                 </div>
                 <span className="text-sm font-medium">Analytics</span>
               </button>
-              <div className="border-t my-3"></div>
-            </>
-          )}
-{(isOfficeManager || currentUser?.role === 'super_admin' || currentUser?.role === 'rev_rangers' || currentUser?.role === 'it' || currentUser?.role === 'finance_admin') && currentUser?.role !== 'staff' && (
-            <>
-              <p className={`text-xs font-semibold uppercase tracking-wider mb-3 px-3 flex items-center gap-2 ${
-                isOfficeManager && CHECKLIST_MODULES.every(m => checklistStatus[m.id]?.submitted)
-                  ? 'text-emerald-600'
-                  : 'text-gray-400'
-              }`}>
-                {isOfficeManager && CHECKLIST_MODULES.every(m => checklistStatus[m.id]?.submitted) && (
-                  <CheckCircle className="w-3.5 h-3.5" />
-                )}
-                Office Task Checklist
-              </p>
-              {CHECKLIST_MODULES.map(m => {
-                const colors = MODULE_COLORS[m.id] || { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-700', accent: 'bg-gray-500', light: 'bg-gray-100' };
-                const isActive = activeModule === m.id && adminView !== 'users' && adminView !== 'export' && adminView !== 'settings' && view !== 'settings';
-                const submitted = isOfficeManager && checklistStatus[m.id]?.submitted;
-                return (
-                  <button
-                    key={m.id}
-                    onClick={() => { setActiveModule(m.id); setAdminView('records'); setView('entry'); setSidebarOpen(false); }}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${
-                      submitted
-                        ? 'bg-emerald-50 text-emerald-700 border-2 border-emerald-200'
-                        : isActive
-                          ? `${colors.bg} ${colors.text} ${colors.border} border-2`
-                          : 'text-gray-600 hover:bg-gray-50'
-                    }`}
-                  >
-                    {isOfficeManager && (
-                      <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
-                        {submitted ? (
-                          <CheckCircle className="w-5 h-5 text-emerald-500" />
-                        ) : (
-                          <Circle className="w-5 h-5 text-gray-300" />
-                        )}
-                      </div>
-                    )}
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                      submitted ? 'bg-emerald-100' : isActive ? colors.light : 'bg-gray-100'
-                    }`}>
-                      <m.icon className={`w-4 h-4 ${
-                        submitted ? 'text-emerald-600' : isActive ? colors.text : 'text-gray-500'
-                      }`} />
-                    </div>
-                    <span className="text-sm font-medium">{m.name}</span>
-                  </button>
-                );
-              })}
               <div className="border-t my-3"></div>
             </>
           )}
@@ -3221,7 +2770,7 @@ onDelete={isITViewOnly ? null : async (recordId) => {
               <button onClick={() => setSidebarOpen(!sidebarOpen)} className="lg:hidden p-2 hover:bg-gray-100 rounded-xl"><Menu className="w-5 h-5" /></button>
               <div>
 <h1 className="font-bold text-gray-800 text-lg">
-                  {isAdmin ? (adminView === 'users' ? 'User Management' : adminView === 'export' ? 'Export Data' : adminView === 'documents' ? 'All Documents' : adminView === 'sop' ? 'Standard Operating Procedures' : adminView === 'settings' ? 'Settings' : adminView === 'analytics' ? 'Analytics' : adminView === 'rev-entry' ? `New Entry: ${currentModule?.name}` : currentUser?.role === 'rev_rangers' ? `Review: ${currentModule?.name}` : currentModule?.name) : (view === 'settings' ? 'Settings' : view === 'sop' ? 'Standard Operating Procedures' : currentModule?.name)}
+                  {isAdmin ? (adminView === 'users' ? 'User Management' : adminView === 'export' ? 'Export Data' : adminView === 'documents' ? 'All Documents' : adminView === 'sop' ? 'Standard Operating Procedures' : adminView === 'settings' ? 'Settings' : adminView === 'analytics' ? 'Analytics' : currentUser?.role === 'rev_rangers' ? `Review: ${currentModule?.name}` : currentModule?.name) : (view === 'settings' ? 'Settings' : view === 'sop' ? 'Standard Operating Procedures' : currentModule?.name)}
                 </h1>
                 <p className="text-sm text-gray-500">{isAdmin ? (adminLocation === 'all' ? 'All Locations' : adminLocation) : selectedLocation}</p>
               </div>
@@ -3233,11 +2782,7 @@ onDelete={isITViewOnly ? null : async (recordId) => {
           </div>
 {/* Tabs */}
           <div className="flex gap-2 px-4 pb-3 overflow-x-auto">
-{isAdmin && currentUser?.role === 'rev_rangers' && activeModule === 'daily-recon' ? (
-              [{ id: 'rev-entry', label: '+ New Entry' }, { id: 'records', label: 'Records' }].map(tab => (
-                <button key={tab.id} onClick={() => setAdminView(tab.id)} className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${adminView === tab.id ? BTN.amber : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{tab.label}</button>
-              ))
-            ) : isAdmin && adminView === 'records' ? (
+{isAdmin && adminView === 'records' ? (
               <button className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap flex items-center gap-2 transition-all ${currentColors?.accent} text-white shadow-lg`}>
                 <FileText className="w-4 h-4" />Records
               </button>
@@ -3459,16 +3004,7 @@ onDelete={isITViewOnly ? null : async (recordId) => {
     {/* Module Selector */}
     <div className={CARD.analytics}>
 <div className="flex items-center gap-2 overflow-x-auto pb-1">
-        <button
-          onClick={() => setAnalyticsModule('checklist-overview')}
-          className={`px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 transition-all ${analyticsModule === 'checklist-overview' ? BTN.save : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-        >
-          <ClipboardList className="w-4 h-4" />
-          Daily Checklist
-        </button>
-        <div className="w-px h-8 bg-gray-300 mx-1"></div>
  {[
-          CHECKLIST_MODULES.find(m => m.id === 'daily-recon'),
           ...(currentUser?.role === 'rev_rangers' ? MODULES.filter(m => m.id === 'billing-inquiry') : MODULES)
         ].map(m => {
           const colors = MODULE_COLORS[m.id] || { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-700', accent: 'bg-gray-500', light: 'bg-gray-100' };
@@ -3531,7 +3067,7 @@ onDelete={isITViewOnly ? null : async (recordId) => {
 {/* Analytics Content */}
     {(() => {
       let data = moduleData[analyticsModule] || [];
-      if (!moduleData[analyticsModule] && analyticsModule !== 'checklist-overview') {
+      if (!moduleData[analyticsModule]) {
         return (
           <div className="bg-white rounded-2xl shadow-lg p-12 border border-gray-100 text-center">
             <Loader2 className="w-8 h-8 animate-spin text-gray-400 mx-auto mb-4" />
@@ -3559,594 +3095,8 @@ onDelete={isITViewOnly ? null : async (recordId) => {
         });
       };
       const filteredData = filterByRange(data);
-if (filteredData.length === 0 && analyticsModule !== 'checklist-overview') {
+if (filteredData.length === 0) {
         return <EmptyState icon={BarChart3} message="No data available for this period" />;
-      }
-      if (analyticsModule === 'checklist-overview') {
-        const allLoaded = CHECKLIST_MODULES.every(m => moduleData[m.id] !== undefined);
-        if (!allLoaded) {
-          return (
-            <div className="bg-white rounded-2xl shadow-lg p-12 border border-gray-100 text-center">
-              <Loader2 className="w-8 h-8 animate-spin text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">Loading checklist data...</p>
-            </div>
-          );
-        }
-        const [cYear, cMonth] = checklistCalendarDate.split('-').map(Number);
-        const daysInMonth = new Date(cYear, cMonth, 0).getDate();
-        const hawaiiToday = getHawaiiToday();
-        const activeLocs = locations;
-        const subMap = {};
-        CHECKLIST_MODULES.forEach(mod => {
-          subMap[mod.id] = {};
-          (moduleData[mod.id] || []).forEach(entry => {
-            const d = new Date(entry.created_at);
-            const hDate = `${d.toLocaleString('en-US', { timeZone: 'Pacific/Honolulu', year: 'numeric' })}-${String(d.toLocaleString('en-US', { timeZone: 'Pacific/Honolulu', month: '2-digit' })).padStart(2,'0')}-${String(d.toLocaleString('en-US', { timeZone: 'Pacific/Honolulu', day: '2-digit' })).padStart(2,'0')}`;
-            const dateKey = new Date(entry.created_at).toLocaleDateString('en-CA', { timeZone: 'Pacific/Honolulu' });
-            if (!subMap[mod.id][dateKey]) subMap[mod.id][dateKey] = {};
-            const existing = subMap[mod.id][dateKey][entry.location_id];
-            if (!existing || new Date(entry.created_at) > new Date(existing.created_at)) {
-              subMap[mod.id][dateKey][entry.location_id] = entry;
-            }
-          });
-        });
-        const getStat = (modId, dateStr, locId) => {
-          const e = subMap[modId]?.[dateStr]?.[locId];
-          if (!e) return 'missing';
-          return e.status || 'Pending';
-        };
-        const statDot = (s) => {
-          if (s === 'Approved' || s === 'Accounted') return 'bg-emerald-500';
-          if (s === 'Needs Revisions' || s === 'Rejected') return 'bg-red-500';
-          if (s === 'Pending') return 'bg-amber-400';
-          return 'bg-gray-300';
-        };
-        const statBg = (s) => {
-          if (s === 'Approved' || s === 'Accounted') return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-          if (s === 'Needs Revisions' || s === 'Rejected') return 'bg-red-100 text-red-700 border-red-200';
-          if (s === 'Pending') return 'bg-amber-100 text-amber-700 border-amber-200';
-          return 'bg-gray-100 text-gray-400 border-gray-200';
-        };
-        const statLabel = (s) => {
-          if (s === 'Approved' || s === 'Accounted') return 'Approved';
-          if (s === 'Needs Revisions' || s === 'Rejected') return 'Revision';
-          if (s === 'Pending') return 'Pending';
-          return 'Missing';
-        };
-        const modAbbrev = { 'daily-recon': 'DR', 'completed-procedure': 'CP', 'claims-documents': 'CD' };
-        const filteredMods = checklistAnalyticsTab === 'overview' ? CHECKLIST_MODULES : CHECKLIST_MODULES.filter(m => m.id === checklistAnalyticsTab);
-        const allDates = [];
-        for (let d = 1; d <= daysInMonth; d++) {
-          allDates.push(`${cYear}-${String(cMonth).padStart(2, '0')}-${String(d).padStart(2, '0')}`);
-        }
-        const pastDates = allDates.filter(d => {
-          if (d > hawaiiToday) return false;
-          const dayOfWeek = new Date(d + 'T12:00:00').getDay();
-          return dayOfWeek !== 0 && dayOfWeek !== 6; // Exclude Sun & Sat
-        });
-        let todaySubmitted = 0, todayApproved = 0, todayRevisions = 0;
-        const todayTotal = activeLocs.length * CHECKLIST_MODULES.length;
-        activeLocs.forEach(loc => {
-          CHECKLIST_MODULES.forEach(mod => {
-            const s = getStat(mod.id, hawaiiToday, loc.id);
-            if (s !== 'missing') todaySubmitted++;
-            if (s === 'Approved' || s === 'Accounted') todayApproved++;
-            if (s === 'Needs Revisions' || s === 'Rejected') todayRevisions++;
-          });
-        });
-        const weekDates = pastDates.slice(-5);
-        let weekTotal = 0, weekSubmitted = 0;
-        weekDates.forEach(date => {
-          activeLocs.forEach(loc => {
-            CHECKLIST_MODULES.forEach(mod => {
-              weekTotal++;
-              if (getStat(mod.id, date, loc.id) !== 'missing') weekSubmitted++;
-            });
-          });
-        });
-        let pendingReviews = 0;
-        CHECKLIST_MODULES.forEach(mod => {
-          (moduleData[mod.id] || []).forEach(e => {
-            if (e.status === 'Pending' || !e.status) pendingReviews++;
-          });
-        });
-        const locCompliance = activeLocs.map(loc => {
-          let total = 0, submitted = 0, approved = 0, revisions = 0;
-          pastDates.forEach(date => {
-            CHECKLIST_MODULES.forEach(mod => {
-              total++;
-              const s = getStat(mod.id, date, loc.id);
-              if (s !== 'missing') submitted++;
-              if (s === 'Approved' || s === 'Accounted') approved++;
-              if (s === 'Needs Revisions' || s === 'Rejected') revisions++;
-            });
-          });
-          return { loc, total, submitted, approved, revisions, rate: total > 0 ? (submitted / total * 100) : 0 };
-        }).sort((a, b) => b.rate - a.rate);
-        const perfectToday = activeLocs.filter(loc => {
-          return CHECKLIST_MODULES.every(mod => getStat(mod.id, hawaiiToday, loc.id) !== 'missing');
-        }).length;
-        const prevMonth = () => {
-          const d = new Date(cYear, cMonth - 2, 1);
-          setChecklistCalendarDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
-        };
-        const nextMonth = () => {
-          const d = new Date(cYear, cMonth, 1);
-          const now = new Date();
-          if (d <= now) setChecklistCalendarDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
-        };
-        const monthName = new Date(cYear, cMonth - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-        return (
-          <>
-            {/* Sub-module Tabs */}
-            <div className={CARD.analytics}>
-              <div className="flex items-center justify-between flex-wrap gap-3">
-                <div className="flex items-center gap-2">
-                  {[
-                    { id: 'overview', label: 'All Modules', icon: ClipboardList },
-                    ...CHECKLIST_MODULES.map(m => ({ id: m.id, label: m.name, icon: m.icon }))
-                  ].map(tab => (
-                    <button
-                      key={tab.id}
-                      onClick={() => setChecklistAnalyticsTab(tab.id)}
-                      className={`px-3 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-all ${checklistAnalyticsTab === tab.id ? BTN.save : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-                    >
-                      <tab.icon className="w-4 h-4" />
-                      {tab.label}
-                    </button>
-                  ))}
-                </div>
-                {/* Month Navigator */}
-                <div className="flex items-center gap-2">
-                  <button onClick={prevMonth} className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-600">
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
-                  </button>
-                  <span className="text-sm font-semibold text-gray-700 min-w-[140px] text-center">{monthName}</span>
-                  <button onClick={nextMonth} className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-600">
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
-                  </button>
-                </div>
-              </div>
-            </div>
-            {/* Today's Status Grid */}
-            <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-blue-200">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-gray-800 flex items-center gap-2">
-                  <Calendar className="w-5 h-5 text-blue-500" />
-                  Today's Checklist Status
-                </h3>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-500">{new Date(hawaiiToday + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</span>
-                  <span className={`px-3 py-1 rounded-full text-sm font-bold ${todaySubmitted === todayTotal ? 'bg-emerald-100 text-emerald-700' : todaySubmitted > 0 ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'}`}>
-                    {todayTotal > 0 ? Math.round(todaySubmitted / todayTotal * 100) : 0}%
-                  </span>
-                </div>
-              </div>
-              {/* Legend */}
-              <div className="flex flex-wrap gap-4 mb-4 text-xs">
-                <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-emerald-500"></div><span className="text-gray-600">Approved</span></div>
-                <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-amber-400"></div><span className="text-gray-600">Pending Review</span></div>
-                <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-red-500"></div><span className="text-gray-600">Needs Revision</span></div>
-                <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-gray-300"></div><span className="text-gray-600">Not Submitted</span></div>
-              </div>
-              <div className="space-y-2">
-                {activeLocs.map(loc => {
-                  const statuses = filteredMods.map(mod => ({
-                    mod,
-                    status: getStat(mod.id, hawaiiToday, loc.id)
-                  }));
-                  const completed = statuses.filter(s => s.status !== 'missing').length;
-                  const total = statuses.length;
-                  const allDone = completed === total;
-                  return (
-                    <div key={loc.id} className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${allDone ? 'bg-emerald-50 border-emerald-200' : completed > 0 ? 'bg-amber-50 border-amber-200' : 'bg-gray-50 border-gray-200'}`}>
-                      <div className="flex items-center gap-2 w-28 flex-shrink-0">
-                        {allDone ? <CheckCircle className="w-4 h-4 text-emerald-500 flex-shrink-0" /> : <Circle className="w-4 h-4 text-gray-300 flex-shrink-0" />}
-                        <span className="font-medium text-sm text-gray-800 truncate">{loc.name}</span>
-                      </div>
-                      <div className="flex items-center gap-2 flex-1">
-                        {statuses.map(({ mod, status }) => (
-                          <div key={mod.id} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium ${statBg(status)}`}>
-                            {status !== 'missing' ? <CheckCircle className="w-3.5 h-3.5" /> : <Circle className="w-3.5 h-3.5" />}
-                            <span>{modAbbrev[mod.id]}</span>
-                            <span className="hidden sm:inline">· {statLabel(status)}</span>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="text-right flex-shrink-0">
-                        <span className={`text-sm font-bold ${allDone ? 'text-emerald-600' : completed > 0 ? 'text-amber-600' : 'text-gray-400'}`}>
-                          {completed}/{total}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-            {/* KPI Cards */}
-            {renderKPICards([
-              { color: 'emerald', label: "Today's Completion", value: `${todayTotal > 0 ? Math.round(todaySubmitted / todayTotal * 100) : 0}%`, detail: `${todaySubmitted}/${todayTotal} submitted` },
-              { color: 'blue', label: 'Weekly Average', value: `${weekTotal > 0 ? Math.round(weekSubmitted / weekTotal * 100) : 0}%`, detail: `Last ${weekDates.length} days` },
-              { color: 'amber', label: 'Pending Reviews', value: pendingReviews, detail: 'Across all modules' },
-              { color: 'purple', label: '100% Today', value: `${perfectToday}/${activeLocs.length}`, detail: 'Locations complete' },
-            ])}
-            {/* Calendar Grid */}
-            <div className={CARD.base}>
-              <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-emerald-500" /> {monthName} — Submission Calendar
-              </h3>
-              <div className="overflow-x-auto -mx-2">
-                <table className="w-full text-sm border-collapse">
-                  <thead>
-                    <tr>
-                      <th className="sticky left-0 z-10 bg-white px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider border-b-2 border-gray-200 min-w-[120px]">Date</th>
-                      {activeLocs.map(loc => (
-                        <th key={loc.id} className="px-2 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider border-b-2 border-gray-200 min-w-[80px]">
-                          {loc.name.length > 10 ? loc.name.slice(0, 10) + '…' : loc.name}
-                        </th>
-                      ))}
-                      <th className="px-3 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider border-b-2 border-gray-200 min-w-[60px]">Rate</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[...pastDates].reverse().map(dateStr => {
-                      const dayDate = new Date(dateStr + 'T12:00:00');
-                      const isToday = dateStr === hawaiiToday;
-                      let daySubmitted = 0, dayTotal = 0;
-                      return (
-                      <tr key={dateStr} className={`${isToday ? 'bg-blue-50' : 'hover:bg-gray-50'} transition-colors`}>
-                          <td className={`sticky left-0 z-10 px-3 py-2 whitespace-nowrap border-b border-gray-100 ${isToday ? 'bg-blue-50' : 'bg-white'}`}>
-                            <div className="flex items-center gap-2">
-                              <span className={`font-medium ${isToday ? 'text-blue-700' : 'text-gray-700'}`}>
-                                {dayDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                              </span>
-                              {isToday && <span className="text-[10px] bg-blue-500 text-white px-1.5 py-0.5 rounded-full font-bold">TODAY</span>}
-                            </div>
-                          </td>
-                          {activeLocs.map(loc => {
-                            const cellStatuses = filteredMods.map(mod => getStat(mod.id, dateStr, loc.id));
-                            const cellSubmitted = cellStatuses.filter(s => s !== 'missing').length;
-                            dayTotal += filteredMods.length;
-                            daySubmitted += cellSubmitted;
-                            const cellComplete = cellSubmitted === filteredMods.length;
-                            return (
-                              <td key={loc.id} className={`px-2 py-2 text-center border-b border-gray-100 ${cellComplete && cellSubmitted > 0 ? '' : ''}`}>
-                                <div className="flex items-center justify-center gap-1">
-                                  {filteredMods.map((mod, i) => {
-                                    const s = getStat(mod.id, dateStr, loc.id);
-                                    return (
-                                      <div
-                                        key={mod.id}
-                                        className={`${filteredMods.length === 1 ? 'w-5 h-5' : 'w-3.5 h-3.5'} rounded-full ${statDot(s)} transition-all`}
-                                        title={`${mod.name}: ${statLabel(s)}`}
-                                      />
-                                    );
-                                  })}
-                                </div>
-                              </td>
-                            );
-                          })}
-                          <td className="px-3 py-2 text-center border-b border-gray-100">
-                            {(() => {
-                              let dSub = 0, dTot = 0;
-                              activeLocs.forEach(loc => {
-                                filteredMods.forEach(mod => {
-                                  dTot++;
-                                  if (getStat(mod.id, dateStr, loc.id) !== 'missing') dSub++;
-                                });
-                              });
-                              const pct = dTot > 0 ? Math.round(dSub / dTot * 100) : 0;
-                              return (
-                                <span className={`text-xs font-bold px-2 py-1 rounded-full ${pct === 100 ? 'bg-emerald-100 text-emerald-700' : pct >= 50 ? 'bg-amber-100 text-amber-700' : pct > 0 ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-400'}`}>
-                                  {pct}%
-                                </span>
-                              );
-                            })()}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-            {/* Location Compliance Rankings */}
-            <div className={CARD.base}>
-              <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                <Building2 className="w-5 h-5 text-blue-500" /> Location Compliance — {monthName}
-              </h3>
-              <div className="space-y-3">
-                {locCompliance.map((item, idx) => {
-                  const maxRate = locCompliance[0]?.rate || 100;
-                  return (
-                    <div key={item.loc.id} className="p-4 rounded-xl bg-gray-50 border border-gray-100">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-3">
-                          <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold ${idx === 0 ? 'bg-emerald-500 text-white' : idx === 1 ? 'bg-blue-500 text-white' : idx === 2 ? 'bg-violet-500 text-white' : 'bg-gray-200 text-gray-600'}`}>
-                            {idx + 1}
-                          </span>
-                          <span className="font-medium text-gray-800">{item.loc.name}</span>
-                        </div>
-                        <span className={`text-lg font-bold ${item.rate >= 90 ? 'text-emerald-600' : item.rate >= 70 ? 'text-amber-600' : item.rate >= 50 ? 'text-orange-600' : 'text-red-600'}`}>
-                          {item.rate.toFixed(0)}%
-                        </span>
-                      </div>
-                      <div className="h-3 bg-gray-200 rounded-full overflow-hidden mb-2">
-                        <div className={`h-full rounded-full transition-all ${item.rate >= 90 ? 'bg-emerald-500' : item.rate >= 70 ? 'bg-amber-500' : item.rate >= 50 ? 'bg-orange-500' : 'bg-red-500'}`} style={{ width: `${item.rate}%` }}></div>
-                      </div>
-                      <div className="flex items-center gap-4 text-xs text-gray-500">
-                        <span>{item.submitted}/{item.total} submitted</span>
-                        <span className="text-emerald-600">{item.approved} approved</span>
-                        {item.revisions > 0 && <span className="text-red-600">{item.revisions} revisions</span>}
-                        <span className="text-gray-400">{item.total - item.submitted} missing</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-            {/* Per-Module Breakdown */}
-            <div className={CARD.base}>
-              <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                <PieChart className="w-5 h-5 text-teal-500" /> Module Breakdown — {monthName}
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {CHECKLIST_MODULES.map(mod => {
-                  let modSubmitted = 0, modApproved = 0, modRevisions = 0, modTotal = 0;
-                  pastDates.forEach(date => {
-                    activeLocs.forEach(loc => {
-                      modTotal++;
-                      const s = getStat(mod.id, date, loc.id);
-                      if (s !== 'missing') modSubmitted++;
-                      if (s === 'Approved' || s === 'Accounted') modApproved++;
-                      if (s === 'Needs Revisions' || s === 'Rejected') modRevisions++;
-                    });
-                  });
-                  const modRate = modTotal > 0 ? Math.round(modSubmitted / modTotal * 100) : 0;
-                  const colors = MODULE_COLORS[mod.id];
-                  return (
-                    <div key={mod.id} className={`p-4 rounded-xl border-2 ${colors?.border} ${colors?.bg}`}>
-                      <div className="flex items-center gap-2 mb-3">
-                        <mod.icon className={`w-5 h-5 ${colors?.text}`} />
-                        <span className={`font-semibold ${colors?.text}`}>{mod.name}</span>
-                      </div>
-                      <p className="text-3xl font-bold text-gray-800 mb-2">{modRate}%</p>
-                      <div className="h-2 bg-gray-200 rounded-full overflow-hidden mb-3">
-                        <div className={`h-full rounded-full ${colors?.accent}`} style={{ width: `${modRate}%` }}></div>
-                      </div>
-                      <div className="space-y-1 text-xs">
-                        <div className="flex justify-between"><span className="text-gray-500">Submitted</span><span className="font-medium">{modSubmitted}/{modTotal}</span></div>
-                        <div className="flex justify-between"><span className="text-emerald-600">Approved</span><span className="font-medium">{modApproved}</span></div>
-                        {modRevisions > 0 && <div className="flex justify-between"><span className="text-red-600">Needs Revision</span><span className="font-medium">{modRevisions}</span></div>}
-                        <div className="flex justify-between"><span className="text-gray-400">Missing</span><span className="font-medium">{modTotal - modSubmitted}</span></div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </>
-        );
-      }
-      if (analyticsModule === 'daily-recon') {
-const totalCollected = filteredData.reduce((sum, r) => {
-  return sum + 
-    (parseFloat(r.cash) || 0) +
-    (parseFloat(r.credit_card) || 0) +
-    (parseFloat(r.checks_otc) || 0) +
-    (parseFloat(r.insurance_checks) || 0) +
-    (parseFloat(r.care_credit) || 0) +
-    (parseFloat(r.vcc) || 0) +
-    (parseFloat(r.efts) || 0);
-}, 0);
-const totalDeposited = filteredData.reduce((sum, r) => {
-  return sum + 
-    (parseFloat(r.deposit_cash) || 0) +
-    (parseFloat(r.deposit_credit_card) || 0) +
-    (parseFloat(r.deposit_checks) || 0) +
-    (parseFloat(r.deposit_insurance) || 0) +
-    (parseFloat(r.deposit_care_credit) || 0) +
-    (parseFloat(r.deposit_vcc) || 0) +
-    (parseFloat(r.deposit_efts) || 0);
-}, 0);
-        const pendingCount = filteredData.filter(r => r.status === 'Pending' || !r.status).length;
-        const accountedCount = filteredData.filter(r => r.status === 'Accounted').length;
-        const rejectedCount = filteredData.filter(r => r.status === 'Rejected').length;
-        const cashTotal = filteredData.reduce((sum, r) => sum + (parseFloat(r.cash) || 0), 0);
-        const creditTotal = filteredData.reduce((sum, r) => sum + (parseFloat(r.credit_card) || 0), 0);
-        const checksTotal = filteredData.reduce((sum, r) => sum + (parseFloat(r.checks_otc) || 0), 0);
-        const insuranceTotal = filteredData.reduce((sum, r) => sum + (parseFloat(r.insurance_checks) || 0), 0);
-        const careCreditTotal = filteredData.reduce((sum, r) => sum + (parseFloat(r.care_credit) || 0), 0);
-        const vccTotal = filteredData.reduce((sum, r) => sum + (parseFloat(r.vcc) || 0), 0);
-        const eftsTotal = filteredData.reduce((sum, r) => sum + (parseFloat(r.efts) || 0), 0);
-        const byLocation = {};
-        filteredData.forEach(r => {
-          const loc = r.locations?.name || 'Unknown';
-          if (!byLocation[loc]) byLocation[loc] = { collected: 0, deposited: 0, count: 0 };
-          byLocation[loc].collected += parseFloat(r.total_collected) || 0;
-          byLocation[loc].deposited += parseFloat(r.total_deposit) || 0;
-          byLocation[loc].count += 1;
-        });
-        const byWeek = {};
-        filteredData.forEach(r => {
-          const date = new Date(r.recon_date || r.created_at);
-          const weekStart = new Date(date);
-          weekStart.setDate(date.getDate() - date.getDay());
-          const weekKey = weekStart.toISOString().split('T')[0];
-          if (!byWeek[weekKey]) byWeek[weekKey] = { collected: 0, deposited: 0 };
-          byWeek[weekKey].collected += parseFloat(r.total_collected) || 0;
-          byWeek[weekKey].deposited += parseFloat(r.total_deposit) || 0;
-        });
-        const variance = totalCollected - totalDeposited;
-        return (
-          <>
-            {/* KPI Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className={ANALYTICS_CARDS.emerald}>
-                <p className="text-emerald-100 text-sm font-medium">Total Collected</p>
-                <p className="text-2xl font-bold mt-1">${totalCollected.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
-                <p className="text-emerald-200 text-xs mt-2">{filteredData.length} entries</p>
-              </div>
-              <div className={ANALYTICS_CARDS.blue}>
-                <p className="text-blue-100 text-sm font-medium">Total Deposited</p>
-                <p className="text-2xl font-bold mt-1">${totalDeposited.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
-                <p className="text-blue-200 text-xs mt-2">{accountedCount} accounted</p>
-              </div>
-              <div className={`${variance > 0 ? ANALYTICS_CARDS.amber : ANALYTICS_CARDS.gray}`}>
-                <p className="text-amber-100 text-sm font-medium">Variance</p>
-                <p className="text-2xl font-bold mt-1 flex items-center gap-1">
-                  {variance > 0 ? <TrendingUp className="w-5 h-5" /> : variance < 0 ? <TrendingDown className="w-5 h-5" /> : null}
-                  ${Math.abs(variance).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                </p>
-                <p className="text-amber-200 text-xs mt-2">{variance > 0 ? 'Pending deposit' : variance < 0 ? 'Over deposited' : 'Balanced'}</p>
-              </div>
-              <div className={ANALYTICS_CARDS.purple}>
-                <p className="text-purple-100 text-sm font-medium">Review Status</p>
-                <div className="flex items-baseline gap-2 mt-1">
-                  <p className="text-2xl font-bold">{pendingCount}</p>
-                  <p className="text-purple-200 text-sm">pending</p>
-                </div>
-                <p className="text-purple-200 text-xs mt-2">{rejectedCount} rejected</p>
-              </div>
-            </div>
-            {/* Payment Method Breakdown */}
-            <div className={CARD.base}>
-              <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                <PieChart className="w-5 h-5 text-emerald-500" /> Payment Method Breakdown
-              </h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {[
-                  { label: 'Cash', value: cashTotal, color: 'bg-emerald-500' },
-                  { label: 'Credit Card', value: creditTotal, color: 'bg-blue-500' },
-                  { label: 'Checks OTC', value: checksTotal, color: 'bg-violet-500' },
-                  { label: 'Insurance', value: insuranceTotal, color: 'bg-amber-500' },
-                  { label: 'Care Credit', value: careCreditTotal, color: 'bg-rose-500' },
-                  { label: 'VCC', value: vccTotal, color: 'bg-cyan-500' },
-                  { label: 'EFTs', value: eftsTotal, color: 'bg-indigo-500' },
-                ].map(item => (
-                  <div key={item.label} className="p-3 rounded-xl bg-gray-50 border border-gray-100">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className={`w-3 h-3 rounded-full ${item.color}`}></div>
-                      <span className="text-sm text-gray-600">{item.label}</span>
-                    </div>
-                    <p className="text-lg font-bold text-gray-800">${item.value.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
-                    <div className="mt-2 h-2 bg-gray-200 rounded-full overflow-hidden">
-                      <div className={`h-full ${item.color} rounded-full`} style={{width: `${totalCollected > 0 ? (item.value / totalCollected * 100) : 0}%`}}></div>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">{totalCollected > 0 ? (item.value / totalCollected * 100).toFixed(1) : 0}%</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-            {/* Location Performance */}
-            {Object.keys(byLocation).length > 1 && (
-              <div className={CARD.base}>
-                <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <Building2 className="w-5 h-5 text-blue-500" /> Location Performance
-                </h3>
-                <div className="space-y-3">
-                  {Object.entries(byLocation).sort((a, b) => b[1].collected - a[1].collected).map(([loc, stats]) => (
-                    <div key={loc} className="p-4 rounded-xl bg-gray-50 border border-gray-100">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="font-medium text-gray-800">{loc}</span>
-                        <span className="text-sm text-gray-500">{stats.count} entries</span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-xs text-gray-500">Collected</p>
-                          <p className="text-lg font-bold text-emerald-600">${stats.collected.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500">Deposited</p>
-                          <p className="text-lg font-bold text-blue-600">${stats.deposited.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
-                        </div>
-                      </div>
-                      <div className="mt-2 h-2 bg-gray-200 rounded-full overflow-hidden">
-                        <div className="h-full bg-emerald-500 rounded-full" style={{width: `${totalCollected > 0 ? (stats.collected / totalCollected * 100) : 0}%`}}></div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-{/* Weekly Trend - Last 4 Weeks */}
-            {Object.keys(byWeek).length > 0 && (
-              <div className={CARD.base}>
-                <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5 text-emerald-500" /> Weekly Summary
-                </h3>
-                <div className="flex items-center gap-4 mb-4 text-xs">
-                  <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-emerald-500"></div><span className="text-gray-600">Collected</span></div>
-                  <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-blue-500"></div><span className="text-gray-600">Deposited</span></div>
-                </div>
-                <div className="space-y-4">
-                  {Object.entries(byWeek)
-                    .sort((a, b) => b[0].localeCompare(a[0]))
-                    .slice(0, 4)
-                    .map(([weekStart, stats]) => {
-                      const startDate = new Date(weekStart);
-                      const endDate = new Date(startDate);
-                      endDate.setDate(startDate.getDate() + 6);
-                      const maxVal = Math.max(...Object.values(byWeek).map(w => Math.max(w.collected, w.deposited)));
-                      const collectedPct = maxVal > 0 ? (stats.collected / maxVal * 100) : 0;
-                      const depositedPct = maxVal > 0 ? (stats.deposited / maxVal * 100) : 0;
-                      return (
-                        <div key={weekStart} className="p-3 bg-gray-50 rounded-xl">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-medium text-gray-700">
-                              {startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                            </span>
-                            <span className="text-xs text-gray-400">
-                              {startDate.getFullYear()}
-                            </span>
-                          </div>
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-gray-500 w-16">Collected</span>
-                              <div className="flex-1 h-5 bg-gray-200 rounded-full overflow-hidden">
-                                <div className="h-full bg-emerald-500 rounded-full transition-all" style={{width: `${collectedPct}%`}}></div>
-                              </div>
-                              <span className="text-xs font-semibold text-emerald-600 w-20 text-right">${stats.collected.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-gray-500 w-16">Deposited</span>
-                              <div className="flex-1 h-5 bg-gray-200 rounded-full overflow-hidden">
-                                <div className="h-full bg-blue-500 rounded-full transition-all" style={{width: `${depositedPct}%`}}></div>
-                              </div>
-                              <span className="text-xs font-semibold text-blue-600 w-20 text-right">${stats.deposited.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
-                            </div>
-                          </div>
-                          {stats.collected !== stats.deposited && (
-                            <div className="mt-2 pt-2 border-t border-gray-200 flex justify-end">
-                              <span className={`text-xs font-medium ${stats.collected > stats.deposited ? 'text-amber-600' : 'text-emerald-600'}`}>
-                                {stats.collected > stats.deposited ? `$${(stats.collected - stats.deposited).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} pending` : 'Balanced ✓'}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                </div>
-              </div>
-            )}
-            {/* Status Breakdown */}
-            <div className={CARD.base}>
-              <h3 className="font-semibold text-gray-800 mb-4">Status Overview</h3>
-              <div className="flex items-center gap-4">
-                <div className="flex-1 h-4 bg-gray-200 rounded-full overflow-hidden flex">
-                  {accountedCount > 0 && <div className="h-full bg-emerald-500" style={{width: `${accountedCount / filteredData.length * 100}%`}}></div>}
-                  {pendingCount > 0 && <div className="h-full bg-amber-500" style={{width: `${pendingCount / filteredData.length * 100}%`}}></div>}
-                  {rejectedCount > 0 && <div className="h-full bg-red-500" style={{width: `${rejectedCount / filteredData.length * 100}%`}}></div>}
-                </div>
-              </div>
-              <div className="flex gap-6 mt-3">
-                <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-emerald-500"></div><span className="text-sm text-gray-600">Accounted ({accountedCount})</span></div>
-                <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-amber-500"></div><span className="text-sm text-gray-600">Pending ({pendingCount})</span></div>
-                <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-red-500"></div><span className="text-sm text-gray-600">Rejected ({rejectedCount})</span></div>
-              </div>
-            </div>
-          </>
-        );
       }
       if (analyticsModule === 'billing-inquiry') {
         const totalAmount = filteredData.reduce((sum, r) => sum + (parseFloat(r.amount_in_question) || 0), 0);
@@ -4907,52 +3857,6 @@ const totalDeposited = filteredData.reduce((sum, r) => {
     </div>
   </div>
 )}
-{/* Rev Rangers Daily Recon Entry */}
-{isAdmin && adminView === 'rev-entry' && currentUser?.role === 'rev_rangers' && activeModule === 'daily-recon' && (
-  <div className="space-y-4">
-    {adminLocation === 'all' ? (
-      <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-amber-200">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center">
-            <Building2 className="w-6 h-6 text-amber-600" />
-          </div>
-          <div>
-            <h2 className="font-semibold text-gray-800">Select a Location</h2>
-            <p className="text-sm text-amber-600">Please select a specific location from the sidebar filter before entering data.</p>
-          </div>
-        </div>
-      </div>
-    ) : (
-      <>
-        <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-l-amber-500">
-          <h2 className="font-semibold mb-2 text-gray-800 flex items-center gap-2">
-            <DollarSign className="w-5 h-5 text-amber-500" /> Daily Recon — {adminLocation}
-          </h2>
-          <p className="text-sm text-gray-500 mb-4">EFT, Insurance Check & VCC Entry</p>
-          <div className="grid grid-cols-2 gap-4">
-            <InputField label="Recon Date" type="date" value={forms['daily-recon'].recon_date} onChange={e => updateForm('daily-recon', 'recon_date', e.target.value)} />
-            <InputField label="Insurance Check" prefix="$" value={forms['daily-recon'].insurance_checks} onChange={e => updateForm('daily-recon', 'insurance_checks', e.target.value)} />
-            <InputField label="VCC" prefix="$" value={forms['daily-recon'].vcc} onChange={e => updateForm('daily-recon', 'vcc', e.target.value)} />
-            <InputField label="EFTs" prefix="$" value={forms['daily-recon'].efts} onChange={e => updateForm('daily-recon', 'efts', e.target.value)} />
-          </div>
-          <div className="mt-4">
-            <InputField label="Notes" value={forms['daily-recon'].notes} onChange={e => updateForm('daily-recon', 'notes', e.target.value)} />
-          </div>
-        </div>
-        <div className="bg-white rounded-2xl shadow-lg p-6">
-          <FileUpload label="Upload Documents" files={files['daily-recon'].documents} onFilesChange={f => updateFiles('daily-recon', 'documents', f)} onViewFile={setViewingFile} />
-        </div>
-        <button
-          onClick={() => saveEntry('daily-recon')}
-          disabled={saving}
-          className={`w-full py-4 ${BTN.amber} rounded-xl text-lg font-semibold disabled:opacity-50`}
-        >
-          {saving ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Save Entry'}
-        </button>
-      </>
-    )}
-  </div>
-)}
 {/* Records View - Admin */}
 {isAdmin && adminView === 'records' && (
   <div className="space-y-4">
@@ -5051,259 +3955,6 @@ const totalDeposited = filteredData.reduce((sum, r) => {
             const docs = entryDocuments[docKey] || [];
             if (!entryDocuments[docKey]) {
               loadEntryDocuments(activeModule, e.id);
-            }
-            if (activeModule === 'daily-recon') {
-              const isEditing = editingRecon === e.id;
-              const form = reconForm[e.id] || {};
-return (
-                <div key={e.id} className={`p-4 rounded-xl border-2 ${e.status === 'Accounted' ? 'border-emerald-200 bg-emerald-50' : e.status === 'Rejected' ? 'border-red-200 bg-red-50' : 'border-amber-200 bg-amber-50'} hover:shadow-md transition-all ${selectedRecords.includes(e.id) ? 'ring-2 ring-purple-500' : ''}`}>
-                  <div className="flex justify-between items-start gap-4 mb-4">
-                    <div className="flex items-start gap-3 flex-1">
-{!isITViewOnly && <button onClick={(ev) => { ev.stopPropagation(); toggleRecordSelection(e.id); }} className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 mt-1 transition-all ${selectedRecords.includes(e.id) ? 'bg-purple-600 border-purple-600' : 'border-gray-300 hover:border-purple-400'}`}>
-                        {selectedRecords.includes(e.id) && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
-                      </button>}
-                      <div className="flex-1 cursor-pointer" onClick={() => setViewingEntry(e)}>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="font-bold text-blue-700">{e.locations?.name || 'Unknown Location'}</p>
-                          <span className="text-gray-400">•</span>
-                          <p className="font-semibold text-gray-800">{e.creator?.name || 'Unknown'}</p>
-                          <StatusBadge status={e.status || 'Pending'} />
-                        </div>
-                        <p className="text-sm text-gray-500 mt-1">
-                          Recon Date: {e.recon_date} • Submitted: {new Date(e.created_at).toLocaleDateString()}
-                        </p>
-                      </div>
-                    </div>
-{!isEditing && (
-                      <div className="flex items-center gap-1" onClick={ev => ev.stopPropagation()}>
-<button onClick={() => setViewingEntry(e)} className="p-2 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors" title="Preview"><Eye className="w-4 h-4" /></button>
-{currentUser?.role !== 'finance_admin' && currentUser?.role !== 'it' && (
-                          <button onClick={() => startEditingRecon(e)} className="p-2 text-purple-600 hover:bg-purple-100 rounded-lg transition-colors" title="Review"><Edit3 className="w-4 h-4" /></button>
-                        )}
-                        {!isITViewOnly && <button onClick={() => deleteRecord(activeModule, e.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>}
-                      </div>
-                    )}
-                  </div>
-{/* Staff's Cash Can Data */}
-                  <div className="bg-white rounded-xl p-4 mb-3 border border-gray-200">
-                    <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                      <DollarSign className="w-4 h-4 text-emerald-500" /> Staff Daily Reconciliation Entry
-                    </h4>
-                    <div className="grid grid-cols-4 gap-3 text-sm">
-                      <div><span className="text-gray-500">Cash:</span> <span className="font-medium">${Number(e.cash || 0).toFixed(2)}</span></div>
-                      <div><span className="text-gray-500">Credit Card:</span> <span className="font-medium">${Number(e.credit_card || 0).toFixed(2)}</span></div>
-                      <div><span className="text-gray-500">Checks OTC:</span> <span className="font-medium">${Number(e.checks_otc || 0).toFixed(2)}</span></div>
-                      <div><span className="text-gray-500">Insurance:</span> <span className="font-medium">${Number(e.insurance_checks || 0).toFixed(2)}</span></div>
-                      <div><span className="text-gray-500">Care Credit:</span> <span className="font-medium">${Number(e.care_credit || 0).toFixed(2)}</span></div>
-                      <div><span className="text-gray-500">VCC:</span> <span className="font-medium">${Number(e.vcc || 0).toFixed(2)}</span></div>
-                      <div><span className="text-gray-500">EFTs:</span> <span className="font-medium">${Number(e.efts || 0).toFixed(2)}</span></div>
-                      <div><span className="text-gray-500 font-semibold">Total:</span> <span className="font-bold text-emerald-600">${Number(e.total_collected || 0).toFixed(2)}</span></div>
-                    </div>
-{e.notes && <p className="mt-2 text-sm text-gray-600"><span className="text-gray-500">Notes:</span> {e.notes}</p>}
-                  </div>
-                  {/* Bank Deposit Section (Editable by Admin) */}
-                  {isEditing ? (
-                    <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
-                      <h4 className="text-sm font-semibold text-blue-700 mb-3 flex items-center gap-2">
-                        <Building2 className="w-4 h-4" /> Bank Deposit (Admin Entry)
-                      </h4>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-                        <div>
-                          <label className="text-xs text-gray-600 mb-1 block">Cash</label>
-                          <div className="flex items-center border-2 border-gray-200 rounded-lg bg-white">
-                            <span className="pl-2 text-gray-400">$</span>
-                            <input type="text" value={form.deposit_cash || ''} onChange={ev => updateReconForm(e.id, 'deposit_cash', ev.target.value)} className="w-full p-2 outline-none rounded-lg" inputMode="decimal" />
-                          </div>
-                        </div>
-                        <div>
-                          <label className="text-xs text-gray-600 mb-1 block">Credit Card</label>
-                          <div className="flex items-center border-2 border-gray-200 rounded-lg bg-white">
-                            <span className="pl-2 text-gray-400">$</span>
-                            <input type="text" value={form.deposit_credit_card || ''} onChange={ev => updateReconForm(e.id, 'deposit_credit_card', ev.target.value)} className="w-full p-2 outline-none rounded-lg" inputMode="decimal" />
-                          </div>
-                        </div>
-                        <div>
-                          <label className="text-xs text-gray-600 mb-1 block">Checks</label>
-                          <div className="flex items-center border-2 border-gray-200 rounded-lg bg-white">
-                            <span className="pl-2 text-gray-400">$</span>
-                            <input type="text" value={form.deposit_checks || ''} onChange={ev => updateReconForm(e.id, 'deposit_checks', ev.target.value)} className="w-full p-2 outline-none rounded-lg" inputMode="decimal" />
-                          </div>
-                        </div>
-                        <div>
-                          <label className="text-xs text-gray-600 mb-1 block">Insurance</label>
-                          <div className="flex items-center border-2 border-gray-200 rounded-lg bg-white">
-                            <span className="pl-2 text-gray-400">$</span>
-                            <input type="text" value={form.deposit_insurance || ''} onChange={ev => updateReconForm(e.id, 'deposit_insurance', ev.target.value)} className="w-full p-2 outline-none rounded-lg" inputMode="decimal" />
-                          </div>
-                        </div>
-                        <div>
-                          <label className="text-xs text-gray-600 mb-1 block">Care Credit</label>
-                          <div className="flex items-center border-2 border-gray-200 rounded-lg bg-white">
-                            <span className="pl-2 text-gray-400">$</span>
-                            <input type="text" value={form.deposit_care_credit || ''} onChange={ev => updateReconForm(e.id, 'deposit_care_credit', ev.target.value)} className="w-full p-2 outline-none rounded-lg" inputMode="decimal" />
-                          </div>
-                        </div>
-                        <div>
-                          <label className="text-xs text-gray-600 mb-1 block">VCC</label>
-                          <div className="flex items-center border-2 border-gray-200 rounded-lg bg-white">
-                            <span className="pl-2 text-gray-400">$</span>
-                            <input type="text" value={form.deposit_vcc || ''} onChange={ev => updateReconForm(e.id, 'deposit_vcc', ev.target.value)} className="w-full p-2 outline-none rounded-lg" inputMode="decimal" />
-                          </div>
-                        </div>
-                        <div>
-                          <label className="text-xs text-gray-600 mb-1 block">EFTs</label>
-                          <div className="flex items-center border-2 border-gray-200 rounded-lg bg-white">
-                            <span className="pl-2 text-gray-400">$</span>
-                            <input type="text" value={form.deposit_efts || ''} onChange={ev => updateReconForm(e.id, 'deposit_efts', ev.target.value)} className="w-full p-2 outline-none rounded-lg" inputMode="decimal" />
-                          </div>
-                        </div>
-                        <div>
-                          <label className="text-xs text-gray-600 mb-1 block">Status</label>
-                          <select value={form.status || 'Pending'} onChange={ev => updateReconForm(e.id, 'status', ev.target.value)} className="w-full p-2 border-2 border-gray-200 rounded-lg bg-white">
-                            {RECON_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-                          </select>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <button onClick={() => updateDailyRecon(e.id)} className={`flex-1 py-2.5 ${BTN.save}`}>
-                          Submit Review
-                        </button>
-                        <button onClick={() => { setEditingRecon(null); }} className="px-4 py-2.5 bg-gray-200 rounded-lg font-medium hover:bg-gray-300 transition-all">
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-(e.status === 'Accounted' || e.status === 'Rejected') && (
-                      <div className={`rounded-xl p-4 border ${e.status === 'Rejected' ? 'bg-red-50 border-red-200' : 'bg-blue-50 border-blue-200'}`}>
-                        <h4 className={`text-sm font-semibold mb-3 flex items-center gap-2 ${e.status === 'Rejected' ? 'text-red-700' : 'text-blue-700'}`}>
-                          <Building2 className="w-4 h-4" /> Bank Deposit (Reviewed)
-                        </h4>
-                        <div className="grid grid-cols-4 gap-3 text-sm">
-                          <div><span className="text-gray-500">Cash:</span> <span className="font-medium">${Number(e.deposit_cash || 0).toFixed(2)}</span></div>
-                          <div><span className="text-gray-500">Credit Card:</span> <span className="font-medium">${Number(e.deposit_credit_card || 0).toFixed(2)}</span></div>
-                          <div><span className="text-gray-500">Checks:</span> <span className="font-medium">${Number(e.deposit_checks || 0).toFixed(2)}</span></div>
-                          <div><span className="text-gray-500">Insurance:</span> <span className="font-medium">${Number(e.deposit_insurance || 0).toFixed(2)}</span></div>
-                          <div><span className="text-gray-500">Care Credit:</span> <span className="font-medium">${Number(e.deposit_care_credit || 0).toFixed(2)}</span></div>
-                          <div><span className="text-gray-500">VCC:</span> <span className="font-medium">${Number(e.deposit_vcc || 0).toFixed(2)}</span></div>
-                          <div><span className="text-gray-500">EFTs:</span> <span className="font-medium">${Number(e.deposit_efts || 0).toFixed(2)}</span></div>
-                          <div><span className="text-gray-500 font-semibold">Total:</span> <span className="font-bold text-blue-600">${Number(e.total_deposit || 0).toFixed(2)}</span></div>
-                        </div>
-                      </div>
-                    )
-                  )}
-{/* Documents */}
-                  {docs.length > 0 && (
-                    <div className="mt-3 flex flex-wrap gap-2" onClick={ev => ev.stopPropagation()}>
-                      {docs.map(doc => (
-                        <div key={doc.id} className="flex items-center gap-1 bg-white px-2 py-1 rounded-lg border text-xs">
-                          <File className="w-3 h-3 text-gray-400" />
-                          <span className="text-gray-600 max-w-24 truncate">{doc.file_name}</span>
-                          <button onClick={() => viewDocument(doc)} className="p-0.5 text-blue-500 hover:bg-blue-100 rounded" title="Preview">
-                            <Eye className="w-3 h-3" />
-                          </button>
-                          <button onClick={() => downloadDocument(doc)} className="p-0.5 text-emerald-500 hover:bg-emerald-100 rounded" title="Download">
-                            <Download className="w-3 h-3" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            }
-
-{ADMIN_CARD_CONFIG[activeModule] && (() => {
-  const cfg = ADMIN_CARD_CONFIG[activeModule];
-  return (
-    <div key={e.id} className={`p-4 rounded-xl border-2 ${currentColors?.border} ${currentColors?.bg} hover:shadow-md transition-all ${selectedRecords.includes(e.id) ? 'ring-2 ring-purple-500' : ''}`}>
-      <div className="flex justify-between items-start gap-4">
-        <div className="flex items-start gap-3 flex-1">
-          {!isITViewOnly && <button onClick={(ev) => { ev.stopPropagation(); toggleRecordSelection(e.id); }} className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 mt-1 transition-all ${selectedRecords.includes(e.id) ? 'bg-purple-600 border-purple-600' : 'border-gray-300 hover:border-purple-400'}`}>
-            {selectedRecords.includes(e.id) && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
-          </button>}
-          <div className="flex-1 cursor-pointer" onClick={() => setViewingEntry(e)}>
-            <div className="flex items-center gap-2 flex-wrap mb-1">
-              {cfg.getTitle(e)}
-              <StatusBadge status={e.status} />
-              {cfg.getExtraInfo && cfg.getExtraInfo(e)}
-              {cfg.getExtra && cfg.getExtra(e)}
-            </div>
-            <p className="font-medium text-gray-800">{cfg.getSubtitle(e)}</p>
-            <p className="text-sm text-gray-500 mt-1">{cfg.getDetail(e)}</p>
-            {cfg.getAssigned && cfg.getAssigned(e)}
-            {cfg.getAmount && cfg.getAmount(e) && (
-              <p className="text-lg font-bold text-emerald-600 mt-2">{cfg.getAmount(e)}</p>
-            )}
-            {docs.length > 0 && (
-              <div className="mt-3 flex flex-wrap gap-2" onClick={ev => ev.stopPropagation()}>
-                {docs.map(doc => (
-                  <div key={doc.id} className="flex items-center gap-1 bg-white px-2 py-1 rounded-lg border text-xs">
-                    <File className="w-3 h-3 text-gray-400" />
-                    <span className="text-gray-600 max-w-24 truncate">{doc.file_name}</span>
-                    <button onClick={() => viewDocument(doc)} className="p-0.5 text-blue-500 hover:bg-blue-100 rounded" title="Preview"><Eye className="w-3 h-3" /></button>
-                    <button onClick={() => downloadDocument(doc)} className="p-0.5 text-emerald-500 hover:bg-emerald-100 rounded" title="Download"><Download className="w-3 h-3" /></button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-        <div className="flex items-center gap-1" onClick={ev => ev.stopPropagation()}>
-          <button onClick={() => setViewingEntry(e)} className="p-2 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors" title="Preview"><Eye className="w-4 h-4" /></button>
-          {!isITViewOnly && <button onClick={() => deleteRecord(activeModule, e.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>}
-        </div>
-      </div>
-    </div>
-  );
-})()}
-            if (activeModule === 'completed-procedure' || activeModule === 'claims-documents') {
-              return (
-                <div key={e.id} className={`p-4 rounded-xl border-2 ${e.status === 'Approved' ? 'border-emerald-300 bg-emerald-50' : e.status === 'Needs Revisions' ? 'border-red-300 bg-red-50' : 'border-amber-300 bg-amber-50'} hover:shadow-md transition-all ${selectedRecords.includes(e.id) ? 'ring-2 ring-purple-500' : ''}`}>
-                  <div className="flex justify-between items-start gap-4">
-                    <div className="flex items-start gap-3 flex-1">
-                      <button onClick={() => toggleRecordSelection(e.id)} className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 mt-1 transition-all ${selectedRecords.includes(e.id) ? 'bg-purple-600 border-purple-600' : 'border-gray-300 hover:border-purple-400'}`}>
-                        {selectedRecords.includes(e.id) && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
-                      </button>
-                      <div className="flex-1 cursor-pointer" onClick={() => setViewingEntry(e)}>
-                        <div className="flex items-center gap-2 flex-wrap mb-1">
-                          <span className="font-bold text-gray-800">{e.locations?.name || 'Unknown Location'}</span>
-                          <StatusBadge status={e.status || 'Pending'} />
-                        </div>
-                        <p className="text-sm text-gray-600">
-                          Submitted by: <span className="font-medium">{e.checked_by || '-'}</span>
-                        </p>
-                        <p className="text-sm text-gray-500 mt-1">
-                          Submitted: {new Date(e.created_at).toLocaleString('en-US', { timeZone: 'Pacific/Honolulu', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
-                          {e.creator?.name && <span> • By: {e.creator.name}</span>}
-                        </p>
-                        {e.notes && <p className="text-sm text-gray-600 mt-2 line-clamp-2">{e.notes}</p>}
-                        {e.admin_notes && (
-                          <div className={`mt-2 p-2 rounded-lg text-sm ${e.status === 'Needs Revisions' ? 'bg-orange-100 text-orange-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                            <span className="font-medium">Admin: </span>{e.admin_notes}
-                          </div>
-                        )}
-                        {docs.length > 0 && (
-                          <div className="mt-3 flex flex-wrap gap-2" onClick={ev => ev.stopPropagation()}>
-                            {docs.map(doc => (
-                              <div key={doc.id} className="flex items-center gap-1 bg-white px-2 py-1 rounded-lg border text-xs">
-                                <File className="w-3 h-3 text-gray-400" />
-                                <span className="text-gray-600 max-w-24 truncate">{doc.file_name}</span>
-                                <button onClick={() => viewDocument(doc)} className="p-0.5 text-blue-500 hover:bg-blue-100 rounded" title="Preview"><Eye className="w-3 h-3" /></button>
-                                <button onClick={() => downloadDocument(doc)} className="p-0.5 text-emerald-500 hover:bg-emerald-100 rounded" title="Download"><Download className="w-3 h-3" /></button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1" onClick={ev => ev.stopPropagation()}>
-                      <button onClick={() => setViewingEntry(e)} className="p-2 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors" title="Preview"><Eye className="w-4 h-4" /></button>
-                      <button onClick={() => deleteRecord(activeModule, e.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
-                    </div>
-                  </div>
-                </div>
-              );
             }
             return (
               <div key={e.id} className={`p-4 rounded-xl border-2 ${currentColors?.border} ${currentColors?.bg} hover:shadow-md transition-all ${selectedRecords.includes(e.id) ? 'ring-2 ring-purple-500' : ''}`}>
@@ -5425,384 +4076,6 @@ return (
           {/* Entry Form - Staff */}
           {!isAdmin && view === 'entry' && (
             <div className="space-y-4">
-{activeModule === 'daily-recon' && (
-                <>
-                  {checklistStatus['daily-recon']?.submitted ? (
-                    <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-l-emerald-500">
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center">
-                          <CheckCircle className="w-6 h-6 text-emerald-600" />
-                        </div>
-                        <div>
-                          <h2 className="font-semibold text-gray-800">Daily Reconciliation — Submitted</h2>
-                          <p className="text-sm text-emerald-600 font-medium">Submitted today at {new Date(checklistStatus['daily-recon']?.entry?.created_at).toLocaleTimeString('en-US', { timeZone: 'Pacific/Honolulu', hour: 'numeric', minute: '2-digit' })}</p>
-                        </div>
-                      </div>
- {editingStaffEntry === checklistStatus['daily-recon']?.entry?.id ? (
-                        <div className="space-y-4 bg-emerald-50 rounded-xl p-4 border border-emerald-200">
-                          <div className="flex items-center justify-between">
-                            <h4 className="font-semibold text-emerald-800 flex items-center gap-2">
-                              <Edit3 className="w-4 h-4" /> Edit Today's Entry
-                            </h4>
-                            <button onClick={() => { setEditingStaffEntry(null); setStaffEditForm({}); }} className="text-gray-400 hover:text-gray-600">
-                              <X className="w-5 h-5" />
-                            </button>
-                          </div>
-                          <div className="grid grid-cols-2 gap-3">
-                            <InputField label="Date" type="date" value={staffEditForm.recon_date} onChange={ev => updateStaffEditForm('recon_date', ev.target.value)} />
-                            <InputField label="Cash" prefix="$" value={staffEditForm.cash} onChange={ev => updateStaffEditForm('cash', ev.target.value)} />
-                            <InputField label="Credit Card" prefix="$" value={staffEditForm.credit_card} onChange={ev => updateStaffEditForm('credit_card', ev.target.value)} />
-                            <InputField label="Checks OTC" prefix="$" value={staffEditForm.checks_otc} onChange={ev => updateStaffEditForm('checks_otc', ev.target.value)} />
-<InputField label="Care Credit" prefix="$" value={staffEditForm.care_credit} onChange={ev => updateStaffEditForm('care_credit', ev.target.value)} />
-                            <div className="col-span-2">
-                              <InputField label="Notes" value={staffEditForm.notes} onChange={ev => updateStaffEditForm('notes', ev.target.value)} />
-                            </div>
-                          </div>
-                          <div className="flex gap-2">
-                            <button onClick={saveStaffEntryUpdate} disabled={saving} className={`flex-1 py-2.5 ${BTN.save} disabled:opacity-50`}>
-                              {saving ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Save Changes'}
-                            </button>
-                            <button onClick={() => { setEditingStaffEntry(null); setStaffEditForm({}); }} className={`px-4 py-2.5 ${BTN.cancel}`}>
-                              Cancel
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <div className="space-y-3 bg-gray-50 rounded-xl p-4 border border-gray-200">
-                            <div className="flex items-center justify-between">
-                              <StatusBadge status={checklistStatus['daily-recon']?.entry?.status || 'Pending'} />
-                              {checklistStatus['daily-recon']?.entry?.creator?.name && (
-                                <span className="text-sm text-gray-500">By: {checklistStatus['daily-recon']?.entry?.creator?.name}</span>
-                              )}
-                            </div>
-                            <div className="grid grid-cols-2 gap-3 text-sm">
-                              <div><span className="text-gray-500">Date:</span> <span className="font-medium">{checklistStatus['daily-recon']?.entry?.recon_date}</span></div>
-                              <div><span className="text-gray-500">Cash:</span> <span className="font-medium">${Number(checklistStatus['daily-recon']?.entry?.cash || 0).toFixed(2)}</span></div>
-                              <div><span className="text-gray-500">Credit Card:</span> <span className="font-medium">${Number(checklistStatus['daily-recon']?.entry?.credit_card || 0).toFixed(2)}</span></div>
-                              <div><span className="text-gray-500">Checks OTC:</span> <span className="font-medium">${Number(checklistStatus['daily-recon']?.entry?.checks_otc || 0).toFixed(2)}</span></div>
-<div><span className="text-gray-500">Care Credit:</span> <span className="font-medium">${Number(checklistStatus['daily-recon']?.entry?.care_credit || 0).toFixed(2)}</span></div>
-                            </div>
-                            <div className="pt-2 border-t border-gray-200">
-                              <span className="text-gray-500 text-sm">Total Collected:</span>
-                              <span className="font-bold text-emerald-700 text-lg ml-2">${Number(checklistStatus['daily-recon']?.entry?.total_collected || 0).toFixed(2)}</span>
-                            </div>
-                            {checklistStatus['daily-recon']?.entry?.notes && (
-                              <div>
-                                <span className="text-xs font-medium text-gray-500">Notes</span>
-                                <p className="text-gray-700 bg-white p-3 rounded-lg border border-gray-100 mt-1">{checklistStatus['daily-recon']?.entry?.notes}</p>
-                              </div>
-                            )}
-                          </div>
-                          {!isChecklistPastDeadline() && (
-                            <button
-                              onClick={() => startEditingStaffEntry(checklistStatus['daily-recon']?.entry)}
-                              className={`w-full mt-4 py-3 ${BTN.save} flex items-center justify-center gap-2`}
-                            >
-                              <Edit3 className="w-4 h-4" /> Edit Today's Entry
-                            </button>
-                          )}
-                          <div className="mt-4 p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-center">
-                            <p className="text-sm text-emerald-700 font-medium flex items-center justify-center gap-2">
-                              <Lock className="w-4 h-4" /> One entry per day. Resets at midnight.
-                            </p>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  ) : isChecklistPastDeadline() ? (
-                    <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-l-gray-400">
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center">
-                          <Lock className="w-6 h-6 text-gray-400" />
-                        </div>
-                        <div>
-                          <h2 className="font-semibold text-gray-800">Daily Reconciliation</h2>
-                          <p className="text-sm text-red-600 font-medium">Submissions closed for today</p>
-                        </div>
-                      </div>
-                      <div className="p-4 bg-red-50 rounded-xl border border-red-200 text-center">
-                        <p className="text-sm text-red-700">The deadline has passed. A new form will be available tomorrow.</p>
-                      </div>
-                    </div>
-                  ) : (
-                  <>
-                  <div className={CARD.colored(currentColors)}>
-                    <h2 className="font-semibold mb-4 text-gray-800 flex items-center gap-2">
-                      <DollarSign className="w-5 h-5 text-emerald-500" />Daily Reconciliation
-                    </h2>
-                    <div className="grid grid-cols-2 gap-4">
-                      <InputField label="Date" type="date" value={forms['daily-recon'].recon_date} onChange={e => updateForm('daily-recon', 'recon_date', e.target.value)} />
-                      <InputField label="Cash" prefix="$" value={forms['daily-recon'].cash} onChange={e => updateForm('daily-recon', 'cash', e.target.value)} />
-                      <InputField label="Credit Card (OTC)" prefix="$" value={forms['daily-recon'].credit_card} onChange={e => updateForm('daily-recon', 'credit_card', e.target.value)} />
-                      <InputField label="Checks (OTC)" prefix="$" value={forms['daily-recon'].checks_otc} onChange={e => updateForm('daily-recon', 'checks_otc', e.target.value)} />
-  <InputField label="Care Credit" prefix="$" value={forms['daily-recon'].care_credit} onChange={e => updateForm('daily-recon', 'care_credit', e.target.value)} />
-                    </div>
-            <div className="mt-4">
-  <InputField label="Notes" value={forms['daily-recon'].notes} onChange={e => updateForm('daily-recon', 'notes', e.target.value)} />
-</div>
-                  </div>
-<div className="bg-white rounded-2xl shadow-lg p-6">
-  <h2 className="font-semibold mb-4 text-gray-800 flex items-center gap-2">
-    <File className="w-5 h-5 text-amber-500" />Documents
-  </h2>
-<FileUpload label="Upload Documents (EOD Sheets, Bank Receipts, etc.)" files={files['daily-recon'].documents} onFilesChange={f => updateFiles('daily-recon', 'documents', f)} onViewFile={setViewingFile} />
-</div>
-                  </>
-                  )}
-                </>
-              )}
-{activeModule === 'completed-procedure' && (
-                <>
-{checklistStatus['completed-procedure']?.submitted ? (
-                    <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-l-emerald-500">
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center">
-                          <CheckCircle className="w-6 h-6 text-emerald-600" />
-                        </div>
-                        <div>
-                          <h2 className="font-semibold text-gray-800">Completed Procedure — Submitted</h2>
-                          <p className="text-sm text-emerald-600 font-medium">Submitted today at {new Date(checklistStatus['completed-procedure']?.entry?.created_at).toLocaleTimeString('en-US', { timeZone: 'Pacific/Honolulu', hour: 'numeric', minute: '2-digit' })}</p>
-                        </div>
-                      </div>
-                      {editingStaffEntry === checklistStatus['completed-procedure']?.entry?.id ? (
-                        <div className="space-y-4 bg-teal-50 rounded-xl p-4 border border-teal-200">
-                          <div className="flex items-center justify-between">
-                            <h4 className="font-semibold text-teal-800 flex items-center gap-2">
-                              <Edit3 className="w-4 h-4" /> Edit Today's Entry
-                            </h4>
-                            <button onClick={() => { setEditingStaffEntry(null); setStaffEditForm({}); }} className="text-gray-400 hover:text-gray-600">
-                              <X className="w-5 h-5" />
-                            </button>
-                          </div>
-                          <div className="grid grid-cols-2 gap-3">
-                            <InputField label="Checked By" value={staffEditForm.checked_by} onChange={ev => updateStaffEditForm('checked_by', ev.target.value)} />
-                            <div className="flex items-end">
-                              <div className="p-3 bg-teal-100 rounded-xl border border-teal-200 text-sm text-teal-700 w-full">
-                                <span className="font-medium">Date:</span> {new Date().toLocaleDateString('en-US', { timeZone: 'Pacific/Honolulu', weekday: 'short', month: 'short', day: 'numeric' })}
-                              </div>
-                            </div>
-                          </div>
-                          <InputField label="Notes" large value={staffEditForm.notes} onChange={ev => updateStaffEditForm('notes', ev.target.value)} placeholder="Update notes..." />
-                          <div className="flex gap-2">
-                            <button onClick={saveStaffEntryUpdate} disabled={saving} className={`flex-1 py-2.5 ${BTN.save} disabled:opacity-50`}>
-                              {saving ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Save Changes'}
-                            </button>
-                            <button onClick={() => { setEditingStaffEntry(null); setStaffEditForm({}); }} className={`px-4 py-2.5 ${BTN.cancel}`}>
-                              Cancel
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <div className="space-y-3 bg-gray-50 rounded-xl p-4 border border-gray-200">
-                            <div className="flex items-center justify-between">
-                              <StatusBadge status={checklistStatus['completed-procedure']?.entry?.status || 'Pending'} />
-                              {checklistStatus['completed-procedure']?.entry?.creator?.name && (
-                                <span className="text-sm text-gray-500">By: {checklistStatus['completed-procedure']?.entry?.creator?.name}</span>
-                              )}
-                            </div>
-                            <div>
-                              <span className="text-xs font-medium text-gray-500">Checked By</span>
-                              <p className="font-medium text-gray-800">{checklistStatus['completed-procedure']?.entry?.checked_by || '-'}</p>
-                            </div>
-                            {checklistStatus['completed-procedure']?.entry?.notes && (
-                              <div>
-                                <span className="text-xs font-medium text-gray-500">Notes</span>
-                                <p className="text-gray-700 bg-white p-3 rounded-lg border border-gray-100 mt-1">{checklistStatus['completed-procedure']?.entry?.notes}</p>
-                              </div>
-                            )}
-                            {checklistStatus['completed-procedure']?.entry?.admin_notes && (
-                              <div>
-                                <span className="text-xs font-medium text-gray-500">Admin Notes</span>
-                                <p className={`p-3 rounded-lg border mt-1 ${checklistStatus['completed-procedure']?.entry?.status === 'Needs Revisions' ? 'bg-orange-50 border-orange-200 text-orange-800' : 'bg-emerald-50 border-emerald-200 text-emerald-800'}`}>
-                                  {checklistStatus['completed-procedure']?.entry?.admin_notes}
-                                </p>
-                              </div>
-                            )}
-                          </div>
-                          {!isChecklistPastDeadline() && (
-                            <button
-                              onClick={() => startEditingStaffEntry(checklistStatus['completed-procedure']?.entry)}
-                              className="w-full mt-4 py-3 bg-gradient-to-r from-teal-500 to-emerald-500 text-white rounded-xl font-medium hover:shadow-lg transition-all flex items-center justify-center gap-2"
-                            >
-                              <Edit3 className="w-4 h-4" /> Edit Today's Entry
-                            </button>
-                          )}
-                          <div className="mt-4 p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-center">
-                            <p className="text-sm text-emerald-700 font-medium flex items-center justify-center gap-2">
-                              <Lock className="w-4 h-4" /> One entry per day. Resets at midnight.
-                            </p>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  ) : isChecklistPastDeadline() ? (
-                    <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-l-gray-400">
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center">
-                          <Lock className="w-6 h-6 text-gray-400" />
-                        </div>
-                        <div>
-                          <h2 className="font-semibold text-gray-800">Completed Procedure</h2>
-                          <p className="text-sm text-red-600 font-medium">Submissions closed for today</p>
-                        </div>
-                      </div>
-                      <div className="p-4 bg-red-50 rounded-xl border border-red-200 text-center">
-                        <p className="text-sm text-red-700">The deadline has passed. A new form will be available tomorrow.</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      <div className={CARD.colored(currentColors)}>
-                        <h2 className="font-semibold mb-4 text-gray-800 flex items-center gap-2">
-                          <ClipboardList className="w-5 h-5 text-teal-500" /> Completed Procedure
-                        </h2>
-                        <div className="grid grid-cols-2 gap-4">
-                          <InputField label="Checked By" value={forms['completed-procedure'].checked_by} onChange={e => updateForm('completed-procedure', 'checked_by', e.target.value)} />
-                          <div className="flex items-end">
-                            <div className="p-3 bg-teal-50 rounded-xl border border-teal-200 text-sm text-teal-700 w-full">
-                              <span className="font-medium">Date:</span> {new Date().toLocaleDateString('en-US', { timeZone: 'Pacific/Honolulu', weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="mt-4">
-                          <InputField label="Notes" large value={forms['completed-procedure'].notes} onChange={e => updateForm('completed-procedure', 'notes', e.target.value)} placeholder="Enter procedure notes..." />
-                        </div>
-                      </div>
-                      <div className="bg-white rounded-2xl shadow-lg p-6">
-                        <FileUpload label="Attachments" files={files['completed-procedure'].documentation} onFilesChange={f => updateFiles('completed-procedure', 'documentation', f)} onViewFile={setViewingFile} />
-                      </div>
-                    </>
-                  )}
-                </>
-              )}
-              {activeModule === 'claims-documents' && (
-                <>
-{checklistStatus['claims-documents']?.submitted ? (
-                    <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-l-emerald-500">
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center">
-                          <CheckCircle className="w-6 h-6 text-emerald-600" />
-                        </div>
-                        <div>
-                          <h2 className="font-semibold text-gray-800">Claims & Documents — Submitted</h2>
-                          <p className="text-sm text-emerald-600 font-medium">Submitted today at {new Date(checklistStatus['claims-documents']?.entry?.created_at).toLocaleTimeString('en-US', { timeZone: 'Pacific/Honolulu', hour: 'numeric', minute: '2-digit' })}</p>
-                        </div>
-                      </div>
-                      {editingStaffEntry === checklistStatus['claims-documents']?.entry?.id ? (
-                        <div className="space-y-4 bg-sky-50 rounded-xl p-4 border border-sky-200">
-                          <div className="flex items-center justify-between">
-                            <h4 className="font-semibold text-sky-800 flex items-center gap-2">
-                              <Edit3 className="w-4 h-4" /> Edit Today's Entry
-                            </h4>
-                            <button onClick={() => { setEditingStaffEntry(null); setStaffEditForm({}); }} className="text-gray-400 hover:text-gray-600">
-                              <X className="w-5 h-5" />
-                            </button>
-                          </div>
-                          <div className="grid grid-cols-2 gap-3">
-                            <InputField label="Checked By" value={staffEditForm.checked_by} onChange={ev => updateStaffEditForm('checked_by', ev.target.value)} />
-                            <div className="flex items-end">
-                              <div className="p-3 bg-sky-100 rounded-xl border border-sky-200 text-sm text-sky-700 w-full">
-                                <span className="font-medium">Date:</span> {new Date().toLocaleDateString('en-US', { timeZone: 'Pacific/Honolulu', weekday: 'short', month: 'short', day: 'numeric' })}
-                              </div>
-                            </div>
-                          </div>
-                          <InputField label="Notes" large value={staffEditForm.notes} onChange={ev => updateStaffEditForm('notes', ev.target.value)} placeholder="Update notes..." />
-                          <div className="flex gap-2">
-                            <button onClick={saveStaffEntryUpdate} disabled={saving} className={`flex-1 py-2.5 ${BTN.save} disabled:opacity-50`}>
-                              {saving ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Save Changes'}
-                            </button>
-                            <button onClick={() => { setEditingStaffEntry(null); setStaffEditForm({}); }} className={`px-4 py-2.5 ${BTN.cancel}`}>
-                              Cancel
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <div className="space-y-3 bg-gray-50 rounded-xl p-4 border border-gray-200">
-                            <div className="flex items-center justify-between">
-                              <StatusBadge status={checklistStatus['claims-documents']?.entry?.status || 'Pending'} />
-                              {checklistStatus['claims-documents']?.entry?.creator?.name && (
-                                <span className="text-sm text-gray-500">By: {checklistStatus['claims-documents']?.entry?.creator?.name}</span>
-                              )}
-                            </div>
-                            <div>
-                              <span className="text-xs font-medium text-gray-500">Checked By</span>
-                              <p className="font-medium text-gray-800">{checklistStatus['claims-documents']?.entry?.checked_by || '-'}</p>
-                            </div>
-                            {checklistStatus['claims-documents']?.entry?.notes && (
-                              <div>
-                                <span className="text-xs font-medium text-gray-500">Notes</span>
-                                <p className="text-gray-700 bg-white p-3 rounded-lg border border-gray-100 mt-1">{checklistStatus['claims-documents']?.entry?.notes}</p>
-                              </div>
-                            )}
-                            {checklistStatus['claims-documents']?.entry?.admin_notes && (
-                              <div>
-                                <span className="text-xs font-medium text-gray-500">Admin Notes</span>
-                                <p className={`p-3 rounded-lg border mt-1 ${checklistStatus['claims-documents']?.entry?.status === 'Needs Revisions' ? 'bg-orange-50 border-orange-200 text-orange-800' : 'bg-emerald-50 border-emerald-200 text-emerald-800'}`}>
-                                  {checklistStatus['claims-documents']?.entry?.admin_notes}
-                                </p>
-                              </div>
-                            )}
-                          </div>
-                          {!isChecklistPastDeadline() && (
-                            <button
-                              onClick={() => startEditingStaffEntry(checklistStatus['claims-documents']?.entry)}
-                              className="w-full mt-4 py-3 bg-gradient-to-r from-sky-500 to-blue-500 text-white rounded-xl font-medium hover:shadow-lg transition-all flex items-center justify-center gap-2"
-                            >
-                              <Edit3 className="w-4 h-4" /> Edit Today's Entry
-                            </button>
-                          )}
-                          <div className="mt-4 p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-center">
-                            <p className="text-sm text-emerald-700 font-medium flex items-center justify-center gap-2">
-                              <Lock className="w-4 h-4" /> One entry per day. Resets at midnight.
-                            </p>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  ) : isChecklistPastDeadline() ? (
-                    <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-l-gray-400">
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center">
-                          <Lock className="w-6 h-6 text-gray-400" />
-                        </div>
-                        <div>
-                          <h2 className="font-semibold text-gray-800">Claims & Documents</h2>
-                          <p className="text-sm text-red-600 font-medium">Submissions closed for today</p>
-                        </div>
-                      </div>
-                      <div className="p-4 bg-red-50 rounded-xl border border-red-200 text-center">
-                        <p className="text-sm text-red-700">The deadline has passed. A new form will be available tomorrow.</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      <div className={CARD.colored(currentColors)}>
-                        <h2 className="font-semibold mb-4 text-gray-800 flex items-center gap-2">
-                          <Paperclip className="w-5 h-5 text-sky-500" /> Claims & Documents (X-ray, Documents)
-                        </h2>
-                        <div className="grid grid-cols-2 gap-4">
-                          <InputField label="Checked By" value={forms['claims-documents'].checked_by} onChange={e => updateForm('claims-documents', 'checked_by', e.target.value)} />
-                          <div className="flex items-end">
-                            <div className="p-3 bg-sky-50 rounded-xl border border-sky-200 text-sm text-sky-700 w-full">
-                              <span className="font-medium">Date:</span> {new Date().toLocaleDateString('en-US', { timeZone: 'Pacific/Honolulu', weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="mt-4">
-                          <InputField label="Notes" large value={forms['claims-documents'].notes} onChange={e => updateForm('claims-documents', 'notes', e.target.value)} placeholder="Enter claims/document notes..." />
-                        </div>
-                      </div>
-                      <div className="bg-white rounded-2xl shadow-lg p-6">
-                        <FileUpload label="X-rays, Documents & Attachments" files={files['claims-documents'].documentation} onFilesChange={f => updateFiles('claims-documents', 'documentation', f)} onViewFile={setViewingFile} />
-                      </div>
-                    </>
-                  )}
-                </>
-              )}
-
               {STAFF_FORM_CONFIG[activeModule] && (
                 <>
                   <div className={CARD.colored(currentColors)}>
@@ -5821,9 +4094,6 @@ return (
                   </div>
                 </>
               )}
-{!((activeModule === 'daily-recon' && (checklistStatus['daily-recon']?.submitted || isChecklistPastDeadline())) ||
-                 (activeModule === 'completed-procedure' && (checklistStatus['completed-procedure']?.submitted || isChecklistPastDeadline())) ||
-                 (activeModule === 'claims-documents' && (checklistStatus['claims-documents']?.submitted || isChecklistPastDeadline()))) && (
                 <button
                   onClick={() => saveEntry(activeModule)}
                   disabled={saving}
@@ -5831,7 +4101,6 @@ return (
                 >
                   {saving ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Save Entry'}
                 </button>
-              )}
             </div>
           )}
 {/* History View - Staff */}
@@ -5900,9 +4169,7 @@ return (
         <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-gray-400" /></div>
       ) : getStaffEntries().length === 0 ? (
 <div className="text-center py-12">
-          <EmptyState icon={FileText} message={currentUser?.role === 'staff' && CHECKLIST_MODULES.some(m => m.id === activeModule)
-              ? 'Checklist modules are not available for your role'
-              : staffRecordSearch ? 'No records match your search' : 'No entries yet'} />
+          <EmptyState icon={FileText} message={staffRecordSearch ? 'No records match your search' : 'No entries yet'} />
           {staffRecordSearch && (
             <button onClick={() => setStaffRecordSearch('')} className="mt-2 text-blue-600 text-sm font-medium hover:underline">Clear search</button>
           )}
@@ -5910,8 +4177,7 @@ return (
       ) : (
         <div className="space-y-3">
           {getStaffPaginatedEntries().map(e => {
-            const isChecklist = CHECKLIST_MODULES.some(m => m.id === activeModule);
-            const canEdit = isChecklist ? canEditChecklistEntry(e.created_at) : canEditRecord(e.created_at);
+            const canEdit = canEditRecord(e.created_at);
             const isEditing = editingStaffEntry === e.id;
             const docKey = `${activeModule}-${e.id}`;
             const docs = entryDocuments[docKey] || [];
@@ -5919,15 +4185,6 @@ return (
               loadEntryDocuments(activeModule, e.id);
             }
             let bgClass = `${currentColors?.bg} border ${currentColors?.border}`;
-            if (activeModule === 'daily-recon') {
-              if (e.status === 'Accounted') bgClass = 'bg-emerald-50 border-2 border-emerald-300';
-              else if (e.status === 'Rejected') bgClass = 'bg-red-50 border-2 border-red-300';
-              else bgClass = 'bg-amber-50 border-2 border-amber-300';
-            } else if (activeModule === 'completed-procedure' || activeModule === 'claims-documents') {
-              if (e.status === 'Approved') bgClass = 'bg-emerald-50 border-2 border-emerald-300';
-              else if (e.status === 'Needs Revisions') bgClass = 'bg-red-50 border-2 border-red-300';
-              else bgClass = 'bg-amber-50 border-2 border-amber-300';
-            }
             return (
               <div key={e.id} className={`p-4 rounded-xl ${bgClass}`}>
                 {isEditing ? (
@@ -5941,29 +4198,9 @@ return (
                       </button>
                     </div>
 
-                    {activeModule === 'daily-recon' && (
-                      <div className="grid grid-cols-2 gap-3">
-                        {renderStaffEditFields(
-                          STAFF_EDIT_FIELDS_CONFIG['daily-recon'][currentUser?.role === 'rev_rangers' ? 'rev_rangers' : 'staff'],
-                          staffEditForm, updateStaffEditForm
-                        )}
-                        <div className="col-span-2">
-                          <InputField label={STAFF_EDIT_FIELDS_CONFIG['daily-recon'].notesField.label} value={staffEditForm[STAFF_EDIT_FIELDS_CONFIG['daily-recon'].notesField.key]} onChange={ev => updateStaffEditForm(STAFF_EDIT_FIELDS_CONFIG['daily-recon'].notesField.key, ev.target.value)} />
-                        </div>
-                      </div>
-                    )}
-                    {activeModule !== 'daily-recon' && STAFF_EDIT_FIELDS_CONFIG[activeModule] && (
+                    {STAFF_EDIT_FIELDS_CONFIG[activeModule] && (
                       <>
                         {renderStaffEditFields(STAFF_EDIT_FIELDS_CONFIG[activeModule].fields, staffEditForm, updateStaffEditForm)}
-                        {(activeModule === 'completed-procedure' || activeModule === 'claims-documents') && (
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="flex items-end">
-                              <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 text-sm text-gray-600 w-full">
-                                <span className="font-medium">Module:</span> {activeModule === 'completed-procedure' ? 'Completed Procedure' : 'Claims & Documents'}
-                              </div>
-                            </div>
-                          </div>
-                        )}
                         {STAFF_EDIT_FIELDS_CONFIG[activeModule].largeField && (
                           <div className="col-span-2 mt-3">
                             <InputField label={STAFF_EDIT_FIELDS_CONFIG[activeModule].largeField.label} large value={staffEditForm[STAFF_EDIT_FIELDS_CONFIG[activeModule].largeField.key]} onChange={ev => updateStaffEditForm(STAFF_EDIT_FIELDS_CONFIG[activeModule].largeField.key, ev.target.value)} placeholder={STAFF_EDIT_FIELDS_CONFIG[activeModule].largeField.placeholder} />
@@ -5985,13 +4222,11 @@ return (
                     <div className="flex-1 cursor-pointer" onClick={() => setViewingEntry(e)}>
                       <div className="flex items-center gap-2">
 <p className="font-medium text-gray-800">
-                          {e.ticket_number ? `IT-${e.ticket_number}` : 
-                           (activeModule === 'completed-procedure' || activeModule === 'claims-documents') ? <span className={`${activeModule === 'completed-procedure' ? 'text-teal-600' : 'text-sky-600'} font-bold`}>{activeModule === 'completed-procedure' ? 'Completed Procedure' : 'Claims & Documents'} — {new Date(e.created_at).toLocaleDateString('en-US', { timeZone: 'Pacific/Honolulu', month: 'short', day: 'numeric' })}</span> :
-                           (activeModule === 'daily-recon') ? <span className="text-emerald-600 font-bold">Recon: {e.recon_date}</span> :
+                          {e.ticket_number ? `IT-${e.ticket_number}` :
                            (activeModule === 'bills-payment' && e.transaction_id) ? <span className="text-violet-600 font-bold">Invoice: {e.transaction_id}</span> :
                            (activeModule === 'billing-inquiry' && e.chart_number) ? <span className="text-blue-600 font-bold">Chart# {e.chart_number}</span> :
                            (activeModule === 'refund-requests' && e.chart_number) ? <span className="text-rose-600 font-bold">Chart# {e.chart_number}</span> :
-                           e.patient_name || e.vendor || e.recon_date || new Date(e.created_at).toLocaleDateString()}
+                           e.patient_name || e.vendor || new Date(e.created_at).toLocaleDateString()}
                         </p>
                         {activeModule === 'bills-payment' && e.transaction_id && e.vendor && (
                           <p className="text-sm text-gray-600">{e.vendor}</p>
@@ -6002,23 +4237,12 @@ return (
                         {activeModule === 'refund-requests' && e.chart_number && e.patient_name && (
                           <p className="text-sm text-gray-600">{e.patient_name}</p>
                         )}
-                        {(activeModule === 'completed-procedure' || activeModule === 'claims-documents') && e.checked_by && (
-                          <p className="text-sm text-gray-600">Submitted by: {e.checked_by}</p>
-                        )}
-                        <StatusBadge status={e.status || (activeModule === 'daily-recon' ? 'Pending' : e.status)} />
+                        <StatusBadge status={e.status} />
                         {!canEdit && <Lock className="w-4 h-4 text-gray-400" title="Locked (past Friday cutoff)" />}
                       </div>
                       <p className="text-xs text-gray-500 mt-1">{new Date(e.created_at).toLocaleDateString()}</p>
-                      {activeModule === 'daily-recon' && e.total_collected && (
-                        <p className="text-lg font-bold text-emerald-600 mt-2">${Number(e.total_collected).toFixed(2)}</p>
-                      )}
-                      {activeModule !== 'daily-recon' && (e.amount || e.amount_requested || e.amount_in_question) && (
+                      {(e.amount || e.amount_requested || e.amount_in_question) && (
                         <p className="text-lg font-bold text-emerald-600 mt-2">${Number(e.amount || e.amount_requested || e.amount_in_question).toFixed(2)}</p>
-                      )}
-{(activeModule === 'completed-procedure' || activeModule === 'claims-documents') && e.admin_notes && (
-                        <div className={`mt-2 p-2 rounded-lg text-sm ${e.status === 'Needs Revisions' ? 'bg-orange-100 text-orange-700 border border-orange-200' : 'bg-emerald-100 text-emerald-700 border border-emerald-200'}`}>
-                          <span className="font-medium">Rev-Rangers Feedback: </span>{e.admin_notes}
-                        </div>
                       )}
                       {docs.length > 0 && (
                         <div className="mt-3 space-y-1" onClick={ev => ev.stopPropagation()}>
@@ -6040,9 +4264,7 @@ return (
                       {canEdit && (
                         <button onClick={() => startEditingStaffEntry(e)} className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors" title="Edit"><Edit3 className="w-4 h-4" /></button>
                       )}
-                      {(!isChecklist || canEdit) && (
                         <button onClick={() => deleteRecord(activeModule, e.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
-                      )}
                     </div>
 </div>
                 )}
@@ -6073,7 +4295,7 @@ return (
 {sidebarOpen && <div className={LAYOUT.sidebarOverlay} onClick={() => setSidebarOpen(false)} />}
 {/* Version Footer */}
       <div className="fixed bottom-6 left-4 lg:left-[310px] z-[25] pointer-events-none">
-        <p className="text-xs text-gray-400 opacity-70">CMS v0.73</p>
+        <p className="text-xs text-gray-400 opacity-70">CMS v0.84</p>
       </div>
     </div>
   );
