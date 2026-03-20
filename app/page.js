@@ -1,4 +1,4 @@
-//Clinic Management System v0.84
+//Clinic Management System v0.73
 // Devoloper: Mark Murillo
 // Company: Kidshine Hawaii
 
@@ -2401,7 +2401,7 @@ const getStaffTotalPages = () => {
 const currentColors = MODULE_COLORS[activeModule] || { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-700', accent: 'bg-gray-500', light: 'bg-gray-100' };
   const currentModule = ALL_MODULES.find(m => m.id === activeModule);
   const visibleModules = currentUser?.role === 'rev_rangers'
-    ? MODULES.filter(m => m.id === 'billing-inquiry')
+    ? MODULES.filter(m => m.id === 'billing-inquiry' || m.id === 'hospital-cases')
     : currentUser?.role === 'finance_admin'
     ? MODULES.filter(m => m.id !== 'billing-inquiry')
     : MODULES;
@@ -2481,7 +2481,7 @@ if (!currentUser) {
           >
             {loginLoading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Login →'}
           </button>
-<p className="text-xs text-center text-gray-400">BETA Version 0.84</p>
+<p className="text-xs text-center text-gray-400">BETA Version 0.73</p>
         </div>
       </div>
     </div>
@@ -2770,7 +2770,7 @@ onDelete={isITViewOnly ? null : async (recordId) => {
               <button onClick={() => setSidebarOpen(!sidebarOpen)} className="lg:hidden p-2 hover:bg-gray-100 rounded-xl"><Menu className="w-5 h-5" /></button>
               <div>
 <h1 className="font-bold text-gray-800 text-lg">
-                  {isAdmin ? (adminView === 'users' ? 'User Management' : adminView === 'export' ? 'Export Data' : adminView === 'documents' ? 'All Documents' : adminView === 'sop' ? 'Standard Operating Procedures' : adminView === 'settings' ? 'Settings' : adminView === 'analytics' ? 'Analytics' : currentUser?.role === 'rev_rangers' ? `Review: ${currentModule?.name}` : currentModule?.name) : (view === 'settings' ? 'Settings' : view === 'sop' ? 'Standard Operating Procedures' : currentModule?.name)}
+                  {isAdmin ? (adminView === 'users' ? 'User Management' : adminView === 'export' ? 'Export Data' : adminView === 'documents' ? 'All Documents' : adminView === 'sop' ? 'Standard Operating Procedures' : adminView === 'settings' ? 'Settings' : adminView === 'analytics' ? 'Analytics' : adminView === 'rev-entry' ? `New Entry: ${currentModule?.name}` : currentUser?.role === 'rev_rangers' ? `Review: ${currentModule?.name}` : currentModule?.name) : (view === 'settings' ? 'Settings' : view === 'sop' ? 'Standard Operating Procedures' : currentModule?.name)}
                 </h1>
                 <p className="text-sm text-gray-500">{isAdmin ? (adminLocation === 'all' ? 'All Locations' : adminLocation) : selectedLocation}</p>
               </div>
@@ -2782,7 +2782,11 @@ onDelete={isITViewOnly ? null : async (recordId) => {
           </div>
 {/* Tabs */}
           <div className="flex gap-2 px-4 pb-3 overflow-x-auto">
-{isAdmin && adminView === 'records' ? (
+{isAdmin && currentUser?.role === 'rev_rangers' && (adminView === 'records' || adminView === 'rev-entry') ? (
+              [{ id: 'rev-entry', label: '+ New Entry' }, { id: 'records', label: 'Records' }].map(tab => (
+                <button key={tab.id} onClick={() => setAdminView(tab.id)} className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${adminView === tab.id ? `${currentColors?.accent} text-white shadow-lg` : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{tab.label}</button>
+              ))
+            ) : isAdmin && adminView === 'records' ? (
               <button className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap flex items-center gap-2 transition-all ${currentColors?.accent} text-white shadow-lg`}>
                 <FileText className="w-4 h-4" />Records
               </button>
@@ -2790,10 +2794,6 @@ onDelete={isITViewOnly ? null : async (recordId) => {
               [{ id: 'entry', label: '+ New Entry' }, { id: 'history', label: 'History' }].map(tab => (
 <button key={tab.id} onClick={() => setView(tab.id)} className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${view === tab.id ? BTN.tabActive : BTN.tabInactive}`}>{tab.label}</button>
               ))
-            ) : isAdmin && adminView === 'records' && currentUser?.role === 'rev_rangers' ? (
-              <button className="px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap flex items-center gap-2 transition-all bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg">
-                <FileText className="w-4 h-4" />Review Submissions
-              </button>
             ) : null}
           </div>
         </header>
@@ -3857,6 +3857,48 @@ if (filteredData.length === 0) {
     </div>
   </div>
 )}
+{/* Rev Rangers New Entry */}
+{isAdmin && adminView === 'rev-entry' && currentUser?.role === 'rev_rangers' && STAFF_FORM_CONFIG[activeModule] && (
+  <div className="space-y-4">
+    {adminLocation === 'all' ? (
+      <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-amber-200">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center">
+            <Building2 className="w-6 h-6 text-amber-600" />
+          </div>
+          <div>
+            <h2 className="font-semibold text-gray-800">Select a Location</h2>
+            <p className="text-sm text-amber-600">Please select a specific location from the sidebar filter before entering data.</p>
+          </div>
+        </div>
+      </div>
+    ) : (
+      <>
+        <div className={CARD.colored(currentColors)}>
+          <h2 className="font-semibold mb-2 text-gray-800">{STAFF_FORM_CONFIG[activeModule].title}</h2>
+          {STAFF_FORM_CONFIG[activeModule].subtitle && <p className="text-sm text-gray-500 mb-4">{STAFF_FORM_CONFIG[activeModule].subtitle}</p>}
+          {!STAFF_FORM_CONFIG[activeModule].subtitle && <div className="mb-4" />}
+          {renderFormFields(STAFF_FORM_CONFIG[activeModule].fields, forms[activeModule], updateForm, activeModule)}
+          {STAFF_FORM_CONFIG[activeModule].largeField && (
+            <div className="mt-4">
+              <InputField label={STAFF_FORM_CONFIG[activeModule].largeField.label} large value={forms[activeModule][STAFF_FORM_CONFIG[activeModule].largeField.key]} onChange={e => updateForm(activeModule, STAFF_FORM_CONFIG[activeModule].largeField.key, e.target.value)} placeholder={STAFF_FORM_CONFIG[activeModule].largeField.placeholder} />
+            </div>
+          )}
+        </div>
+        <div className="bg-white rounded-2xl shadow-lg p-6">
+          <FileUpload label={STAFF_FORM_CONFIG[activeModule].fileLabel} files={files[activeModule][STAFF_FORM_CONFIG[activeModule].fileKey]} onFilesChange={f => updateFiles(activeModule, STAFF_FORM_CONFIG[activeModule].fileKey, f)} onViewFile={setViewingFile} />
+        </div>
+        <button
+          onClick={() => saveEntry(activeModule)}
+          disabled={saving}
+          className={`w-full py-4 ${BTN.primary} rounded-xl text-lg font-semibold disabled:opacity-50`}
+        >
+          {saving ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Save Entry'}
+        </button>
+      </>
+    )}
+  </div>
+)}
 {/* Records View - Admin */}
 {isAdmin && adminView === 'records' && (
   <div className="space-y-4">
@@ -4295,7 +4337,7 @@ if (filteredData.length === 0) {
 {sidebarOpen && <div className={LAYOUT.sidebarOverlay} onClick={() => setSidebarOpen(false)} />}
 {/* Version Footer */}
       <div className="fixed bottom-6 left-4 lg:left-[310px] z-[25] pointer-events-none">
-        <p className="text-xs text-gray-400 opacity-70">CMS v0.84</p>
+        <p className="text-xs text-gray-400 opacity-70">CMS v0.73</p>
       </div>
     </div>
   );
