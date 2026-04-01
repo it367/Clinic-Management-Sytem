@@ -1140,6 +1140,7 @@ const [orderEditForm, setOrderEditForm] = useState({
     result: entry?.result || ''
   });
 const [isEditing, setIsEditing] = useState(false);
+  const [eodReviewForm, setEodReviewForm] = useState({ review_status: entry?.review_status || 'For Review', review_notes: entry?.review_notes || '' });
   useEffect(() => {
     if (entry) {
       setEditForm({
@@ -1230,7 +1231,6 @@ const handleOrderSave = () => {
     setIsEditing(false);
     onClose();
   };
-  const [eodReviewForm, setEodReviewForm] = useState({ review_status: entry?.review_status || 'For Review', review_notes: entry?.review_notes || '' });
   const handleEodReviewSave = () => {
     if (onEodReview) {
       onEodReview(module?.id, entry.id, eodReviewForm.review_status, eodReviewForm.review_notes);
@@ -3274,7 +3274,7 @@ onDelete={isITViewOnly ? null : async (recordId) => {
       return (
         <button
           key={m.id}
-          onClick={() => { setActiveModule(m.id); setAdminView(currentUser?.role === 'rev_rangers' ? 'rev-entry' : 'records'); setView('entry'); setSidebarOpen(false); loadModuleData(m.id); }}
+          onClick={() => { setActiveModule(m.id); setAdminView('rev-entry'); setView('entry'); setSidebarOpen(false); loadModuleData(m.id); }}
           className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${isActive ? `${colors.bg} ${colors.text} ${colors.border} border-2` : 'text-gray-600 hover:bg-gray-50'}`}
         >
           <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isActive ? colors.light : 'bg-gray-100'}`}>
@@ -3359,7 +3359,11 @@ onDelete={isITViewOnly ? null : async (recordId) => {
           </div>
 {/* Tabs */}
           <div className="flex gap-2 px-4 pb-3 overflow-x-auto">
-{isAdmin && currentUser?.role === 'rev_rangers' && (adminView === 'records' || adminView === 'rev-entry') ? (
+{isAdmin && isEodModule(activeModule) && (adminView === 'records' || adminView === 'rev-entry') ? (
+              [{ id: 'rev-entry', label: '+ New Entry' }, { id: 'records', label: 'Records' }].map(tab => (
+                <button key={tab.id} onClick={() => setAdminView(tab.id)} className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${adminView === tab.id ? `${currentColors?.accent} text-white shadow-lg` : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{tab.label}</button>
+              ))
+            ) : isAdmin && currentUser?.role === 'rev_rangers' && (adminView === 'records' || adminView === 'rev-entry') ? (
               [{ id: 'rev-entry', label: '+ New Entry' }, { id: 'records', label: 'Records' }].map(tab => (
                 <button key={tab.id} onClick={() => setAdminView(tab.id)} className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${adminView === tab.id ? `${currentColors?.accent} text-white shadow-lg` : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{tab.label}</button>
               ))
@@ -4688,7 +4692,7 @@ if (filteredData.length === 0) {
   </div>
 )}
 {/* Rev Rangers New Entry */}
-{isAdmin && adminView === 'rev-entry' && currentUser?.role === 'rev_rangers' && STAFF_FORM_CONFIG[activeModule] && (
+{isAdmin && adminView === 'rev-entry' && (currentUser?.role === 'rev_rangers' || isEodModule(activeModule)) && STAFF_FORM_CONFIG[activeModule] && (
   <div className="space-y-4">
     {!isEodModule(activeModule) && adminLocation === 'all' ? (
       <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-amber-200">
@@ -4828,8 +4832,27 @@ if (filteredData.length === 0) {
             if (!entryDocuments[docKey]) {
               loadEntryDocuments(activeModule, e.id);
             }
+            const isEditingThis = editingStaffEntry === e.id;
             return (
               <div key={e.id} className={`p-4 rounded-xl border-2 ${currentColors?.border} ${currentColors?.bg} hover:shadow-md transition-all ${selectedRecords.includes(e.id) ? 'ring-2 ring-purple-500' : ''}`}>
+              {isEditingThis && STAFF_EDIT_FIELDS_CONFIG[activeModule] ? (
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h4 className={`font-semibold ${currentColors?.text} flex items-center gap-2`}><Edit3 className="w-4 h-4" /> Edit Entry</h4>
+                    <button onClick={() => { setEditingStaffEntry(null); setStaffEditForm({}); }} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
+                  </div>
+                  {renderStaffEditFields(STAFF_EDIT_FIELDS_CONFIG[activeModule].fields, staffEditForm, updateStaffEditForm)}
+                  {STAFF_EDIT_FIELDS_CONFIG[activeModule].largeField && (
+                    <div className="mt-2">
+                      <InputField label={STAFF_EDIT_FIELDS_CONFIG[activeModule].largeField.label} large value={staffEditForm[STAFF_EDIT_FIELDS_CONFIG[activeModule].largeField.key]} onChange={ev => updateStaffEditForm(STAFF_EDIT_FIELDS_CONFIG[activeModule].largeField.key, ev.target.value)} placeholder={STAFF_EDIT_FIELDS_CONFIG[activeModule].largeField.placeholder} />
+                    </div>
+                  )}
+                  <div className="flex gap-2 pt-2">
+                    <button onClick={saveStaffEntryUpdate} disabled={saving} className={`flex-1 py-2.5 ${BTN.save} disabled:opacity-50`}>{saving ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Save Changes'}</button>
+                    <button onClick={() => { setEditingStaffEntry(null); setStaffEditForm({}); }} className={`px-4 py-2.5 ${BTN.cancel}`}>Cancel</button>
+                  </div>
+                </div>
+              ) : (
                 <div className="flex justify-between items-start gap-4">
                   <div className="flex items-start gap-3 flex-1">
                     <button onClick={() => toggleRecordSelection(e.id)} className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 mt-1 transition-all ${selectedRecords.includes(e.id) ? 'bg-purple-600 border-purple-600' : 'border-gray-300 hover:border-purple-400'}`}>
@@ -4873,10 +4896,12 @@ if (filteredData.length === 0) {
                 </div>
 <div className="flex items-center gap-1" onClick={ev => ev.stopPropagation()}>
                   <button onClick={() => setViewingEntry(e)} className="p-2 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors" title="Preview"><Eye className="w-4 h-4" /></button>
+                  {isEodModule(activeModule) && <button onClick={() => startEditingStaffEntry(e)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors" title="Edit"><Edit3 className="w-4 h-4" /></button>}
                   <button onClick={() => deleteRecord(activeModule, e.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
                 </div>
               </div>
             </div>
+              )}
           );
           })}
         </div>
