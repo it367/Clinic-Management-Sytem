@@ -1,4 +1,4 @@
-//Clinic Management System v0.87
+//Clinic Management System v0.88
 // Devoloper: Mark Murillo
 // Company: Kidshine Hawaii
 
@@ -2952,76 +2952,111 @@ const currentColors = MODULE_COLORS[activeModule] || { bg: 'bg-gray-50', border:
 if (!currentUser) {
   return (
     <div className={LAYOUT.loginBg}>
+      {/* Animated background orbs */}
+      <div className="absolute top-1/4 -left-20 w-72 h-72 bg-purple-500/20 rounded-full blur-3xl animate-pulse"></div>
+      <div className="absolute bottom-1/4 -right-20 w-80 h-80 bg-blue-500/20 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '2s'}}></div>
+      {/* Floating grid pattern */}
+      <div className="absolute inset-0 opacity-[0.03]" style={{backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '40px 40px'}}></div>
+
       <div className={LAYOUT.loginCard}>
+        {/* Top accent line */}
+        <div className="absolute top-0 left-8 right-8 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-b-full"></div>
+
         <div className="text-center mb-8">
-<div className="w-64 h-20 mx-auto mb-4">
-            <img src="/kidshine.png" alt="KidShine Hawaii" className="w-full h-full object-contain" />
+          <div className="w-72 h-20 mx-auto mb-5 relative">
+            <img src="/kidshine.png" alt="KidShine Hawaii" className="w-full h-full object-contain drop-shadow-md" />
           </div>
-<h1 className="text-2xl font-bold text-gray-800">CMS - KidShine Hawaii</h1>
-          <p className="text-gray-500 text-sm mt-1">Clinic Management Portal</p>
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">Clinic Management System</h1>
+          <p className="text-gray-400 text-sm mt-1.5 flex items-center justify-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            Secure Portal
+          </p>
         </div>
+
         {message.text && (
-       <div className={`mb-4 p-3 rounded-xl text-sm flex items-center gap-2 ${message.type === 'error' ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-emerald-50 border border-emerald-200 text-emerald-700'}`}>
-            <AlertCircle className="w-4 h-4" />
+          <div className={`mb-5 p-3.5 rounded-xl text-sm flex items-center gap-2.5 animate-in slide-in-from-top duration-300 ${message.type === 'error' ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-emerald-50 border border-emerald-200 text-emerald-700'}`}>
+            <AlertCircle className="w-4 h-4 flex-shrink-0" />
             {message.text}
           </div>
         )}
-        <div className="space-y-4">
-          <div>
-            <label className="text-sm font-medium text-gray-700 mb-1.5 block">Email / Username</label>
-            <input
-              type="text"
-              value={loginEmail}
-              onChange={e => setLoginEmail(e.target.value)}
-              className="w-full p-3.5 border-2 border-gray-200 rounded-xl outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100 transition-all"
-              placeholder="Enter email"
-            />
+
+        <div className="space-y-5">
+          <div className="group">
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 block transition-colors group-focus-within:text-blue-600">Email / Username</label>
+            <div className="relative">
+              <div className="absolute left-3.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center transition-all group-focus-within:bg-blue-100">
+                <User className="w-4 h-4 text-gray-400 transition-colors group-focus-within:text-blue-500" />
+              </div>
+              <input
+                type="text"
+                value={loginEmail}
+                onChange={e => setLoginEmail(e.target.value)}
+                className="w-full pl-14 pr-4 py-3.5 border-2 border-gray-200 rounded-xl outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100/50 transition-all duration-200 bg-gray-50/50 focus:bg-white"
+                placeholder="Enter your email"
+              />
+            </div>
           </div>
-          <div>
-            <label className="text-sm font-medium text-gray-700 mb-1.5 block">Password</label>
-            <div className="flex items-center border-2 border-gray-200 rounded-xl bg-white transition-all hover:border-gray-300 focus-within:border-blue-400 focus-within:ring-4 focus-within:ring-blue-100">
+
+          <div className="group">
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 block transition-colors group-focus-within:text-blue-600">Password</label>
+            <div className="relative">
+              <div className="absolute left-3.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center transition-all group-focus-within:bg-blue-100">
+                <Lock className="w-4 h-4 text-gray-400 transition-colors group-focus-within:text-blue-500" />
+              </div>
               <input
                 type={showLoginPwd ? 'text' : 'password'}
                 value={loginPassword}
                 onChange={e => setLoginPassword(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleLogin()}
-                className="w-full p-3.5 rounded-xl outline-none bg-transparent"
-                placeholder="Enter password"
+                className="w-full pl-14 pr-14 py-3.5 border-2 border-gray-200 rounded-xl outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100/50 transition-all duration-200 bg-gray-50/50 focus:bg-white"
+                placeholder="Enter your password"
               />
-              <button type="button" onClick={() => setShowLoginPwd(!showLoginPwd)} className="px-4 text-gray-400 hover:text-gray-600">
-                {showLoginPwd ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              <button type="button" onClick={() => setShowLoginPwd(!showLoginPwd)} className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all duration-200">
+                {showLoginPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
           </div>
-          {/* Remember Me Checkbox */}
-          <div className="flex items-center gap-2">
+
+          {/* Remember Me */}
+          <div className="flex items-center justify-between">
             <button
               type="button"
               onClick={() => setRememberMe(!rememberMe)}
-              className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${rememberMe ? 'bg-blue-600 border-blue-600' : 'border-gray-300 hover:border-blue-400'}`}
+              className="flex items-center gap-2.5 group/check"
             >
-              {rememberMe && (
-                <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-              )}
-            </button> 
-{/*SEASION ONLY FOR 30DAYS*/}
-            <label 
-              onClick={() => setRememberMe(!rememberMe)}
-              className="text-sm text-gray-600 cursor-pointer select-none"
-            >
-              Stay logged in 
-            </label>
+              <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all duration-200 ${rememberMe ? 'bg-blue-600 border-blue-600 shadow-sm shadow-blue-200' : 'border-gray-300 group-hover/check:border-blue-400'}`}>
+                {rememberMe && (
+                  <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
+              </div>
+              <span className="text-sm text-gray-500 select-none group-hover/check:text-gray-700 transition-colors">Stay logged in</span>
+            </button>
           </div>
+
           <button
             onClick={handleLogin}
             disabled={loginLoading}
-            className={`w-full py-4 ${BTN.primary} rounded-xl text-lg font-semibold hover:shadow-blue-500/30 disabled:opacity-50`}
+            className="w-full py-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white rounded-xl text-base font-semibold shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2"
           >
-            {loginLoading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Login →'}
+            {loginLoading ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <>Sign In <ChevronRight className="w-4 h-4" /></>
+            )}
           </button>
-<p className="text-xs text-center text-gray-400">BETA Version 0.86</p>
+
+          {/* Footer info */}
+          <div className="pt-2 flex items-center justify-center gap-3">
+            <div className="flex items-center gap-1.5 text-xs text-gray-400">
+              <Shield className="w-3 h-3" />
+              <span>256-bit encrypted</span>
+            </div>
+            <span className="text-gray-300">|</span>
+            <p className="text-xs text-gray-400">v0.87</p>
+          </div>
         </div>
       </div>
     </div>
@@ -3030,30 +3065,37 @@ if (!currentUser) {
 if ((!isAdmin || isOfficeManager) && !selectedLocation && userLocations.length > 1) {
     return (
       <div className={LAYOUT.loginBg}>
+        {/* Animated background orbs */}
+        <div className="absolute top-1/4 -left-20 w-72 h-72 bg-purple-500/20 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-1/4 -right-20 w-80 h-80 bg-blue-500/20 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
+        <div className="absolute inset-0 opacity-[0.03]" style={{backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '40px 40px'}}></div>
         <div className={LAYOUT.loginCard}>
+          <div className="absolute top-0 left-8 right-8 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-b-full"></div>
           <div className="text-center mb-6">
-            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-500/25">
               <User className="w-8 h-8 text-white" />
             </div>
-            <h1 className="text-xl font-bold text-gray-800">Welcome, {currentUser.name}!</h1>
-            <p className="text-gray-500">Select your location</p>
+            <h1 className="text-xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">Welcome, {currentUser.name}!</h1>
+            <p className="text-gray-400 text-sm mt-1">Select your location to continue</p>
           </div>
-          <div className="space-y-2">
-            {userLocations.map(loc => (
+          <div className="space-y-2.5">
+            {userLocations.map((loc, i) => (
               <button
                 key={loc.id}
                 onClick={() => setSelectedLocation(loc.name)}
-                className="w-full p-4 border-2 border-gray-200 rounded-xl text-left hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 hover:border-blue-300 flex items-center gap-3 transition-all"
+                className="w-full p-4 border-2 border-gray-100 rounded-xl text-left hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 hover:border-blue-300 hover:-translate-y-0.5 hover:shadow-md flex items-center gap-3 transition-all duration-200 group"
+                style={{animationDelay: `${i * 100}ms`}}
               >
-                <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+                <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center transition-transform duration-200 group-hover:scale-110">
                   <Building2 className="w-5 h-5 text-blue-600" />
                 </div>
                 <span className="font-medium text-gray-700">{loc.name}</span>
+                <ChevronRight className="w-4 h-4 text-gray-300 ml-auto group-hover:text-blue-500 transition-all duration-200 group-hover:translate-x-0.5" />
               </button>
             ))}
           </div>
-          <button onClick={handleLogout} className="w-full mt-6 py-2.5 text-gray-500 hover:text-gray-700 transition-colors">
-            ← Back to Login
+          <button onClick={handleLogout} className="w-full mt-6 py-2.5 text-sm text-gray-400 hover:text-gray-600 transition-all duration-200 flex items-center justify-center gap-1.5">
+            <ChevronLeft className="w-4 h-4" /> Back to Login
           </button>
         </div>
       </div>
