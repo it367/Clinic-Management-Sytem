@@ -1748,6 +1748,10 @@ if (sessionData.user.role === 'super_admin' || sessionData.user.role === 'financ
   loadItUsers();
   loadFinanceAdminUsers();
 setAdminView('analytics');
+} else if (sessionData.user.role === 'rev_rangers_admin') {
+  loadUsers();
+  setActiveModule('eod-patient-scheduling');
+  setAdminView('eod-analytics');
 }
       }
     } catch (e) {
@@ -2062,6 +2066,7 @@ const { data: usersData, error: usersError } = await supabase
     else { showMessage('error', 'Could not download document'); }
   };
   const loadModuleData = async (moduleId) => {
+    if (currentUser?.role === 'rev_rangers_admin' && !isEodModule(moduleId)) return;
     setLoading(true);
     const module = ALL_MODULES.find(m => m.id === moduleId);
     if (!module) return;
@@ -2239,6 +2244,11 @@ if (user.role === 'super_admin' || user.role === 'finance_admin' || user.role ==
       loadFinanceAdminUsers();
       loadLoginHistory(user.id);
 setAdminView('analytics');
+    } else if (user.role === 'rev_rangers_admin') {
+      loadUsers();
+      setActiveModule('eod-patient-scheduling');
+      setAdminView('eod-analytics');
+      loadEodAnalyticsData(eodAnalyticsMonth);
     }
     showMessage('success', '✓ Login successful!');
   } catch (err) {
@@ -2487,6 +2497,7 @@ if (!confirmed) return;
     return uploadedFiles;
   };
 const saveEntry = async (moduleId) => {
+    if (currentUser?.role === 'rev_rangers_admin' && !isEodModule(moduleId)) { showMessage('error', 'Access denied'); return; }
     const confirmed = await showConfirm('Submit Entry', 'Are you sure you want to submit this entry?', 'Submit', 'green');
     if (!confirmed) return;;
     setSaving(true);
@@ -3186,87 +3197,105 @@ onDelete={isITViewOnly ? null : async (recordId) => {
           </div>
         )}
         {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto">
-          {/* Analytics - Admin Only (not for rev_rangers_admin) */}
-{isAdmin && (
-            <>
+        <nav className="flex-1 px-3 py-4 overflow-y-auto space-y-2">
+          {/* Analytics - Admin Only (not for rev_rangers or rev_rangers_admin) */}
+{isAdmin && currentUser?.role !== 'rev_rangers_admin' && currentUser?.role !== 'rev_rangers' && (
+            <div className="mb-2">
               <button
                 onClick={() => { setAdminView('analytics'); setSidebarOpen(false); }}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${adminView === 'analytics' ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-lg' : 'text-gray-600 hover:bg-gray-50'}`}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all duration-200 ${adminView === 'analytics' ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-lg shadow-purple-200' : 'text-gray-600 hover:bg-gray-50 hover:translate-x-0.5'}`}
               >
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${adminView === 'analytics' ? 'bg-white/20' : 'bg-gray-100'}`}>
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors duration-200 ${adminView === 'analytics' ? 'bg-white/20' : 'bg-gray-100'}`}>
                   <BarChart3 className={`w-4 h-4 ${adminView === 'analytics' ? 'text-white' : 'text-gray-500'}`} />
                 </div>
                 <span className="text-sm font-medium">Analytics</span>
               </button>
-              <div className="border-t my-3"></div>
-            </>
+            </div>
           )}
 {visibleModules.length > 0 && (
-          <>
-          <button onClick={() => setCollapsedSections(prev => ({ ...prev, modules: !prev.modules }))} className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-gray-50 transition-all">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Modules</p>
-            <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${collapsedSections.modules ? '-rotate-90' : ''}`} />
+          <div className="rounded-xl bg-gray-50/50 border border-gray-100 overflow-hidden">
+          <button onClick={() => setCollapsedSections(prev => ({ ...prev, modules: !prev.modules }))} className="w-full flex items-center justify-between px-3.5 py-2.5 hover:bg-gray-100/80 transition-all duration-200 group">
+            <div className="flex items-center gap-2">
+              <div className="w-1 h-4 rounded-full bg-purple-400 transition-all duration-300 group-hover:h-5"></div>
+              <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Modules</p>
+            </div>
+            <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-300 ease-in-out ${collapsedSections.modules ? '-rotate-90' : 'rotate-0'}`} />
           </button>
-          {!collapsedSections.modules && visibleModules.map(m => {
+          <div className={`transition-all duration-300 ease-in-out overflow-hidden ${collapsedSections.modules ? 'max-h-0 opacity-0' : 'max-h-[600px] opacity-100'}`}>
+            <div className="px-1.5 pb-2 space-y-0.5">
+          {visibleModules.map(m => {
             const colors = MODULE_COLORS[m.id] || { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-700', accent: 'bg-gray-500', light: 'bg-gray-100' };
             const isActive = activeModule === m.id && adminView !== 'users' && adminView !== 'export' && adminView !== 'settings' && view !== 'settings';
             return (
               <button
                 key={m.id}
                 onClick={() => { setActiveModule(m.id); setAdminView('records'); setView('entry'); setSidebarOpen(false); }}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${isActive ? `${colors.bg} ${colors.text} ${colors.border} border-2` : 'text-gray-600 hover:bg-gray-50'}`}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all duration-200 group/item ${isActive ? `${colors.bg} ${colors.text} shadow-sm` : 'text-gray-600 hover:bg-white hover:shadow-sm hover:translate-x-0.5'}`}
               >
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isActive ? colors.light : 'bg-gray-100'}`}>
-                  <m.icon className={`w-4 h-4 ${isActive ? colors.text : 'text-gray-500'}`} />
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 ${isActive ? colors.light : 'bg-white group-hover/item:scale-105'}`}>
+                  <m.icon className={`w-4 h-4 transition-colors duration-200 ${isActive ? colors.text : 'text-gray-400 group-hover/item:text-gray-600'}`} />
                 </div>
                 <span className="text-sm font-medium">{m.name}</span>
+                {isActive && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-current animate-pulse"></div>}
             </button>
             );
           })}
-          </>
+            </div>
+          </div>
+          </div>
           )}
 {(currentUser?.role === 'super_admin' || currentUser?.role === 'it' || !isAdmin || isOfficeManager) && (
-            <>
-              <div className="border-t my-4"></div>
-              <button onClick={() => setCollapsedSections(prev => ({ ...prev, support: !prev.support }))} className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-gray-50 transition-all">
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Support</p>
-                <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${collapsedSections.support ? '-rotate-90' : ''}`} />
+          <div className="rounded-xl bg-gray-50/50 border border-gray-100 overflow-hidden">
+              <button onClick={() => setCollapsedSections(prev => ({ ...prev, support: !prev.support }))} className="w-full flex items-center justify-between px-3.5 py-2.5 hover:bg-gray-100/80 transition-all duration-200 group">
+                <div className="flex items-center gap-2">
+                  <div className="w-1 h-4 rounded-full bg-amber-400 transition-all duration-300 group-hover:h-5"></div>
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Support</p>
+                </div>
+                <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-300 ease-in-out ${collapsedSections.support ? '-rotate-90' : 'rotate-0'}`} />
               </button>
-              {!collapsedSections.support && SUPPORT_MODULES.map(m => {
+              <div className={`transition-all duration-300 ease-in-out overflow-hidden ${collapsedSections.support ? 'max-h-0 opacity-0' : 'max-h-[400px] opacity-100'}`}>
+                <div className="px-1.5 pb-2 space-y-0.5">
+              {SUPPORT_MODULES.map(m => {
                 const colors = MODULE_COLORS[m.id] || { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-700', accent: 'bg-gray-500', light: 'bg-gray-100' };
                 const isActive = activeModule === m.id && adminView !== 'users' && adminView !== 'export' && adminView !== 'settings' && view !== 'settings';
                 return (
                   <button
                     key={m.id}
                     onClick={() => { setActiveModule(m.id); setAdminView('records'); setView('entry'); setSidebarOpen(false); }}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${isActive ? `${colors.bg} ${colors.text} ${colors.border} border-2` : 'text-gray-600 hover:bg-gray-50'}`}
+                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all duration-200 group/item ${isActive ? `${colors.bg} ${colors.text} shadow-sm` : 'text-gray-600 hover:bg-white hover:shadow-sm hover:translate-x-0.5'}`}
                   >
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isActive ? colors.light : 'bg-gray-100'}`}>
-                      <m.icon className={`w-4 h-4 ${isActive ? colors.text : 'text-gray-500'}`} />
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 ${isActive ? colors.light : 'bg-white group-hover/item:scale-105'}`}>
+                      <m.icon className={`w-4 h-4 transition-colors duration-200 ${isActive ? colors.text : 'text-gray-400 group-hover/item:text-gray-600'}`} />
                     </div>
                     <span className="text-sm font-medium">{m.name}</span>
+                    {isActive && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-current animate-pulse"></div>}
                   </button>
                 );
               })}
-            </>
+                </div>
+              </div>
+          </div>
           )}
 {canAccessEod(currentUser?.role) && (
-  <>
-    <div className="border-t my-4"></div>
-    <button onClick={() => setCollapsedSections(prev => ({ ...prev, eod: !prev.eod }))} className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-gray-50 transition-all">
-      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">End of Day Reports</p>
-      <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${collapsedSections.eod ? '-rotate-90' : ''}`} />
+  <div className="rounded-xl bg-gray-50/50 border border-gray-100 overflow-hidden">
+    <button onClick={() => setCollapsedSections(prev => ({ ...prev, eod: !prev.eod }))} className="w-full flex items-center justify-between px-3.5 py-2.5 hover:bg-gray-100/80 transition-all duration-200 group">
+      <div className="flex items-center gap-2">
+        <div className="w-1 h-4 rounded-full bg-teal-400 transition-all duration-300 group-hover:h-5"></div>
+        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">End of Day Reports</p>
+      </div>
+      <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-300 ease-in-out ${collapsedSections.eod ? '-rotate-90' : 'rotate-0'}`} />
     </button>
-    {!collapsedSections.eod && (<>
+    <div className={`transition-all duration-300 ease-in-out overflow-hidden ${collapsedSections.eod ? 'max-h-0 opacity-0' : 'max-h-[600px] opacity-100'}`}>
+      <div className="px-1.5 pb-2 space-y-0.5">
     <button
       onClick={() => { setAdminView('eod-analytics'); loadEodAnalyticsData(eodAnalyticsMonth); setSidebarOpen(false); }}
-      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${adminView === 'eod-analytics' ? 'bg-teal-50 text-teal-700 border-2 border-teal-200' : 'text-gray-600 hover:bg-gray-50'}`}
+      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all duration-200 group/item ${adminView === 'eod-analytics' ? 'bg-teal-50 text-teal-700 shadow-sm' : 'text-gray-600 hover:bg-white hover:shadow-sm hover:translate-x-0.5'}`}
     >
-      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${adminView === 'eod-analytics' ? 'bg-teal-100' : 'bg-gray-100'}`}>
-        <BarChart3 className={`w-4 h-4 ${adminView === 'eod-analytics' ? 'text-teal-600' : 'text-gray-500'}`} />
+      <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 ${adminView === 'eod-analytics' ? 'bg-teal-100' : 'bg-white group-hover/item:scale-105'}`}>
+        <BarChart3 className={`w-4 h-4 transition-colors duration-200 ${adminView === 'eod-analytics' ? 'text-teal-600' : 'text-gray-400 group-hover/item:text-gray-600'}`} />
       </div>
       <span className="text-sm font-medium">EOD Analytics</span>
+      {adminView === 'eod-analytics' && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse"></div>}
     </button>
     {EOD_MODULES.map(m => {
       const colors = MODULE_COLORS[m.id] || { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-700', accent: 'bg-gray-500', light: 'bg-gray-100' };
@@ -3275,66 +3304,75 @@ onDelete={isITViewOnly ? null : async (recordId) => {
         <button
           key={m.id}
           onClick={() => { setActiveModule(m.id); setAdminView('rev-entry'); setView('entry'); setSidebarOpen(false); loadModuleData(m.id); }}
-          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${isActive ? `${colors.bg} ${colors.text} ${colors.border} border-2` : 'text-gray-600 hover:bg-gray-50'}`}
+          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all duration-200 group/item ${isActive ? `${colors.bg} ${colors.text} shadow-sm` : 'text-gray-600 hover:bg-white hover:shadow-sm hover:translate-x-0.5'}`}
         >
-          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isActive ? colors.light : 'bg-gray-100'}`}>
-            <m.icon className={`w-4 h-4 ${isActive ? colors.text : 'text-gray-500'}`} />
+          <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 ${isActive ? colors.light : 'bg-white group-hover/item:scale-105'}`}>
+            <m.icon className={`w-4 h-4 transition-colors duration-200 ${isActive ? colors.text : 'text-gray-400 group-hover/item:text-gray-600'}`} />
           </div>
           <span className="text-sm font-medium">{m.name}</span>
+          {isActive && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-current animate-pulse"></div>}
         </button>
       );
     })}
-    </>)}
-  </>
+      </div>
+    </div>
+  </div>
 )}
 {!isAdmin && (
-  <>
-    <div className="border-t my-4"></div>
-    <button onClick={() => { setView('sop'); loadSOPs(); setSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${view === 'sop' ? 'bg-blue-50 text-blue-700 border-2 border-blue-200' : 'text-gray-600 hover:bg-gray-50'}`}>
-      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${view === 'sop' ? 'bg-blue-100' : 'bg-gray-100'}`}><BookOpen className="w-4 h-4" /></div>
+  <div className="mt-1">
+    <button onClick={() => { setView('sop'); loadSOPs(); setSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all duration-200 ${view === 'sop' ? 'bg-blue-50 text-blue-700 shadow-sm' : 'text-gray-600 hover:bg-gray-50 hover:translate-x-0.5'}`}>
+      <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 ${view === 'sop' ? 'bg-blue-100' : 'bg-gray-100'}`}><BookOpen className="w-4 h-4" /></div>
       <span className="text-sm font-medium">SOPs</span>
     </button>
-  </>
+  </div>
 )}
 {isAdmin && (
-            <>
-              <div className="border-t my-4"></div>
-              <button onClick={() => setCollapsedSections(prev => ({ ...prev, management: !prev.management }))} className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-gray-50 transition-all">
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Management</p>
-                <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${collapsedSections.management ? '-rotate-90' : ''}`} />
+          <div className="rounded-xl bg-gray-50/50 border border-gray-100 overflow-hidden">
+              <button onClick={() => setCollapsedSections(prev => ({ ...prev, management: !prev.management }))} className="w-full flex items-center justify-between px-3.5 py-2.5 hover:bg-gray-100/80 transition-all duration-200 group">
+                <div className="flex items-center gap-2">
+                  <div className="w-1 h-4 rounded-full bg-indigo-400 transition-all duration-300 group-hover:h-5"></div>
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Management</p>
+                </div>
+                <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-300 ease-in-out ${collapsedSections.management ? '-rotate-90' : 'rotate-0'}`} />
               </button>
-              {!collapsedSections.management && (<>
-              <button onClick={() => { setAdminView('documents'); loadDocuments(); setSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${adminView === 'documents' ? 'bg-purple-50 text-purple-700 border-2 border-purple-200' : 'text-gray-600 hover:bg-gray-50'}`}>
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${adminView === 'documents' ? 'bg-purple-100' : 'bg-gray-100'}`}><FolderOpen className="w-4 h-4" /></div>
+              <div className={`transition-all duration-300 ease-in-out overflow-hidden ${collapsedSections.management ? 'max-h-0 opacity-0' : 'max-h-[400px] opacity-100'}`}>
+                <div className="px-1.5 pb-2 space-y-0.5">
+              <button onClick={() => { setAdminView('documents'); loadDocuments(); setSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all duration-200 group/item ${adminView === 'documents' ? 'bg-purple-50 text-purple-700 shadow-sm' : 'text-gray-600 hover:bg-white hover:shadow-sm hover:translate-x-0.5'}`}>
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 ${adminView === 'documents' ? 'bg-purple-100' : 'bg-white group-hover/item:scale-105'}`}><FolderOpen className={`w-4 h-4 transition-colors duration-200 ${adminView === 'documents' ? 'text-purple-600' : 'text-gray-400 group-hover/item:text-gray-600'}`} /></div>
                 <span className="text-sm font-medium">Documents</span>
+                {adminView === 'documents' && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse"></div>}
               </button>
-              <button onClick={() => { setAdminView('export'); setSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${adminView === 'export' ? 'bg-purple-50 text-purple-700 border-2 border-purple-200' : 'text-gray-600 hover:bg-gray-50'}`}>
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${adminView === 'export' ? 'bg-purple-100' : 'bg-gray-100'}`}><Download className="w-4 h-4" /></div>
+              <button onClick={() => { setAdminView('export'); setSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all duration-200 group/item ${adminView === 'export' ? 'bg-purple-50 text-purple-700 shadow-sm' : 'text-gray-600 hover:bg-white hover:shadow-sm hover:translate-x-0.5'}`}>
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 ${adminView === 'export' ? 'bg-purple-100' : 'bg-white group-hover/item:scale-105'}`}><Download className={`w-4 h-4 transition-colors duration-200 ${adminView === 'export' ? 'text-purple-600' : 'text-gray-400 group-hover/item:text-gray-600'}`} /></div>
                 <span className="text-sm font-medium">Export</span>
+                {adminView === 'export' && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse"></div>}
               </button>
-              <button onClick={() => { setAdminView('sop'); loadSOPs(); setSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${adminView === 'sop' ? 'bg-purple-50 text-purple-700 border-2 border-purple-200' : 'text-gray-600 hover:bg-gray-50'}`}>
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${adminView === 'sop' ? 'bg-purple-100' : 'bg-gray-100'}`}><BookOpen className="w-4 h-4" /></div>
+              <button onClick={() => { setAdminView('sop'); loadSOPs(); setSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all duration-200 group/item ${adminView === 'sop' ? 'bg-purple-50 text-purple-700 shadow-sm' : 'text-gray-600 hover:bg-white hover:shadow-sm hover:translate-x-0.5'}`}>
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 ${adminView === 'sop' ? 'bg-purple-100' : 'bg-white group-hover/item:scale-105'}`}><BookOpen className={`w-4 h-4 transition-colors duration-200 ${adminView === 'sop' ? 'text-purple-600' : 'text-gray-400 group-hover/item:text-gray-600'}`} /></div>
                 <span className="text-sm font-medium">SOPs</span>
+                {adminView === 'sop' && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse"></div>}
               </button>
 {(currentUser?.role === 'super_admin' || currentUser?.role === 'it' || currentUser?.role === 'rev_rangers' || currentUser?.role === 'rev_rangers_admin') && (
-                <button onClick={() => { setAdminView('users'); loadUsers(); setSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${adminView === 'users' ? 'bg-purple-50 text-purple-700 border-2 border-purple-200' : 'text-gray-600 hover:bg-gray-50'}`}>
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${adminView === 'users' ? 'bg-purple-100' : 'bg-gray-100'}`}><Users className="w-4 h-4" /></div>
+                <button onClick={() => { setAdminView('users'); loadUsers(); setSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all duration-200 group/item ${adminView === 'users' ? 'bg-purple-50 text-purple-700 shadow-sm' : 'text-gray-600 hover:bg-white hover:shadow-sm hover:translate-x-0.5'}`}>
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 ${adminView === 'users' ? 'bg-purple-100' : 'bg-white group-hover/item:scale-105'}`}><Users className={`w-4 h-4 transition-colors duration-200 ${adminView === 'users' ? 'text-purple-600' : 'text-gray-400 group-hover/item:text-gray-600'}`} /></div>
                   <span className="text-sm font-medium">Users</span>
+                  {adminView === 'users' && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse"></div>}
                 </button>
               )}
-              </>)}
-            </>
+                </div>
+              </div>
+          </div>
           )}
         </nav>
         {/* Bottom buttons */}
-        <div className="flex-shrink-0 p-4 border-t bg-gray-50">
+        <div className="flex-shrink-0 p-3 border-t border-gray-100 bg-gradient-to-t from-gray-50 to-white">
           <button
             onClick={() => { isAdmin ? setAdminView('settings') : setView('settings'); setSidebarOpen(false); }}
-            className={`w-full flex items-center justify-center gap-2 py-2.5 mb-2 rounded-xl transition-all ${(isAdmin ? adminView : view) === 'settings' ? (isAdmin ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700') : 'text-gray-500 hover:bg-gray-200'}`}
+            className={`w-full flex items-center justify-center gap-2 py-2.5 mb-1.5 rounded-xl text-sm font-medium transition-all duration-200 ${(isAdmin ? adminView : view) === 'settings' ? (isAdmin ? 'bg-purple-100 text-purple-700 shadow-sm' : 'bg-blue-100 text-blue-700 shadow-sm') : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'}`}
           >
-            <Settings className="w-4 h-4" /> Settings
+            <Settings className={`w-4 h-4 transition-transform duration-300 ${(isAdmin ? adminView : view) === 'settings' ? 'rotate-90' : ''}`} /> Settings
           </button>
-          <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 py-2.5 text-gray-500 hover:bg-red-50 hover:text-red-600 rounded-xl transition-all">
+          <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 py-2.5 text-sm font-medium text-gray-400 hover:bg-red-50 hover:text-red-500 rounded-xl transition-all duration-200">
             <LogOut className="w-4 h-4" /> Logout
           </button>
         </div>
@@ -3580,13 +3618,13 @@ onDelete={isITViewOnly ? null : async (recordId) => {
             </div>
           )}
 {/* ADMIN: Analytics */}
-{isAdmin && adminView === 'analytics' && (
+{isAdmin && adminView === 'analytics' && currentUser?.role !== 'rev_rangers_admin' && (
   <div className="space-y-6">
     {/* Module Selector */}
     <div className={CARD.analytics}>
 <div className="flex items-center gap-2 overflow-x-auto pb-1">
  {[
-          ...(currentUser?.role === 'rev_rangers' ? MODULES.filter(m => m.id === 'billing-inquiry' || m.id === 'hospital-cases') : currentUser?.role === 'rev_rangers_admin' ? MODULES.filter(m => m.id === 'billing-inquiry' || m.id === 'hospital-cases') : MODULES)
+          ...(currentUser?.role === 'rev_rangers' ? MODULES.filter(m => m.id === 'billing-inquiry' || m.id === 'hospital-cases') : MODULES)
         ].map(m => {
           const colors = MODULE_COLORS[m.id] || { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-700', accent: 'bg-gray-500', light: 'bg-gray-100' };
           const isActive = analyticsModule === m.id;
@@ -4462,7 +4500,7 @@ if (filteredData.length === 0) {
                 <div>
                   <label className="text-xs font-medium text-gray-600 mb-1.5 block">Module</label>
                   <select value={exportModule} onChange={e => setExportModule(e.target.value)} className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-purple-400 outline-none">
-                    {ALL_MODULES.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                    {(currentUser?.role === 'rev_rangers_admin' ? EOD_MODULES : currentUser?.role === 'rev_rangers' ? [...MODULES.filter(m => m.id === 'billing-inquiry' || m.id === 'hospital-cases'), ...EOD_MODULES] : ALL_MODULES).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                   </select>
                 </div>
                 <div>
