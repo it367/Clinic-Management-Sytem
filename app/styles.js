@@ -15,6 +15,12 @@ export const MODULE_COLORS = {
   'completed-procedure': { bg: 'bg-teal-50', border: 'border-teal-200', text: 'text-teal-700', accent: 'bg-teal-500', light: 'bg-teal-100' },
   'claims-documents': { bg: 'bg-sky-50', border: 'border-sky-200', text: 'text-sky-700', accent: 'bg-sky-500', light: 'bg-sky-100' },
   'hospital-cases': { bg: 'bg-indigo-50', border: 'border-indigo-200', text: 'text-indigo-700', accent: 'bg-indigo-500', light: 'bg-indigo-100' },
+  'eod-patient-scheduling': { bg: 'bg-teal-50', border: 'border-teal-200', text: 'text-teal-700', accent: 'bg-teal-500', light: 'bg-teal-100' },
+  'eod-insurance-verification': { bg: 'bg-cyan-50', border: 'border-cyan-200', text: 'text-cyan-700', accent: 'bg-cyan-500', light: 'bg-cyan-100' },
+  'eod-claim-submission': { bg: 'bg-sky-50', border: 'border-sky-200', text: 'text-sky-700', accent: 'bg-sky-500', light: 'bg-sky-100' },
+  'eod-payment-posting': { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700', accent: 'bg-blue-500', light: 'bg-blue-100' },
+  'eod-claim-followup': { bg: 'bg-violet-50', border: 'border-violet-200', text: 'text-violet-700', accent: 'bg-violet-500', light: 'bg-violet-100' },
+  'eod-patient-aging': { bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-700', accent: 'bg-purple-500', light: 'bg-purple-100' },
 };
 
 // ============================================================
@@ -36,6 +42,7 @@ export const STATUS_COLORS = {
   'Rejected': 'bg-red-100 text-red-700 border-red-200',
   'Needs Revisions': 'bg-orange-100 text-orange-700 border-orange-200',
   'Reviewed': 'bg-blue-100 text-blue-700 border-blue-200',
+  'Updates Needed': 'bg-orange-100 text-orange-700 border-orange-200',
   _default: 'bg-gray-100 text-gray-600 border-gray-200',
 };
 
@@ -49,6 +56,7 @@ export const ROLE_STYLES = {
   super_admin: { gradient: 'bg-gradient-to-r from-rose-600 to-pink-600', avatar: 'bg-gradient-to-br from-rose-500 to-pink-500', textAccent: 'text-purple-600' },
   finance_admin: { gradient: 'bg-gradient-to-r from-purple-600 to-indigo-600', avatar: 'bg-gradient-to-br from-purple-500 to-indigo-500', textAccent: 'text-purple-600' },
   staff: { gradient: 'bg-gradient-to-r from-blue-600 to-indigo-600', avatar: 'bg-gradient-to-br from-blue-500 to-indigo-500', textAccent: 'text-blue-600' },
+  rev_rangers_admin: { gradient: 'bg-gradient-to-r from-violet-600 to-purple-600', avatar: 'bg-gradient-to-br from-violet-500 to-purple-500', textAccent: 'text-violet-600' },
 };
 
 // ============================================================
@@ -139,6 +147,11 @@ export const ANALYTICS_CARDS = {
   rose: 'bg-gradient-to-br from-rose-500 to-pink-600 rounded-2xl p-4 text-white shadow-lg',
   red: 'bg-gradient-to-br from-red-500 to-rose-600 rounded-2xl p-4 text-white shadow-lg',
   gray: 'bg-gradient-to-br from-gray-500 to-gray-600 rounded-2xl p-4 text-white shadow-lg',
+  indigo: 'bg-gradient-to-br from-indigo-500 to-blue-600 rounded-2xl p-4 text-white shadow-lg',
+  teal: 'bg-gradient-to-br from-teal-500 to-cyan-600 rounded-2xl p-4 text-white shadow-lg',
+  cyan: 'bg-gradient-to-br from-cyan-500 to-sky-600 rounded-2xl p-4 text-white shadow-lg',
+  sky: 'bg-gradient-to-br from-sky-500 to-blue-600 rounded-2xl p-4 text-white shadow-lg',
+  orange: 'bg-gradient-to-br from-orange-500 to-amber-600 rounded-2xl p-4 text-white shadow-lg',
   // Subtitle text colors per card type
   subtitleColors: {
     emerald: 'text-emerald-100',
@@ -148,6 +161,11 @@ export const ANALYTICS_CARDS = {
     violet: 'text-violet-100',
     rose: 'text-rose-100',
     red: 'text-red-100',
+    indigo: 'text-indigo-100',
+    teal: 'text-teal-100',
+    cyan: 'text-cyan-100',
+    sky: 'text-sky-100',
+    orange: 'text-orange-100',
   },
   detailColors: {
     emerald: 'text-emerald-200',
@@ -157,6 +175,11 @@ export const ANALYTICS_CARDS = {
     violet: 'text-violet-200',
     rose: 'text-rose-200',
     red: 'text-red-200',
+    indigo: 'text-indigo-200',
+    teal: 'text-teal-200',
+    cyan: 'text-cyan-200',
+    sky: 'text-sky-200',
+    orange: 'text-orange-200',
   },
 };
 
