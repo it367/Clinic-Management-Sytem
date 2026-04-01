@@ -1230,7 +1230,7 @@ const handleOrderSave = () => {
     setIsEditing(false);
     onClose();
   };
-  const [eodReviewForm, setEodReviewForm] = useState({ review_status: entry.review_status || 'For Review', review_notes: entry.review_notes || '' });
+  const [eodReviewForm, setEodReviewForm] = useState({ review_status: entry?.review_status || 'For Review', review_notes: entry?.review_notes || '' });
   const handleEodReviewSave = () => {
     if (onEodReview) {
       onEodReview(module?.id, entry.id, eodReviewForm.review_status, eodReviewForm.review_notes);
@@ -1619,7 +1619,7 @@ const [loginHistory, setLoginHistory] = useState([]);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [viewingFile, setViewingFile] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [collapsedSections, setCollapsedSections] = useState({ support: true, eod: true, management: true });
+  const [collapsedSections, setCollapsedSections] = useState({});
   const [adminLocation, setAdminLocation] = useState('all');
   const [editingStatus, setEditingStatus] = useState(null);
   const [editingEntry, setEditingEntry] = useState(null);
@@ -1828,6 +1828,18 @@ const isAdmin = currentUser?.role === 'super_admin' || currentUser?.role === 'fi
 const isSuperAdmin = currentUser?.role === 'super_admin' || currentUser?.role === 'it';
 const isOfficeManager = currentUser?.role === 'office_manager';
 const isITViewOnly = currentUser?.role === 'it' && activeModule !== 'it-requests';
+useEffect(() => {
+  if (!currentUser) return;
+  const role = currentUser.role;
+  const hasModules = role !== 'rev_rangers_admin';
+  const hasSupport = role === 'super_admin' || role === 'it' || !isAdmin || role === 'office_manager';
+  const hasEod = canAccessEod(role);
+  const sections = ['modules', 'support', 'eod', 'management'];
+  const visible = sections.filter(s => s === 'modules' ? hasModules : s === 'support' ? hasSupport : s === 'eod' ? hasEod : isAdmin);
+  const collapsed = {};
+  visible.forEach((s, i) => { collapsed[s] = i > 0; });
+  setCollapsedSections(collapsed);
+}, [currentUser?.id]);
 const showConfirm = (title, message, confirmText = 'Confirm', confirmColor = 'blue') => {
   return new Promise((resolve) => {
     setConfirmDialog({
@@ -3176,7 +3188,7 @@ onDelete={isITViewOnly ? null : async (recordId) => {
         {/* Navigation */}
         <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto">
           {/* Analytics - Admin Only (not for rev_rangers_admin) */}
-{isAdmin && currentUser?.role !== 'rev_rangers_admin' && (
+{isAdmin && (
             <>
               <button
                 onClick={() => { setAdminView('analytics'); setSidebarOpen(false); }}
@@ -3570,7 +3582,7 @@ onDelete={isITViewOnly ? null : async (recordId) => {
     <div className={CARD.analytics}>
 <div className="flex items-center gap-2 overflow-x-auto pb-1">
  {[
-          ...(currentUser?.role === 'rev_rangers' ? MODULES.filter(m => m.id === 'billing-inquiry' || m.id === 'hospital-cases') : MODULES)
+          ...(currentUser?.role === 'rev_rangers' ? MODULES.filter(m => m.id === 'billing-inquiry' || m.id === 'hospital-cases') : currentUser?.role === 'rev_rangers_admin' ? MODULES.filter(m => m.id === 'billing-inquiry' || m.id === 'hospital-cases') : MODULES)
         ].map(m => {
           const colors = MODULE_COLORS[m.id] || { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-700', accent: 'bg-gray-500', light: 'bg-gray-100' };
           const isActive = analyticsModule === m.id;
