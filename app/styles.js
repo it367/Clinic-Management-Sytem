@@ -114,8 +114,8 @@ export const INPUT = {
 export const LAYOUT = {
   // Page backgrounds
   pageBg: 'min-h-screen bg-gradient-to-br from-gray-50 to-slate-100 flex',
-  loginBg: 'min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4',
-  loginCard: 'bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl p-8 w-full max-w-sm border border-white/20',
+  loginBg: 'min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4 relative overflow-hidden',
+  loginCard: 'bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl p-8 w-full max-w-md border border-white/20 relative z-10',
   // Sidebar
   sidebar: 'fixed inset-y-0 left-0 z-40 w-72 bg-white/95 backdrop-blur-xl shadow-xl border-r border-gray-100 flex flex-col transform transition-all duration-300 ease-in-out lg:relative lg:translate-x-0 lg:h-screen lg:sticky lg:top-0',
   sidebarOpen: 'translate-x-0',
