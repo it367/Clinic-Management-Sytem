@@ -1,4 +1,4 @@
-//Clinic Management System v0.86
+//Clinic Management System v0.87
 // Devoloper: Mark Murillo
 // Company: Kidshine Hawaii
 
@@ -6,7 +6,7 @@
 import { useState, useEffect, useRef } from 'react';
 import JSZip from 'jszip';
 import { supabase } from '../lib/supabase';
-import { FileText, Building2, Bot, Send, Loader2, LogOut, User, Upload, X, File, Shield, Receipt, CreditCard, Package, RefreshCw, Monitor, Menu, Eye, EyeOff, FolderOpen, Edit3, Users, Plus, Trash2, Lock, Download, Settings, MessageCircle, Sparkles, AlertCircle, Maximize2, Minimize2, Search, TrendingUp, TrendingDown, Calendar, PieChart, BarChart3, BookOpen, Clock, FileCheck, Banknote, PhoneCall, UserCheck, ChevronLeft, ChevronRight } from 'lucide-react';
+import { FileText, Building2, Bot, Send, Loader2, LogOut, User, Upload, X, File, Shield, Receipt, CreditCard, Package, RefreshCw, Monitor, Menu, Eye, EyeOff, FolderOpen, Edit3, Users, Plus, Trash2, Lock, Download, Settings, MessageCircle, Sparkles, AlertCircle, Maximize2, Minimize2, Search, TrendingUp, TrendingDown, Calendar, PieChart, BarChart3, BookOpen, Clock, FileCheck, Banknote, PhoneCall, UserCheck, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 import { MODULE_COLORS, STATUS_COLORS, ROLE_STYLES, BTN, CARD, INPUT, LAYOUT, ANALYTICS_CARDS, ICON_BOX, URGENCY_COLORS, CONFIRM_COLORS, FILE_UPLOAD, CHECKBOX } from './styles';
 const MODULES = [
   { id: 'billing-inquiry', name: 'Billing Inquiry', icon: Receipt, color: 'blue', table: 'billing_inquiries' },
@@ -176,35 +176,35 @@ const MODULE_FIELD_CONFIG = {
   'eod-patient-scheduling': {
     getEntryData: (form) => ({
       patient_name_id: form.patient_name_id, patient_type: form.patient_type, insurance_provider: form.insurance_provider,
-      location: form.location, worked_call_date: form.worked_call_date || null, appt_booked_rs_date: form.appt_booked_rs_date || null,
+      worked_call_date: form.worked_call_date || null, appt_booked_rs_date: form.appt_booked_rs_date || null,
       call_type: form.call_type, call_outcome: form.call_outcome, memo: form.memo, review_status: 'For Review'
     }),
     getEditInitial: (e) => ({
       patient_name_id: e.patient_name_id || '', patient_type: e.patient_type || '', insurance_provider: e.insurance_provider || '',
-      location: e.location || '', worked_call_date: e.worked_call_date || '', appt_booked_rs_date: e.appt_booked_rs_date || '',
+      worked_call_date: e.worked_call_date || '', appt_booked_rs_date: e.appt_booked_rs_date || '',
       call_type: e.call_type || '', call_outcome: e.call_outcome || '', memo: e.memo || ''
     }),
     getUpdateData: (f) => ({
       patient_name_id: f.patient_name_id, patient_type: f.patient_type, insurance_provider: f.insurance_provider,
-      location: f.location, worked_call_date: f.worked_call_date || null, appt_booked_rs_date: f.appt_booked_rs_date || null,
+      worked_call_date: f.worked_call_date || null, appt_booked_rs_date: f.appt_booked_rs_date || null,
       call_type: f.call_type, call_outcome: f.call_outcome, memo: f.memo, review_status: 'For Review', reviewed_by: null, review_notes: null, date_reviewed: null
     })
   },
   'eod-insurance-verification': {
     getEntryData: (form) => ({
-      patient_id: form.patient_id, insurance_provider: form.insurance_provider, location: form.location,
+      patient_id: form.patient_id, insurance_provider: form.insurance_provider,
       verified_date: form.verified_date || null, dos: form.dos || null,
       time_started_hst: form.time_started_hst || null, time_ended_hst: form.time_ended_hst || null, time_duration: form.time_duration,
       status: form.status, review_status: 'For Review'
     }),
     getEditInitial: (e) => ({
-      patient_id: e.patient_id || '', insurance_provider: e.insurance_provider || '', location: e.location || '',
+      patient_id: e.patient_id || '', insurance_provider: e.insurance_provider || '',
       verified_date: e.verified_date || '', dos: e.dos || '',
       time_started_hst: e.time_started_hst || '', time_ended_hst: e.time_ended_hst || '', time_duration: e.time_duration || '',
       status: e.status || ''
     }),
     getUpdateData: (f) => ({
-      patient_id: f.patient_id, insurance_provider: f.insurance_provider, location: f.location,
+      patient_id: f.patient_id, insurance_provider: f.insurance_provider,
       verified_date: f.verified_date || null, dos: f.dos || null,
       time_started_hst: f.time_started_hst || null, time_ended_hst: f.time_ended_hst || null, time_duration: f.time_duration,
       status: f.status, review_status: 'For Review', reviewed_by: null, review_notes: null, date_reviewed: null
@@ -212,20 +212,20 @@ const MODULE_FIELD_CONFIG = {
   },
   'eod-claim-submission': {
     getEntryData: (form) => ({
-      claim_id: form.claim_id, insurance_provider: form.insurance_provider, location: form.location,
+      claim_id: form.claim_id, insurance_provider: form.insurance_provider,
       worked_date: form.worked_date || null, date_of_service: form.date_of_service || null,
       claim_amount: parseFloat(form.claim_amount) || null,
       time_started_hst: form.time_started_hst || null, time_ended_hst: form.time_ended_hst || null, time_duration: form.time_duration,
       claim_status: form.claim_status, comments: form.comments, review_status: 'For Review'
     }),
     getEditInitial: (e) => ({
-      claim_id: e.claim_id || '', insurance_provider: e.insurance_provider || '', location: e.location || '',
+      claim_id: e.claim_id || '', insurance_provider: e.insurance_provider || '',
       worked_date: e.worked_date || '', date_of_service: e.date_of_service || '',
       claim_amount: e.claim_amount || '', time_started_hst: e.time_started_hst || '', time_ended_hst: e.time_ended_hst || '',
       time_duration: e.time_duration || '', claim_status: e.claim_status || '', comments: e.comments || ''
     }),
     getUpdateData: (f) => ({
-      claim_id: f.claim_id, insurance_provider: f.insurance_provider, location: f.location,
+      claim_id: f.claim_id, insurance_provider: f.insurance_provider,
       worked_date: f.worked_date || null, date_of_service: f.date_of_service || null,
       claim_amount: parseFloat(f.claim_amount) || null,
       time_started_hst: f.time_started_hst || null, time_ended_hst: f.time_ended_hst || null, time_duration: f.time_duration,
@@ -235,7 +235,7 @@ const MODULE_FIELD_CONFIG = {
   'eod-payment-posting': {
     getEntryData: (form) => ({
       insurance_provider: form.insurance_provider, receipt_number: form.receipt_number,
-      time_started_hst: form.time_started_hst || null, location: form.location,
+      time_started_hst: form.time_started_hst || null,
       payment_date: form.payment_date || null, deposit_date: form.deposit_date || null,
       amount: parseFloat(form.amount) || null, payment_type: form.payment_type, reference_number: form.reference_number,
       date_posted: form.date_posted || null, time_ended_hst: form.time_ended_hst || null, time_duration: form.time_duration,
@@ -243,7 +243,7 @@ const MODULE_FIELD_CONFIG = {
     }),
     getEditInitial: (e) => ({
       insurance_provider: e.insurance_provider || '', receipt_number: e.receipt_number || '',
-      time_started_hst: e.time_started_hst || '', location: e.location || '',
+      time_started_hst: e.time_started_hst || '',
       payment_date: e.payment_date || '', deposit_date: e.deposit_date || '',
       amount: e.amount || '', payment_type: e.payment_type || '', reference_number: e.reference_number || '',
       date_posted: e.date_posted || '', time_ended_hst: e.time_ended_hst || '', time_duration: e.time_duration || '',
@@ -251,7 +251,7 @@ const MODULE_FIELD_CONFIG = {
     }),
     getUpdateData: (f) => ({
       insurance_provider: f.insurance_provider, receipt_number: f.receipt_number,
-      time_started_hst: f.time_started_hst || null, location: f.location,
+      time_started_hst: f.time_started_hst || null,
       payment_date: f.payment_date || null, deposit_date: f.deposit_date || null,
       amount: parseFloat(f.amount) || null, payment_type: f.payment_type, reference_number: f.reference_number,
       date_posted: f.date_posted || null, time_ended_hst: f.time_ended_hst || null, time_duration: f.time_duration,
@@ -260,20 +260,20 @@ const MODULE_FIELD_CONFIG = {
   },
   'eod-claim-followup': {
     getEntryData: (form) => ({
-      claim_id: form.claim_id, insurance_provider: form.insurance_provider, location: form.location,
+      claim_id: form.claim_id, insurance_provider: form.insurance_provider,
       worked_date: form.worked_date || null, date_of_service: form.date_of_service || null,
       claim_amount: parseFloat(form.claim_amount) || null,
       time_started_mnl: form.time_started_mnl || null, time_ended_mnl: form.time_ended_mnl || null, time_duration: form.time_duration,
       claim_status: form.claim_status, amount_collected: parseFloat(form.amount_collected) || null, review_status: 'For Review'
     }),
     getEditInitial: (e) => ({
-      claim_id: e.claim_id || '', insurance_provider: e.insurance_provider || '', location: e.location || '',
+      claim_id: e.claim_id || '', insurance_provider: e.insurance_provider || '',
       worked_date: e.worked_date || '', date_of_service: e.date_of_service || '',
       claim_amount: e.claim_amount || '', time_started_mnl: e.time_started_mnl || '', time_ended_mnl: e.time_ended_mnl || '',
       time_duration: e.time_duration || '', claim_status: e.claim_status || '', amount_collected: e.amount_collected || ''
     }),
     getUpdateData: (f) => ({
-      claim_id: f.claim_id, insurance_provider: f.insurance_provider, location: f.location,
+      claim_id: f.claim_id, insurance_provider: f.insurance_provider,
       worked_date: f.worked_date || null, date_of_service: f.date_of_service || null,
       claim_amount: parseFloat(f.claim_amount) || null,
       time_started_mnl: f.time_started_mnl || null, time_ended_mnl: f.time_ended_mnl || null, time_duration: f.time_duration,
@@ -283,20 +283,20 @@ const MODULE_FIELD_CONFIG = {
   },
   'eod-patient-aging': {
     getEntryData: (form) => ({
-      patient_id: form.patient_id, insurance_provider: form.insurance_provider, location: form.location,
+      patient_id: form.patient_id, insurance_provider: form.insurance_provider,
       worked_date: form.worked_date || null, date_of_service: form.date_of_service || null,
       text_to_pay_amount_sent: parseFloat(form.text_to_pay_amount_sent) || null,
       time_started_mnl: form.time_started_mnl || null, time_ended_mnl: form.time_ended_mnl || null, time_duration: form.time_duration,
       claim_status: form.claim_status, amount_collected: parseFloat(form.amount_collected) || null, review_status: 'For Review'
     }),
     getEditInitial: (e) => ({
-      patient_id: e.patient_id || '', insurance_provider: e.insurance_provider || '', location: e.location || '',
+      patient_id: e.patient_id || '', insurance_provider: e.insurance_provider || '',
       worked_date: e.worked_date || '', date_of_service: e.date_of_service || '',
       text_to_pay_amount_sent: e.text_to_pay_amount_sent || '', time_started_mnl: e.time_started_mnl || '', time_ended_mnl: e.time_ended_mnl || '',
       time_duration: e.time_duration || '', claim_status: e.claim_status || '', amount_collected: e.amount_collected || ''
     }),
     getUpdateData: (f) => ({
-      patient_id: f.patient_id, insurance_provider: f.insurance_provider, location: f.location,
+      patient_id: f.patient_id, insurance_provider: f.insurance_provider,
       worked_date: f.worked_date || null, date_of_service: f.date_of_service || null,
       text_to_pay_amount_sent: parseFloat(f.text_to_pay_amount_sent) || null,
       time_started_mnl: f.time_started_mnl || null, time_ended_mnl: f.time_ended_mnl || null, time_duration: f.time_duration,
@@ -411,13 +411,13 @@ const ENTRY_PREVIEW_CONFIG = {
   'eod-patient-scheduling': {
     previewFields: [
       { label: 'Patient Name / ID', key: 'patient_name_id' }, { label: 'Patient Type', key: 'patient_type' },
-      { label: 'Insurance Provider', key: 'insurance_provider' }, { label: 'Location', key: 'location' },
+      { label: 'Insurance Provider', key: 'insurance_provider' },
       { label: 'Worked / Call Date', key: 'worked_call_date', format: 'date' }, { label: 'Appt Booked / RS Date', key: 'appt_booked_rs_date', format: 'date' },
       { label: 'Call Type', key: 'call_type' }, { label: 'Call Outcome', key: 'call_outcome' },
       { label: 'Memo', key: 'memo', colSpan: 2, isBlock: true }
     ],
     reviewReadOnly: { show: (e) => e.reviewed_by || e.date_reviewed || e.review_notes, bgColor: 'bg-teal-50', borderColor: 'border-teal-200', textColor: 'text-teal-800', title: 'Review Details',
-      fields: [{ label: 'Review Status', key: 'review_status' }, { label: 'Reviewed By', key: 'reviewed_by' }, { label: 'Date Reviewed', key: 'date_reviewed', format: 'date' }, { label: 'Review Notes', key: 'review_notes', colSpan: 2 }] },
+      fields: [{ label: 'Review Status', key: 'review_status' }, { label: 'Reviewed By', key: 'reviewed_by', customRender: (e) => e.reviewer?.name || '-' }, { label: 'Date Reviewed', key: 'date_reviewed', format: 'date' }, { label: 'Review Notes', key: 'review_notes', colSpan: 2 }] },
     adminEdit: { btnGradient: 'from-teal-500 to-cyan-500', btnLabel: 'Review Entry', editBg: 'bg-teal-50', editBorder: 'border-teal-200', editTextColor: 'text-teal-800', editTitle: 'Review EOD Entry', focusColor: 'focus:border-teal-400',
       statuses: EOD_STATUSES, formKey: 'eodReview', saveHandler: 'handleEodReviewSave', isEodReview: true,
       fields: [{ type: 'select', label: 'Review Status', key: 'review_status' }],
@@ -427,13 +427,13 @@ const ENTRY_PREVIEW_CONFIG = {
   'eod-insurance-verification': {
     previewFields: [
       { label: 'Patient ID', key: 'patient_id' }, { label: 'Insurance Provider', key: 'insurance_provider' },
-      { label: 'Location', key: 'location' }, { label: 'Verified Date', key: 'verified_date', format: 'date' },
+      { label: 'Verified Date', key: 'verified_date', format: 'date' },
       { label: 'Date of Service', key: 'dos', format: 'date' },
       { label: 'Time Started (HST)', key: 'time_started_hst' }, { label: 'Time Ended (HST)', key: 'time_ended_hst' },
       { label: 'Time Duration', key: 'time_duration' }, { label: 'Status', key: 'status' }
     ],
     reviewReadOnly: { show: (e) => e.reviewed_by || e.date_reviewed || e.review_notes, bgColor: 'bg-cyan-50', borderColor: 'border-cyan-200', textColor: 'text-cyan-800', title: 'Review Details',
-      fields: [{ label: 'Review Status', key: 'review_status' }, { label: 'Reviewed By', key: 'reviewed_by' }, { label: 'Date Reviewed', key: 'date_reviewed', format: 'date' }, { label: 'Review Notes', key: 'review_notes', colSpan: 2 }] },
+      fields: [{ label: 'Review Status', key: 'review_status' }, { label: 'Reviewed By', key: 'reviewed_by', customRender: (e) => e.reviewer?.name || '-' }, { label: 'Date Reviewed', key: 'date_reviewed', format: 'date' }, { label: 'Review Notes', key: 'review_notes', colSpan: 2 }] },
     adminEdit: { btnGradient: 'from-cyan-500 to-sky-500', btnLabel: 'Review Entry', editBg: 'bg-cyan-50', editBorder: 'border-cyan-200', editTextColor: 'text-cyan-800', editTitle: 'Review EOD Entry', focusColor: 'focus:border-cyan-400',
       statuses: EOD_STATUSES, formKey: 'eodReview', saveHandler: 'handleEodReviewSave', isEodReview: true,
       fields: [{ type: 'select', label: 'Review Status', key: 'review_status' }],
@@ -443,14 +443,14 @@ const ENTRY_PREVIEW_CONFIG = {
   'eod-claim-submission': {
     previewFields: [
       { label: 'Claim ID', key: 'claim_id' }, { label: 'Insurance Provider', key: 'insurance_provider' },
-      { label: 'Location', key: 'location' }, { label: 'Worked Date', key: 'worked_date', format: 'date' },
+      { label: 'Worked Date', key: 'worked_date', format: 'date' },
       { label: 'Date of Service', key: 'date_of_service', format: 'date' }, { label: 'Claim Amount', key: 'claim_amount', format: 'currency', colorClass: 'text-emerald-600' },
       { label: 'Time Started (HST)', key: 'time_started_hst' }, { label: 'Time Ended (HST)', key: 'time_ended_hst' },
       { label: 'Time Duration', key: 'time_duration' }, { label: 'Claim Status', key: 'claim_status' },
       { label: 'Comments', key: 'comments', colSpan: 2, isBlock: true }
     ],
     reviewReadOnly: { show: (e) => e.reviewed_by || e.date_reviewed || e.review_notes, bgColor: 'bg-sky-50', borderColor: 'border-sky-200', textColor: 'text-sky-800', title: 'Review Details',
-      fields: [{ label: 'Review Status', key: 'review_status' }, { label: 'Reviewed By', key: 'reviewed_by' }, { label: 'Date Reviewed', key: 'date_reviewed', format: 'date' }, { label: 'Review Notes', key: 'review_notes', colSpan: 2 }] },
+      fields: [{ label: 'Review Status', key: 'review_status' }, { label: 'Reviewed By', key: 'reviewed_by', customRender: (e) => e.reviewer?.name || '-' }, { label: 'Date Reviewed', key: 'date_reviewed', format: 'date' }, { label: 'Review Notes', key: 'review_notes', colSpan: 2 }] },
     adminEdit: { btnGradient: 'from-sky-500 to-blue-500', btnLabel: 'Review Entry', editBg: 'bg-sky-50', editBorder: 'border-sky-200', editTextColor: 'text-sky-800', editTitle: 'Review EOD Entry', focusColor: 'focus:border-sky-400',
       statuses: EOD_STATUSES, formKey: 'eodReview', saveHandler: 'handleEodReviewSave', isEodReview: true,
       fields: [{ type: 'select', label: 'Review Status', key: 'review_status' }],
@@ -460,7 +460,7 @@ const ENTRY_PREVIEW_CONFIG = {
   'eod-payment-posting': {
     previewFields: [
       { label: 'Insurance Provider', key: 'insurance_provider' }, { label: 'Receipt #', key: 'receipt_number' },
-      { label: 'Location', key: 'location' }, { label: 'Payment Date', key: 'payment_date', format: 'date' },
+      { label: 'Payment Date', key: 'payment_date', format: 'date' },
       { label: 'Deposit Date', key: 'deposit_date', format: 'date' }, { label: 'Amount', key: 'amount', format: 'currency', colorClass: 'text-emerald-600' },
       { label: 'Payment Type', key: 'payment_type' }, { label: 'Reference #', key: 'reference_number' },
       { label: 'Date Posted', key: 'date_posted', format: 'date' },
@@ -469,7 +469,7 @@ const ENTRY_PREVIEW_CONFIG = {
       { label: 'Remarks', key: 'remarks', colSpan: 2, isBlock: true }
     ],
     reviewReadOnly: { show: (e) => e.reviewed_by || e.date_reviewed || e.review_notes, bgColor: 'bg-blue-50', borderColor: 'border-blue-200', textColor: 'text-blue-800', title: 'Review Details',
-      fields: [{ label: 'Review Status', key: 'review_status' }, { label: 'Reviewed By', key: 'reviewed_by' }, { label: 'Date Reviewed', key: 'date_reviewed', format: 'date' }, { label: 'Review Notes', key: 'review_notes', colSpan: 2 }] },
+      fields: [{ label: 'Review Status', key: 'review_status' }, { label: 'Reviewed By', key: 'reviewed_by', customRender: (e) => e.reviewer?.name || '-' }, { label: 'Date Reviewed', key: 'date_reviewed', format: 'date' }, { label: 'Review Notes', key: 'review_notes', colSpan: 2 }] },
     adminEdit: { btnGradient: 'from-blue-500 to-indigo-500', btnLabel: 'Review Entry', editBg: 'bg-blue-50', editBorder: 'border-blue-200', editTextColor: 'text-blue-800', editTitle: 'Review EOD Entry', focusColor: 'focus:border-blue-400',
       statuses: EOD_STATUSES, formKey: 'eodReview', saveHandler: 'handleEodReviewSave', isEodReview: true,
       fields: [{ type: 'select', label: 'Review Status', key: 'review_status' }],
@@ -479,14 +479,14 @@ const ENTRY_PREVIEW_CONFIG = {
   'eod-claim-followup': {
     previewFields: [
       { label: 'Claim ID', key: 'claim_id' }, { label: 'Insurance Provider', key: 'insurance_provider' },
-      { label: 'Location', key: 'location' }, { label: 'Worked Date', key: 'worked_date', format: 'date' },
+      { label: 'Worked Date', key: 'worked_date', format: 'date' },
       { label: 'Date of Service', key: 'date_of_service', format: 'date' }, { label: 'Claim Amount', key: 'claim_amount', format: 'currency', colorClass: 'text-emerald-600' },
       { label: 'Time Started (MNL)', key: 'time_started_mnl' }, { label: 'Time Ended (MNL)', key: 'time_ended_mnl' },
       { label: 'Time Duration', key: 'time_duration' }, { label: 'Claim Status', key: 'claim_status' },
       { label: 'Amount Collected', key: 'amount_collected', format: 'currency', colorClass: 'text-emerald-600' }
     ],
     reviewReadOnly: { show: (e) => e.reviewed_by || e.date_reviewed || e.review_notes, bgColor: 'bg-violet-50', borderColor: 'border-violet-200', textColor: 'text-violet-800', title: 'Review Details',
-      fields: [{ label: 'Review Status', key: 'review_status' }, { label: 'Reviewed By', key: 'reviewed_by' }, { label: 'Date Reviewed', key: 'date_reviewed', format: 'date' }, { label: 'Review Notes', key: 'review_notes', colSpan: 2 }] },
+      fields: [{ label: 'Review Status', key: 'review_status' }, { label: 'Reviewed By', key: 'reviewed_by', customRender: (e) => e.reviewer?.name || '-' }, { label: 'Date Reviewed', key: 'date_reviewed', format: 'date' }, { label: 'Review Notes', key: 'review_notes', colSpan: 2 }] },
     adminEdit: { btnGradient: 'from-violet-500 to-purple-500', btnLabel: 'Review Entry', editBg: 'bg-violet-50', editBorder: 'border-violet-200', editTextColor: 'text-violet-800', editTitle: 'Review EOD Entry', focusColor: 'focus:border-violet-400',
       statuses: EOD_STATUSES, formKey: 'eodReview', saveHandler: 'handleEodReviewSave', isEodReview: true,
       fields: [{ type: 'select', label: 'Review Status', key: 'review_status' }],
@@ -496,7 +496,7 @@ const ENTRY_PREVIEW_CONFIG = {
   'eod-patient-aging': {
     previewFields: [
       { label: 'Patient ID', key: 'patient_id' }, { label: 'Insurance Provider', key: 'insurance_provider' },
-      { label: 'Location', key: 'location' }, { label: 'Worked Date', key: 'worked_date', format: 'date' },
+      { label: 'Worked Date', key: 'worked_date', format: 'date' },
       { label: 'Date of Service', key: 'date_of_service', format: 'date' },
       { label: 'Text to Pay Amount Sent', key: 'text_to_pay_amount_sent', format: 'currency', colorClass: 'text-emerald-600' },
       { label: 'Time Started (MNL)', key: 'time_started_mnl' }, { label: 'Time Ended (MNL)', key: 'time_ended_mnl' },
@@ -504,7 +504,7 @@ const ENTRY_PREVIEW_CONFIG = {
       { label: 'Amount Collected', key: 'amount_collected', format: 'currency', colorClass: 'text-emerald-600' }
     ],
     reviewReadOnly: { show: (e) => e.reviewed_by || e.date_reviewed || e.review_notes, bgColor: 'bg-purple-50', borderColor: 'border-purple-200', textColor: 'text-purple-800', title: 'Review Details',
-      fields: [{ label: 'Review Status', key: 'review_status' }, { label: 'Reviewed By', key: 'reviewed_by' }, { label: 'Date Reviewed', key: 'date_reviewed', format: 'date' }, { label: 'Review Notes', key: 'review_notes', colSpan: 2 }] },
+      fields: [{ label: 'Review Status', key: 'review_status' }, { label: 'Reviewed By', key: 'reviewed_by', customRender: (e) => e.reviewer?.name || '-' }, { label: 'Date Reviewed', key: 'date_reviewed', format: 'date' }, { label: 'Review Notes', key: 'review_notes', colSpan: 2 }] },
     adminEdit: { btnGradient: 'from-purple-500 to-pink-500', btnLabel: 'Review Entry', editBg: 'bg-purple-50', editBorder: 'border-purple-200', editTextColor: 'text-purple-800', editTitle: 'Review EOD Entry', focusColor: 'focus:border-purple-400',
       statuses: EOD_STATUSES, formKey: 'eodReview', saveHandler: 'handleEodReviewSave', isEodReview: true,
       fields: [{ type: 'select', label: 'Review Status', key: 'review_status' }],
@@ -560,35 +560,35 @@ const ADMIN_CARD_CONFIG = {
   'eod-patient-scheduling': {
     getTitle: (e) => e.patient_name_id ? <span className="font-bold text-teal-600">{e.patient_name_id}</span> : null,
     getSubtitle: (e) => e.patient_type || 'No Type',
-    getDetail: (e) => `${e.insurance_provider || 'No Provider'} • ${e.location || ''} • ${e.worked_call_date ? new Date(e.worked_call_date).toLocaleDateString() : new Date(e.created_at).toLocaleDateString()}`,
+    getDetail: (e) => `${e.insurance_provider || 'No Provider'} • ${e.worked_call_date ? new Date(e.worked_call_date).toLocaleDateString() : new Date(e.created_at).toLocaleDateString()}`,
   },
   'eod-insurance-verification': {
     getTitle: (e) => e.patient_id ? <span className="font-bold text-cyan-600">{e.patient_id}</span> : null,
     getSubtitle: (e) => e.insurance_provider || 'No Provider',
-    getDetail: (e) => `${e.location || ''} • ${e.verified_date ? new Date(e.verified_date).toLocaleDateString() : new Date(e.created_at).toLocaleDateString()}`,
+    getDetail: (e) => `${e.insurance_provider || 'No Provider'} • ${e.verified_date ? new Date(e.verified_date).toLocaleDateString() : new Date(e.created_at).toLocaleDateString()}`,
   },
   'eod-claim-submission': {
     getTitle: (e) => e.claim_id ? <span className="font-bold text-sky-600">Claim: {e.claim_id}</span> : null,
     getSubtitle: (e) => e.insurance_provider || 'No Provider',
-    getDetail: (e) => `${e.location || ''} • ${e.worked_date ? new Date(e.worked_date).toLocaleDateString() : new Date(e.created_at).toLocaleDateString()}`,
+    getDetail: (e) => `${e.insurance_provider || 'No Provider'} • ${e.worked_date ? new Date(e.worked_date).toLocaleDateString() : new Date(e.created_at).toLocaleDateString()}`,
     getAmount: (e) => e.claim_amount > 0 ? `$${Number(e.claim_amount || 0).toFixed(2)}` : null,
   },
   'eod-payment-posting': {
     getTitle: (e) => e.receipt_number ? <span className="font-bold text-blue-600">Receipt# {e.receipt_number}</span> : null,
     getSubtitle: (e) => e.insurance_provider || 'No Provider',
-    getDetail: (e) => `${e.location || ''} • ${e.payment_date ? new Date(e.payment_date).toLocaleDateString() : new Date(e.created_at).toLocaleDateString()}`,
+    getDetail: (e) => `${e.insurance_provider || 'No Provider'} • ${e.payment_date ? new Date(e.payment_date).toLocaleDateString() : new Date(e.created_at).toLocaleDateString()}`,
     getAmount: (e) => e.amount > 0 ? `$${Number(e.amount || 0).toFixed(2)}` : null,
   },
   'eod-claim-followup': {
     getTitle: (e) => e.claim_id ? <span className="font-bold text-violet-600">Claim: {e.claim_id}</span> : null,
     getSubtitle: (e) => e.insurance_provider || 'No Provider',
-    getDetail: (e) => `${e.location || ''} • ${e.worked_date ? new Date(e.worked_date).toLocaleDateString() : new Date(e.created_at).toLocaleDateString()}`,
+    getDetail: (e) => `${e.insurance_provider || 'No Provider'} • ${e.worked_date ? new Date(e.worked_date).toLocaleDateString() : new Date(e.created_at).toLocaleDateString()}`,
     getAmount: (e) => e.claim_amount > 0 ? `$${Number(e.claim_amount || 0).toFixed(2)}` : null,
   },
   'eod-patient-aging': {
     getTitle: (e) => e.patient_id ? <span className="font-bold text-purple-600">{e.patient_id}</span> : null,
     getSubtitle: (e) => e.insurance_provider || 'No Provider',
-    getDetail: (e) => `${e.location || ''} • ${e.worked_date ? new Date(e.worked_date).toLocaleDateString() : new Date(e.created_at).toLocaleDateString()}`,
+    getDetail: (e) => `${e.insurance_provider || 'No Provider'} • ${e.worked_date ? new Date(e.worked_date).toLocaleDateString() : new Date(e.created_at).toLocaleDateString()}`,
     getAmount: (e) => e.amount_collected > 0 ? `$${Number(e.amount_collected || 0).toFixed(2)}` : null,
   }
 };
@@ -687,7 +687,6 @@ const STAFF_FORM_CONFIG = {
       { label: 'Patient Name / ID', key: 'patient_name_id' },
       { label: 'Patient Type', key: 'patient_type', options: PATIENT_TYPES },
       { label: 'Insurance Provider', key: 'insurance_provider', options: INSURANCE_PROVIDERS },
-      { label: 'Location', key: 'location' },
       { label: 'Worked / Call Date', key: 'worked_call_date', type: 'date' },
       { label: 'Appt Booked / RS Date', key: 'appt_booked_rs_date', type: 'date' },
       { label: 'Call Type', key: 'call_type' },
@@ -701,7 +700,6 @@ const STAFF_FORM_CONFIG = {
     fields: [
       { label: 'Patient ID', key: 'patient_id' },
       { label: 'Insurance Provider', key: 'insurance_provider', options: INSURANCE_PROVIDERS },
-      { label: 'Location', key: 'location' },
       { label: 'Verified Date', key: 'verified_date', type: 'date' },
       { label: 'Date of Service', key: 'dos', type: 'date' },
       { label: 'Time Started (HST)', key: 'time_started_hst', type: 'time' },
@@ -716,7 +714,6 @@ const STAFF_FORM_CONFIG = {
     fields: [
       { label: 'Claim ID', key: 'claim_id' },
       { label: 'Insurance Provider', key: 'insurance_provider', options: INSURANCE_PROVIDERS },
-      { label: 'Location', key: 'location' },
       { label: 'Worked Date', key: 'worked_date', type: 'date' },
       { label: 'Date of Service', key: 'date_of_service', type: 'date' },
       { label: 'Claim Amount', key: 'claim_amount', prefix: '$' },
@@ -733,7 +730,6 @@ const STAFF_FORM_CONFIG = {
     fields: [
       { label: 'Insurance Provider', key: 'insurance_provider', options: INSURANCE_PROVIDERS },
       { label: 'Receipt #', key: 'receipt_number' },
-      { label: 'Location', key: 'location' },
       { label: 'Payment Date', key: 'payment_date', type: 'date' },
       { label: 'Deposit Date', key: 'deposit_date', type: 'date' },
       { label: 'Amount', key: 'amount', prefix: '$' },
@@ -753,7 +749,6 @@ const STAFF_FORM_CONFIG = {
     fields: [
       { label: 'Claim ID', key: 'claim_id' },
       { label: 'Insurance Provider', key: 'insurance_provider', options: INSURANCE_PROVIDERS },
-      { label: 'Location', key: 'location' },
       { label: 'Worked Date', key: 'worked_date', type: 'date' },
       { label: 'Date of Service', key: 'date_of_service', type: 'date' },
       { label: 'Claim Amount', key: 'claim_amount', prefix: '$' },
@@ -770,7 +765,6 @@ const STAFF_FORM_CONFIG = {
     fields: [
       { label: 'Patient ID', key: 'patient_id' },
       { label: 'Insurance Provider', key: 'insurance_provider', options: INSURANCE_PROVIDERS },
-      { label: 'Location', key: 'location' },
       { label: 'Worked Date', key: 'worked_date', type: 'date' },
       { label: 'Date of Service', key: 'date_of_service', type: 'date' },
       { label: 'Text to Pay Amount Sent', key: 'text_to_pay_amount_sent', prefix: '$' },
@@ -852,7 +846,7 @@ const STAFF_EDIT_FIELDS_CONFIG = {
     fields: [
       { label: 'Patient Name / ID', key: 'patient_name_id' }, { label: 'Patient Type', key: 'patient_type', options: PATIENT_TYPES },
       { label: 'Insurance Provider', key: 'insurance_provider', options: INSURANCE_PROVIDERS },
-      { label: 'Location', key: 'location' }, { label: 'Worked / Call Date', key: 'worked_call_date', type: 'date' },
+      { label: 'Worked / Call Date', key: 'worked_call_date', type: 'date' },
       { label: 'Appt Booked / RS Date', key: 'appt_booked_rs_date', type: 'date' },
       { label: 'Call Type', key: 'call_type' }, { label: 'Call Outcome', key: 'call_outcome' },
     ],
@@ -861,7 +855,7 @@ const STAFF_EDIT_FIELDS_CONFIG = {
   'eod-insurance-verification': {
     fields: [
       { label: 'Patient ID', key: 'patient_id' }, { label: 'Insurance Provider', key: 'insurance_provider', options: INSURANCE_PROVIDERS },
-      { label: 'Location', key: 'location' }, { label: 'Verified Date', key: 'verified_date', type: 'date' },
+      { label: 'Verified Date', key: 'verified_date', type: 'date' },
       { label: 'Date of Service', key: 'dos', type: 'date' },
       { label: 'Time Started (HST)', key: 'time_started_hst', type: 'time' }, { label: 'Time Ended (HST)', key: 'time_ended_hst', type: 'time' },
       { label: 'Time Duration', key: 'time_duration', placeholder: 'e.g. 1h 30m' }, { label: 'Status', key: 'status' },
@@ -870,7 +864,7 @@ const STAFF_EDIT_FIELDS_CONFIG = {
   'eod-claim-submission': {
     fields: [
       { label: 'Claim ID', key: 'claim_id' }, { label: 'Insurance Provider', key: 'insurance_provider', options: INSURANCE_PROVIDERS },
-      { label: 'Location', key: 'location' }, { label: 'Worked Date', key: 'worked_date', type: 'date' },
+      { label: 'Worked Date', key: 'worked_date', type: 'date' },
       { label: 'Date of Service', key: 'date_of_service', type: 'date' }, { label: 'Claim Amount', key: 'claim_amount', prefix: '$' },
       { label: 'Time Started (HST)', key: 'time_started_hst', type: 'time' }, { label: 'Time Ended (HST)', key: 'time_ended_hst', type: 'time' },
       { label: 'Time Duration', key: 'time_duration', placeholder: 'e.g. 1h 30m' }, { label: 'Claim Status', key: 'claim_status' },
@@ -880,7 +874,7 @@ const STAFF_EDIT_FIELDS_CONFIG = {
   'eod-payment-posting': {
     fields: [
       { label: 'Insurance Provider', key: 'insurance_provider', options: INSURANCE_PROVIDERS }, { label: 'Receipt #', key: 'receipt_number' },
-      { label: 'Location', key: 'location' }, { label: 'Payment Date', key: 'payment_date', type: 'date' },
+      { label: 'Payment Date', key: 'payment_date', type: 'date' },
       { label: 'Deposit Date', key: 'deposit_date', type: 'date' }, { label: 'Amount', key: 'amount', prefix: '$' },
       { label: 'Payment Type', key: 'payment_type' }, { label: 'Reference #', key: 'reference_number' },
       { label: 'Date Posted', key: 'date_posted', type: 'date' },
@@ -892,7 +886,7 @@ const STAFF_EDIT_FIELDS_CONFIG = {
   'eod-claim-followup': {
     fields: [
       { label: 'Claim ID', key: 'claim_id' }, { label: 'Insurance Provider', key: 'insurance_provider', options: INSURANCE_PROVIDERS },
-      { label: 'Location', key: 'location' }, { label: 'Worked Date', key: 'worked_date', type: 'date' },
+      { label: 'Worked Date', key: 'worked_date', type: 'date' },
       { label: 'Date of Service', key: 'date_of_service', type: 'date' }, { label: 'Claim Amount', key: 'claim_amount', prefix: '$' },
       { label: 'Time Started (MNL)', key: 'time_started_mnl', type: 'time' }, { label: 'Time Ended (MNL)', key: 'time_ended_mnl', type: 'time' },
       { label: 'Time Duration', key: 'time_duration', placeholder: 'e.g. 1h 30m' }, { label: 'Claim Status', key: 'claim_status' },
@@ -902,7 +896,7 @@ const STAFF_EDIT_FIELDS_CONFIG = {
   'eod-patient-aging': {
     fields: [
       { label: 'Patient ID', key: 'patient_id' }, { label: 'Insurance Provider', key: 'insurance_provider', options: INSURANCE_PROVIDERS },
-      { label: 'Location', key: 'location' }, { label: 'Worked Date', key: 'worked_date', type: 'date' },
+      { label: 'Worked Date', key: 'worked_date', type: 'date' },
       { label: 'Date of Service', key: 'date_of_service', type: 'date' }, { label: 'Text to Pay Amount Sent', key: 'text_to_pay_amount_sent', prefix: '$' },
       { label: 'Time Started (MNL)', key: 'time_started_mnl', type: 'time' }, { label: 'Time Ended (MNL)', key: 'time_ended_mnl', type: 'time' },
       { label: 'Time Duration', key: 'time_duration', placeholder: 'e.g. 1h 30m' }, { label: 'Claim Status', key: 'claim_status' },
@@ -1171,6 +1165,10 @@ setRefundEditForm({
         reviewed_at: entry.reviewed_at || '',
         result: entry.result || ''
       });
+setEodReviewForm({
+        review_status: entry.review_status || 'For Review',
+        review_notes: entry.review_notes || ''
+      });
       setIsEditing(false);
     }
   }, [entry]);
@@ -1310,7 +1308,7 @@ const handleOrderSave = () => {
                     <h4 className={`font-semibold ${config.reviewReadOnly.textColor} mb-3 flex items-center gap-2`}><FileText className="w-4 h-4" /> {config.reviewReadOnly.title}</h4>
                     <div className="grid grid-cols-2 gap-4">
                       {config.reviewReadOnly.fields.map(rf => (
-                        <div key={rf.key} className={rf.colSpan === 2 ? 'col-span-2' : ''}><span className="text-gray-600 text-sm block">{rf.label}</span><span className="font-medium">{rf.format === 'date' ? formatDate(entry[rf.key]) : rf.format === 'datetime' ? formatDateTime(entry[rf.key]) : (entry[rf.key] || '-')}</span></div>
+                        <div key={rf.key} className={rf.colSpan === 2 ? 'col-span-2' : ''}><span className="text-gray-600 text-sm block">{rf.label}</span><span className="font-medium">{rf.customRender ? rf.customRender(entry) : rf.format === 'date' ? formatDate(entry[rf.key]) : rf.format === 'datetime' ? formatDateTime(entry[rf.key]) : (entry[rf.key] || '-')}</span></div>
                       ))}
                     </div>
                   </div>
@@ -1621,6 +1619,7 @@ const [loginHistory, setLoginHistory] = useState([]);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [viewingFile, setViewingFile] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [collapsedSections, setCollapsedSections] = useState({ support: true, eod: true, management: true });
   const [adminLocation, setAdminLocation] = useState('all');
   const [editingStatus, setEditingStatus] = useState(null);
   const [editingEntry, setEditingEntry] = useState(null);
@@ -1680,10 +1679,10 @@ const [eodAnalyticsData, setEodAnalyticsData] = useState({});
     const locIds = [...new Set(data.map(d => d.location_id).filter(Boolean))];
     const { data: locsData } = await supabase.from('locations').select('id, name').in('id', locIds).eq('is_active', true);
     const locMap = {}; locsData?.forEach(l => { locMap[l.id] = l; });
-    const userIds = [...new Set([...data.map(d => d.created_by), ...(includeUpdater ? data.map(d => d.updated_by) : [])].filter(Boolean))];
+    const userIds = [...new Set([...data.map(d => d.created_by), ...(includeUpdater ? data.map(d => d.updated_by) : []), ...data.map(d => d.reviewed_by)].filter(Boolean))];
     const { data: usersData } = await supabase.from('users').select('id, name').in('id', userIds);
     const userMap = {}; usersData?.forEach(u => { userMap[u.id] = u; });
-    return data.map(d => ({ ...d, locations: locMap[d.location_id] || null, creator: userMap[d.created_by] || null, ...(includeUpdater ? { updater: userMap[d.updated_by] || null } : {}) }));
+    return data.map(d => ({ ...d, locations: locMap[d.location_id] || null, creator: userMap[d.created_by] || null, reviewer: userMap[d.reviewed_by] || null, ...(includeUpdater ? { updater: userMap[d.updated_by] || null } : {}) }));
   };
   const loadEntryDocuments = async (recordType, recordId) => {
     const key = `${recordType}-${recordId}`;
@@ -1705,12 +1704,12 @@ const [eodAnalyticsData, setEodAnalyticsData] = useState({});
   'refund-requests': { patient_name: '', chart_number: '', parent_name: '', rp_address: '', date_of_request: today, type: '', description: '', amount_requested: '', best_contact_method: '', contact_info: '', eassist_audited: '', status: 'Pending' },
     'hospital-cases': { patient_name: '', chart_number: '', parent_name: '', date_of_request: today, inquiry_type: '', description: '', best_contact_method: '', best_contact_time: '' },
 'it-requests': { date_reported: today, urgency: '', requester_name: '', device_system: '', description_of_issue: '', best_contact_method: '', best_contact_time: '', assigned_to: '', status: 'Open', resolution_notes: '', completed_by: '' },
-    'eod-patient-scheduling': { patient_name_id: '', patient_type: '', insurance_provider: '', location: '', worked_call_date: today, appt_booked_rs_date: '', call_type: '', call_outcome: '', memo: '' },
-    'eod-insurance-verification': { patient_id: '', insurance_provider: '', location: '', verified_date: today, dos: '', time_started_hst: '', time_ended_hst: '', time_duration: '', status: '' },
-    'eod-claim-submission': { claim_id: '', insurance_provider: '', location: '', worked_date: today, date_of_service: '', claim_amount: '', time_started_hst: '', time_ended_hst: '', time_duration: '', claim_status: '', comments: '' },
-    'eod-payment-posting': { insurance_provider: '', receipt_number: '', time_started_hst: '', location: '', payment_date: today, deposit_date: '', amount: '', payment_type: '', reference_number: '', date_posted: '', time_ended_hst: '', time_duration: '', locate_by: '', remarks: '' },
-    'eod-claim-followup': { claim_id: '', insurance_provider: '', location: '', worked_date: today, date_of_service: '', claim_amount: '', time_started_mnl: '', time_ended_mnl: '', time_duration: '', claim_status: '', amount_collected: '' },
-    'eod-patient-aging': { patient_id: '', insurance_provider: '', location: '', worked_date: today, date_of_service: '', text_to_pay_amount_sent: '', time_started_mnl: '', time_ended_mnl: '', time_duration: '', claim_status: '', amount_collected: '' },
+    'eod-patient-scheduling': { patient_name_id: '', patient_type: '', insurance_provider: '', worked_call_date: today, appt_booked_rs_date: '', call_type: '', call_outcome: '', memo: '' },
+    'eod-insurance-verification': { patient_id: '', insurance_provider: '', verified_date: today, dos: '', time_started_hst: '', time_ended_hst: '', time_duration: '', status: '' },
+    'eod-claim-submission': { claim_id: '', insurance_provider: '', worked_date: today, date_of_service: '', claim_amount: '', time_started_hst: '', time_ended_hst: '', time_duration: '', claim_status: '', comments: '' },
+    'eod-payment-posting': { insurance_provider: '', receipt_number: '', time_started_hst: '', payment_date: today, deposit_date: '', amount: '', payment_type: '', reference_number: '', date_posted: '', time_ended_hst: '', time_duration: '', locate_by: '', remarks: '' },
+    'eod-claim-followup': { claim_id: '', insurance_provider: '', worked_date: today, date_of_service: '', claim_amount: '', time_started_mnl: '', time_ended_mnl: '', time_duration: '', claim_status: '', amount_collected: '' },
+    'eod-patient-aging': { patient_id: '', insurance_provider: '', worked_date: today, date_of_service: '', text_to_pay_amount_sent: '', time_started_mnl: '', time_ended_mnl: '', time_duration: '', claim_status: '', amount_collected: '' },
   });
   const [files, setFiles] = useState({
     'billing-inquiry': { documentation: [] },
@@ -3193,8 +3192,11 @@ onDelete={isITViewOnly ? null : async (recordId) => {
           )}
 {visibleModules.length > 0 && (
           <>
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">Modules</p>
-          {visibleModules.map(m => {
+          <button onClick={() => setCollapsedSections(prev => ({ ...prev, modules: !prev.modules }))} className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-gray-50 transition-all">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Modules</p>
+            <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${collapsedSections.modules ? '-rotate-90' : ''}`} />
+          </button>
+          {!collapsedSections.modules && visibleModules.map(m => {
             const colors = MODULE_COLORS[m.id] || { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-700', accent: 'bg-gray-500', light: 'bg-gray-100' };
             const isActive = activeModule === m.id && adminView !== 'users' && adminView !== 'export' && adminView !== 'settings' && view !== 'settings';
             return (
@@ -3215,8 +3217,11 @@ onDelete={isITViewOnly ? null : async (recordId) => {
 {(currentUser?.role === 'super_admin' || currentUser?.role === 'it' || !isAdmin || isOfficeManager) && (
             <>
               <div className="border-t my-4"></div>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">Support</p>
-              {SUPPORT_MODULES.map(m => {
+              <button onClick={() => setCollapsedSections(prev => ({ ...prev, support: !prev.support }))} className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-gray-50 transition-all">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Support</p>
+                <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${collapsedSections.support ? '-rotate-90' : ''}`} />
+              </button>
+              {!collapsedSections.support && SUPPORT_MODULES.map(m => {
                 const colors = MODULE_COLORS[m.id] || { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-700', accent: 'bg-gray-500', light: 'bg-gray-100' };
                 const isActive = activeModule === m.id && adminView !== 'users' && adminView !== 'export' && adminView !== 'settings' && view !== 'settings';
                 return (
@@ -3237,7 +3242,20 @@ onDelete={isITViewOnly ? null : async (recordId) => {
 {canAccessEod(currentUser?.role) && (
   <>
     <div className="border-t my-4"></div>
-    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">EOD</p>
+    <button onClick={() => setCollapsedSections(prev => ({ ...prev, eod: !prev.eod }))} className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-gray-50 transition-all">
+      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">End of Day Reports</p>
+      <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${collapsedSections.eod ? '-rotate-90' : ''}`} />
+    </button>
+    {!collapsedSections.eod && (<>
+    <button
+      onClick={() => { setAdminView('eod-analytics'); loadEodAnalyticsData(eodAnalyticsMonth); setSidebarOpen(false); }}
+      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${adminView === 'eod-analytics' ? 'bg-teal-50 text-teal-700 border-2 border-teal-200' : 'text-gray-600 hover:bg-gray-50'}`}
+    >
+      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${adminView === 'eod-analytics' ? 'bg-teal-100' : 'bg-gray-100'}`}>
+        <BarChart3 className={`w-4 h-4 ${adminView === 'eod-analytics' ? 'text-teal-600' : 'text-gray-500'}`} />
+      </div>
+      <span className="text-sm font-medium">EOD Analytics</span>
+    </button>
     {EOD_MODULES.map(m => {
       const colors = MODULE_COLORS[m.id] || { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-700', accent: 'bg-gray-500', light: 'bg-gray-100' };
       const isActive = activeModule === m.id && adminView !== 'eod-analytics' && adminView !== 'users' && adminView !== 'export' && adminView !== 'settings';
@@ -3254,15 +3272,7 @@ onDelete={isITViewOnly ? null : async (recordId) => {
         </button>
       );
     })}
-    <button
-      onClick={() => { setAdminView('eod-analytics'); loadEodAnalyticsData(eodAnalyticsMonth); setSidebarOpen(false); }}
-      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${adminView === 'eod-analytics' ? 'bg-teal-50 text-teal-700 border-2 border-teal-200' : 'text-gray-600 hover:bg-gray-50'}`}
-    >
-      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${adminView === 'eod-analytics' ? 'bg-teal-100' : 'bg-gray-100'}`}>
-        <BarChart3 className={`w-4 h-4 ${adminView === 'eod-analytics' ? 'text-teal-600' : 'text-gray-500'}`} />
-      </div>
-      <span className="text-sm font-medium">EOD Analytics</span>
-    </button>
+    </>)}
   </>
 )}
 {!isAdmin && (
@@ -3277,7 +3287,11 @@ onDelete={isITViewOnly ? null : async (recordId) => {
 {isAdmin && (
             <>
               <div className="border-t my-4"></div>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">Management</p>
+              <button onClick={() => setCollapsedSections(prev => ({ ...prev, management: !prev.management }))} className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-gray-50 transition-all">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Management</p>
+                <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${collapsedSections.management ? '-rotate-90' : ''}`} />
+              </button>
+              {!collapsedSections.management && (<>
               <button onClick={() => { setAdminView('documents'); loadDocuments(); setSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${adminView === 'documents' ? 'bg-purple-50 text-purple-700 border-2 border-purple-200' : 'text-gray-600 hover:bg-gray-50'}`}>
                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${adminView === 'documents' ? 'bg-purple-100' : 'bg-gray-100'}`}><FolderOpen className="w-4 h-4" /></div>
                 <span className="text-sm font-medium">Documents</span>
@@ -3296,6 +3310,7 @@ onDelete={isITViewOnly ? null : async (recordId) => {
                   <span className="text-sm font-medium">Users</span>
                 </button>
               )}
+              </>)}
             </>
           )}
         </nav>
@@ -3320,7 +3335,7 @@ onDelete={isITViewOnly ? null : async (recordId) => {
               <button onClick={() => setSidebarOpen(!sidebarOpen)} className="lg:hidden p-2 hover:bg-gray-100 rounded-xl"><Menu className="w-5 h-5" /></button>
               <div>
 <h1 className="font-bold text-gray-800 text-lg">
-                  {isAdmin ? (adminView === 'users' ? 'User Management' : adminView === 'export' ? 'Export Data' : adminView === 'documents' ? 'All Documents' : adminView === 'sop' ? 'Standard Operating Procedures' : adminView === 'settings' ? 'Settings' : adminView === 'analytics' ? 'Analytics' : adminView === 'eod-analytics' ? 'EOD Analytics' : adminView === 'rev-entry' ? `New Entry: ${currentModule?.name}` : currentUser?.role === 'rev_rangers' ? `Review: ${currentModule?.name}` : currentModule?.name) : (view === 'settings' ? 'Settings' : view === 'sop' ? 'Standard Operating Procedures' : currentModule?.name)}
+                  {isAdmin ? (adminView === 'users' ? 'User Management' : adminView === 'export' ? 'Export Data' : adminView === 'documents' ? 'All Documents' : adminView === 'sop' ? 'Standard Operating Procedures' : adminView === 'settings' ? 'Settings' : adminView === 'analytics' ? 'Analytics' : adminView === 'eod-analytics' ? 'End of Day Reports - Analytics' : adminView === 'rev-entry' ? `New Entry: ${currentModule?.name}` : currentUser?.role === 'rev_rangers' ? `Review: ${currentModule?.name}` : currentModule?.name) : (view === 'settings' ? 'Settings' : view === 'sop' ? 'Standard Operating Procedures' : currentModule?.name)}
                 </h1>
                 <p className="text-sm text-gray-500">{isAdmin ? (adminLocation === 'all' ? 'All Locations' : adminLocation) : selectedLocation}</p>
               </div>
@@ -4663,7 +4678,7 @@ if (filteredData.length === 0) {
 {/* Rev Rangers New Entry */}
 {isAdmin && adminView === 'rev-entry' && currentUser?.role === 'rev_rangers' && STAFF_FORM_CONFIG[activeModule] && (
   <div className="space-y-4">
-    {adminLocation === 'all' ? (
+    {!isEodModule(activeModule) && adminLocation === 'all' ? (
       <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-amber-200">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center">
