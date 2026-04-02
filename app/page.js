@@ -1725,6 +1725,8 @@ const [eodAnalyticsData, setEodAnalyticsData] = useState({});
     'eod-claim-followup': { documentation: [] },
     'eod-patient-aging': { documentation: [] },
   });
+  const [eodBatchRecords, setEodBatchRecords] = useState({});
+  const [editingBatchIndex, setEditingBatchIndex] = useState(null);
 useEffect(() => {
   loadLocations();
   const savedSession = localStorage.getItem('cms_session') || sessionStorage.getItem('cms_session');
@@ -2527,6 +2529,80 @@ if (MODULE_FIELD_CONFIG[moduleId]) {
     Object.keys(resetForm).forEach(k => { if (!k.includes('date')) resetForm[k] = ''; });
     setForms(prev => ({ ...prev, [moduleId]: { ...resetForm, [Object.keys(resetForm).find(k => k.includes('date'))]: today } }));
     setFiles(prev => ({ ...prev, [moduleId]: Object.fromEntries(Object.entries(files[moduleId]).map(([k]) => [k, []])) }));
+    loadModuleData(moduleId);
+    setSaving(false);
+  };
+  // EOD Batch Entry Functions
+  const getEodBatchLabel = (moduleId, record) => {
+    const cfg = STAFF_FORM_CONFIG[moduleId];
+    if (!cfg) return 'Record';
+    const firstField = cfg.fields[0];
+    return record[firstField.key] || 'Record';
+  };
+  const addToEodBatch = (moduleId) => {
+    const form = forms[moduleId];
+    const cfg = STAFF_FORM_CONFIG[moduleId];
+    if (!cfg) return;
+    // Check at least the first field has a value
+    const firstKey = cfg.fields[0].key;
+    if (!form[firstKey]) { showMessage('error', `Please fill in ${cfg.fields[0].label}`); return; }
+    const entryData = MODULE_FIELD_CONFIG[moduleId]?.getEntryData(form, currentUser) || {};
+    const displayData = { ...form };
+    if (editingBatchIndex !== null) {
+      // Update existing record in batch
+      setEodBatchRecords(prev => {
+        const batch = [...(prev[moduleId] || [])];
+        batch[editingBatchIndex] = { entryData, displayData };
+        return { ...prev, [moduleId]: batch };
+      });
+      setEditingBatchIndex(null);
+      showMessage('success', '\u2713 Record updated in batch');
+    } else {
+      // Add new record to batch
+      setEodBatchRecords(prev => ({ ...prev, [moduleId]: [...(prev[moduleId] || []), { entryData, displayData }] }));
+      showMessage('success', '\u2713 Record added to batch');
+    }
+    // Reset form but keep date fields
+    const resetForm = { ...forms[moduleId] };
+    Object.keys(resetForm).forEach(k => { if (!k.includes('date')) resetForm[k] = ''; });
+    setForms(prev => ({ ...prev, [moduleId]: { ...resetForm, [Object.keys(resetForm).find(k => k.includes('date'))]: today } }));
+  };
+  const editBatchRecord = (moduleId, index) => {
+    const batch = eodBatchRecords[moduleId] || [];
+    if (!batch[index]) return;
+    setForms(prev => ({ ...prev, [moduleId]: { ...batch[index].displayData } }));
+    setEditingBatchIndex(index);
+  };
+  const removeFromEodBatch = (moduleId, index) => {
+    setEodBatchRecords(prev => {
+      const batch = [...(prev[moduleId] || [])];
+      batch.splice(index, 1);
+      return { ...prev, [moduleId]: batch };
+    });
+    if (editingBatchIndex === index) { setEditingBatchIndex(null); }
+    else if (editingBatchIndex !== null && editingBatchIndex > index) { setEditingBatchIndex(editingBatchIndex - 1); }
+  };
+  const submitEodBatch = async (moduleId) => {
+    const batch = eodBatchRecords[moduleId] || [];
+    if (batch.length === 0) { showMessage('error', 'No records to submit. Add records first.'); return; }
+    const confirmed = await showConfirm('Submit EOD Entry', `Submit ${batch.length} record${batch.length > 1 ? 's' : ''} for ${STAFF_FORM_CONFIG[moduleId]?.title || moduleId}?`, 'Submit All', 'green');
+    if (!confirmed) return;
+    setSaving(true);
+    const module = ALL_MODULES.find(m => m.id === moduleId);
+    let successCount = 0;
+    for (const record of batch) {
+      const data = { ...record.entryData, created_by: currentUser.id, updated_by: currentUser.id };
+      const { error } = await supabase.from(module.table).insert(data);
+      if (!error) successCount++;
+      else console.error('Batch insert error:', error.message);
+    }
+    if (successCount === batch.length) {
+      showMessage('success', `\u2713 All ${successCount} records submitted successfully!`);
+    } else {
+      showMessage('error', `${successCount}/${batch.length} records submitted. Some failed.`);
+    }
+    setEodBatchRecords(prev => ({ ...prev, [moduleId]: [] }));
+    setEditingBatchIndex(null);
     loadModuleData(moduleId);
     setSaving(false);
   };
@@ -4787,6 +4863,78 @@ if (filteredData.length === 0) {
           </div>
         </div>
       </div>
+    ) : isEodModule(activeModule) ? (
+      <>
+        <div className={CARD.colored(currentColors)}>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-semibold text-gray-800">{STAFF_FORM_CONFIG[activeModule].title}</h2>
+            {editingBatchIndex !== null && <span className="text-xs font-medium px-2.5 py-1 bg-amber-100 text-amber-700 rounded-full">Editing Record #{editingBatchIndex + 1}</span>}
+          </div>
+          {renderFormFields(STAFF_FORM_CONFIG[activeModule].fields, forms[activeModule], updateForm, activeModule)}
+          {STAFF_FORM_CONFIG[activeModule].largeField && (
+            <div className="mt-4">
+              <InputField label={STAFF_FORM_CONFIG[activeModule].largeField.label} large value={forms[activeModule][STAFF_FORM_CONFIG[activeModule].largeField.key]} onChange={e => updateForm(activeModule, STAFF_FORM_CONFIG[activeModule].largeField.key, e.target.value)} placeholder={STAFF_FORM_CONFIG[activeModule].largeField.placeholder} />
+            </div>
+          )}
+          <div className="flex gap-2 mt-5">
+            <button onClick={() => addToEodBatch(activeModule)} className={`flex-1 py-3 ${BTN.primary} rounded-xl font-semibold flex items-center justify-center gap-2`}>
+              <Plus className="w-4 h-4" /> {editingBatchIndex !== null ? 'Update Record' : 'Add Record'}
+            </button>
+            {editingBatchIndex !== null && (
+              <button onClick={() => { setEditingBatchIndex(null); const resetForm = { ...forms[activeModule] }; Object.keys(resetForm).forEach(k => { if (!k.includes('date')) resetForm[k] = ''; }); setForms(prev => ({ ...prev, [activeModule]: { ...resetForm, [Object.keys(resetForm).find(k => k.includes('date'))]: today } })); }} className="px-4 py-3 bg-gray-100 text-gray-600 rounded-xl font-medium hover:bg-gray-200 transition-all">
+                Cancel
+              </button>
+            )}
+          </div>
+        </div>
+        {/* Batch Records Table */}
+        {(eodBatchRecords[activeModule]?.length > 0) && (
+          <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100">
+            <div className="px-5 py-4 bg-gradient-to-r from-gray-50 to-white border-b flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={`w-8 h-8 rounded-lg ${currentColors?.light || 'bg-gray-100'} flex items-center justify-center`}>
+                  <FileText className={`w-4 h-4 ${currentColors?.text || 'text-gray-600'}`} />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-800">Pending Records</h3>
+                  <p className="text-xs text-gray-400">{eodBatchRecords[activeModule].length} record{eodBatchRecords[activeModule].length > 1 ? 's' : ''} ready to submit</p>
+                </div>
+              </div>
+              <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${currentColors?.bg || 'bg-gray-100'} ${currentColors?.text || 'text-gray-600'}`}>
+                {eodBatchRecords[activeModule].length}
+              </span>
+            </div>
+            <div className="divide-y divide-gray-50">
+              {eodBatchRecords[activeModule].map((record, idx) => {
+                const fields = STAFF_FORM_CONFIG[activeModule].fields;
+                return (
+                  <div key={idx} className={`px-5 py-3.5 flex items-center gap-4 hover:bg-gray-50/50 transition-all duration-200 ${editingBatchIndex === idx ? 'bg-amber-50 border-l-4 border-amber-400' : ''}`}>
+                    <span className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500 flex-shrink-0">{idx + 1}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-gray-800 text-sm truncate">{getEodBatchLabel(activeModule, record.displayData)}</p>
+                      <p className="text-xs text-gray-400 truncate mt-0.5">{fields.slice(1, 4).map(f => record.displayData[f.key] || '-').join(' \u2022 ')}</p>
+                    </div>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <button onClick={() => editBatchRecord(activeModule, idx)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg transition-all" title="Edit"><Edit3 className="w-3.5 h-3.5" /></button>
+                      <button onClick={() => removeFromEodBatch(activeModule, idx)} className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg transition-all" title="Remove"><X className="w-3.5 h-3.5" /></button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        {/* Submit All Button */}
+        {(eodBatchRecords[activeModule]?.length > 0) && (
+          <button
+            onClick={() => submitEodBatch(activeModule)}
+            disabled={saving}
+            className="w-full py-4 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl text-lg font-semibold shadow-lg shadow-emerald-200 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 transition-all duration-200 flex items-center justify-center gap-2"
+          >
+            {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Upload className="w-5 h-5" /> Submit Entry ({eodBatchRecords[activeModule].length} Record{eodBatchRecords[activeModule].length > 1 ? 's' : ''})</>}
+          </button>
+        )}
+      </>
     ) : (
       <>
         <div className={CARD.colored(currentColors)}>
@@ -5054,7 +5202,79 @@ if (filteredData.length === 0) {
           {/* Entry Form - Staff */}
           {!isAdmin && view === 'entry' && (
             <div className="space-y-4">
-              {STAFF_FORM_CONFIG[activeModule] && (
+              {STAFF_FORM_CONFIG[activeModule] && isEodModule(activeModule) ? (
+                <>
+                  <div className={CARD.colored(currentColors)}>
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className="font-semibold text-gray-800">{STAFF_FORM_CONFIG[activeModule].title}</h2>
+                      {editingBatchIndex !== null && <span className="text-xs font-medium px-2.5 py-1 bg-amber-100 text-amber-700 rounded-full">Editing Record #{editingBatchIndex + 1}</span>}
+                    </div>
+                    {renderFormFields(STAFF_FORM_CONFIG[activeModule].fields, forms[activeModule], updateForm, activeModule)}
+                    {STAFF_FORM_CONFIG[activeModule].largeField && (
+                      <div className="mt-4">
+                        <InputField label={STAFF_FORM_CONFIG[activeModule].largeField.label} large value={forms[activeModule][STAFF_FORM_CONFIG[activeModule].largeField.key]} onChange={e => updateForm(activeModule, STAFF_FORM_CONFIG[activeModule].largeField.key, e.target.value)} placeholder={STAFF_FORM_CONFIG[activeModule].largeField.placeholder} />
+                      </div>
+                    )}
+                    <div className="flex gap-2 mt-5">
+                      <button onClick={() => addToEodBatch(activeModule)} className={`flex-1 py-3 ${BTN.primary} rounded-xl font-semibold flex items-center justify-center gap-2`}>
+                        <Plus className="w-4 h-4" /> {editingBatchIndex !== null ? 'Update Record' : 'Add Record'}
+                      </button>
+                      {editingBatchIndex !== null && (
+                        <button onClick={() => { setEditingBatchIndex(null); const resetForm = { ...forms[activeModule] }; Object.keys(resetForm).forEach(k => { if (!k.includes('date')) resetForm[k] = ''; }); setForms(prev => ({ ...prev, [activeModule]: { ...resetForm, [Object.keys(resetForm).find(k => k.includes('date'))]: today } })); }} className="px-4 py-3 bg-gray-100 text-gray-600 rounded-xl font-medium hover:bg-gray-200 transition-all">
+                          Cancel
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {/* Batch Records Table */}
+                  {(eodBatchRecords[activeModule]?.length > 0) && (
+                    <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100">
+                      <div className="px-5 py-4 bg-gradient-to-r from-gray-50 to-white border-b flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-lg ${currentColors?.light || 'bg-gray-100'} flex items-center justify-center`}>
+                            <FileText className={`w-4 h-4 ${currentColors?.text || 'text-gray-600'}`} />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-gray-800">Pending Records</h3>
+                            <p className="text-xs text-gray-400">{eodBatchRecords[activeModule].length} record{eodBatchRecords[activeModule].length > 1 ? 's' : ''} ready to submit</p>
+                          </div>
+                        </div>
+                        <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${currentColors?.bg || 'bg-gray-100'} ${currentColors?.text || 'text-gray-600'}`}>
+                          {eodBatchRecords[activeModule].length}
+                        </span>
+                      </div>
+                      <div className="divide-y divide-gray-50">
+                        {eodBatchRecords[activeModule].map((record, idx) => {
+                          const fields = STAFF_FORM_CONFIG[activeModule].fields;
+                          return (
+                            <div key={idx} className={`px-5 py-3.5 flex items-center gap-4 hover:bg-gray-50/50 transition-all duration-200 ${editingBatchIndex === idx ? 'bg-amber-50 border-l-4 border-amber-400' : ''}`}>
+                              <span className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500 flex-shrink-0">{idx + 1}</span>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-gray-800 text-sm truncate">{getEodBatchLabel(activeModule, record.displayData)}</p>
+                                <p className="text-xs text-gray-400 truncate mt-0.5">{fields.slice(1, 4).map(f => record.displayData[f.key] || '-').join(' \u2022 ')}</p>
+                              </div>
+                              <div className="flex items-center gap-1 flex-shrink-0">
+                                <button onClick={() => editBatchRecord(activeModule, idx)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg transition-all" title="Edit"><Edit3 className="w-3.5 h-3.5" /></button>
+                                <button onClick={() => removeFromEodBatch(activeModule, idx)} className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg transition-all" title="Remove"><X className="w-3.5 h-3.5" /></button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  {/* Submit All Button */}
+                  {(eodBatchRecords[activeModule]?.length > 0) && (
+                    <button
+                      onClick={() => submitEodBatch(activeModule)}
+                      disabled={saving}
+                      className="w-full py-4 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl text-lg font-semibold shadow-lg shadow-emerald-200 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 transition-all duration-200 flex items-center justify-center gap-2"
+                    >
+                      {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Upload className="w-5 h-5" /> Submit Entry ({eodBatchRecords[activeModule].length} Record{eodBatchRecords[activeModule].length > 1 ? 's' : ''})</>}
+                    </button>
+                  )}
+                </>
+              ) : STAFF_FORM_CONFIG[activeModule] ? (
                 <>
                   <div className={CARD.colored(currentColors)}>
                     <h2 className="font-semibold mb-2 text-gray-800">{STAFF_FORM_CONFIG[activeModule].title}</h2>
@@ -5071,7 +5291,8 @@ if (filteredData.length === 0) {
                     <FileUpload label={STAFF_FORM_CONFIG[activeModule].fileLabel} files={files[activeModule][STAFF_FORM_CONFIG[activeModule].fileKey]} onFilesChange={f => updateFiles(activeModule, STAFF_FORM_CONFIG[activeModule].fileKey, f)} onViewFile={setViewingFile} />
                   </div>
                 </>
-              )}
+              ) : null}
+              {STAFF_FORM_CONFIG[activeModule] && !isEodModule(activeModule) && (
                 <button
                   onClick={() => saveEntry(activeModule)}
                   disabled={saving}
@@ -5079,6 +5300,7 @@ if (filteredData.length === 0) {
                 >
                   {saving ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Save Entry'}
                 </button>
+              )}
             </div>
           )}
 {/* History View - Staff */}
