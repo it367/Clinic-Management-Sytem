@@ -558,38 +558,34 @@ const ADMIN_CARD_CONFIG = {
     getDetail: (e) => `${e.locations?.name} • ${e.inquiry_type || 'No Type'} • ${e.date_of_request ? new Date(e.date_of_request).toLocaleDateString() : new Date(e.created_at).toLocaleDateString()}`,
   },
   'eod-patient-scheduling': {
-    getTitle: (e) => e.patient_name_id ? <span className="font-bold text-teal-600">{e.patient_name_id}</span> : null,
-    getSubtitle: (e) => e.patient_type || 'No Type',
-    getDetail: (e) => `${e.insurance_provider || 'No Provider'} • ${e.worked_call_date ? new Date(e.worked_call_date).toLocaleDateString() : new Date(e.created_at).toLocaleDateString()}`,
+    getTitle: (e) => <span className="font-bold text-teal-600">{e.creator?.name || 'Unknown'}</span>,
+    getSubtitle: (e) => `${(e.batch_records?.length || 1)} record${(e.batch_records?.length || 1) > 1 ? 's' : ''}`,
+    getDetail: (e) => `${new Date(e.created_at).toLocaleDateString()} • Patient Scheduling`,
   },
   'eod-insurance-verification': {
-    getTitle: (e) => e.patient_id ? <span className="font-bold text-cyan-600">{e.patient_id}</span> : null,
-    getSubtitle: (e) => e.insurance_provider || 'No Provider',
-    getDetail: (e) => `${e.insurance_provider || 'No Provider'} • ${e.verified_date ? new Date(e.verified_date).toLocaleDateString() : new Date(e.created_at).toLocaleDateString()}`,
+    getTitle: (e) => <span className="font-bold text-cyan-600">{e.creator?.name || 'Unknown'}</span>,
+    getSubtitle: (e) => `${(e.batch_records?.length || 1)} record${(e.batch_records?.length || 1) > 1 ? 's' : ''}`,
+    getDetail: (e) => `${new Date(e.created_at).toLocaleDateString()} • Insurance Verification`,
   },
   'eod-claim-submission': {
-    getTitle: (e) => e.claim_id ? <span className="font-bold text-sky-600">Claim: {e.claim_id}</span> : null,
-    getSubtitle: (e) => e.insurance_provider || 'No Provider',
-    getDetail: (e) => `${e.insurance_provider || 'No Provider'} • ${e.worked_date ? new Date(e.worked_date).toLocaleDateString() : new Date(e.created_at).toLocaleDateString()}`,
-    getAmount: (e) => e.claim_amount > 0 ? `$${Number(e.claim_amount || 0).toFixed(2)}` : null,
+    getTitle: (e) => <span className="font-bold text-sky-600">{e.creator?.name || 'Unknown'}</span>,
+    getSubtitle: (e) => `${(e.batch_records?.length || 1)} record${(e.batch_records?.length || 1) > 1 ? 's' : ''}`,
+    getDetail: (e) => `${new Date(e.created_at).toLocaleDateString()} • Claim Submission`,
   },
   'eod-payment-posting': {
-    getTitle: (e) => e.receipt_number ? <span className="font-bold text-blue-600">Receipt# {e.receipt_number}</span> : null,
-    getSubtitle: (e) => e.insurance_provider || 'No Provider',
-    getDetail: (e) => `${e.insurance_provider || 'No Provider'} • ${e.payment_date ? new Date(e.payment_date).toLocaleDateString() : new Date(e.created_at).toLocaleDateString()}`,
-    getAmount: (e) => e.amount > 0 ? `$${Number(e.amount || 0).toFixed(2)}` : null,
+    getTitle: (e) => <span className="font-bold text-blue-600">{e.creator?.name || 'Unknown'}</span>,
+    getSubtitle: (e) => `${(e.batch_records?.length || 1)} record${(e.batch_records?.length || 1) > 1 ? 's' : ''}`,
+    getDetail: (e) => `${new Date(e.created_at).toLocaleDateString()} • Payment Posting`,
   },
   'eod-claim-followup': {
-    getTitle: (e) => e.claim_id ? <span className="font-bold text-violet-600">Claim: {e.claim_id}</span> : null,
-    getSubtitle: (e) => e.insurance_provider || 'No Provider',
-    getDetail: (e) => `${e.insurance_provider || 'No Provider'} • ${e.worked_date ? new Date(e.worked_date).toLocaleDateString() : new Date(e.created_at).toLocaleDateString()}`,
-    getAmount: (e) => e.claim_amount > 0 ? `$${Number(e.claim_amount || 0).toFixed(2)}` : null,
+    getTitle: (e) => <span className="font-bold text-violet-600">{e.creator?.name || 'Unknown'}</span>,
+    getSubtitle: (e) => `${(e.batch_records?.length || 1)} record${(e.batch_records?.length || 1) > 1 ? 's' : ''}`,
+    getDetail: (e) => `${new Date(e.created_at).toLocaleDateString()} • Claim Follow-Up`,
   },
   'eod-patient-aging': {
-    getTitle: (e) => e.patient_id ? <span className="font-bold text-purple-600">{e.patient_id}</span> : null,
-    getSubtitle: (e) => e.insurance_provider || 'No Provider',
-    getDetail: (e) => `${e.insurance_provider || 'No Provider'} • ${e.worked_date ? new Date(e.worked_date).toLocaleDateString() : new Date(e.created_at).toLocaleDateString()}`,
-    getAmount: (e) => e.amount_collected > 0 ? `$${Number(e.amount_collected || 0).toFixed(2)}` : null,
+    getTitle: (e) => <span className="font-bold text-purple-600">{e.creator?.name || 'Unknown'}</span>,
+    getSubtitle: (e) => `${(e.batch_records?.length || 1)} record${(e.batch_records?.length || 1) > 1 ? 's' : ''}`,
+    getDetail: (e) => `${new Date(e.created_at).toLocaleDateString()} • Patient Aging`,
   }
 };
 
@@ -1262,9 +1258,88 @@ const handleOrderSave = () => {
               <Building2 className="w-4 h-4" /> {entry.locations.name}
             </div>
           )}
-{/* Billing Inquiry */}
+{/* EOD Batch Spreadsheet View */}
+          {isEodModule(module?.id) && entry.batch_records && entry.batch_records.length > 0 && (() => {
+            const config = ENTRY_PREVIEW_CONFIG[module?.id];
+            const fields = STAFF_FORM_CONFIG[module?.id]?.fields || [];
+            const largeField = STAFF_FORM_CONFIG[module?.id]?.largeField;
+            const allFields = largeField ? [...fields, largeField] : fields;
+            const canReview = currentUser?.role === 'rev_rangers_admin' || currentUser?.role === 'super_admin';
+            return (
+              <div className="space-y-4">
+                {/* Record Count Badge */}
+                <div className="flex items-center gap-3">
+                  <div className={`px-3 py-1.5 ${colors?.bg || 'bg-gray-100'} ${colors?.text || 'text-gray-700'} rounded-lg text-sm font-semibold flex items-center gap-2`}>
+                    <FileText className="w-4 h-4" /> {entry.batch_records.length} Record{entry.batch_records.length > 1 ? 's' : ''}
+                  </div>
+                </div>
+                {/* Spreadsheet Table */}
+                <div className="border border-gray-200 rounded-xl overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-gray-50 border-b border-gray-200">
+                          <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-10">#</th>
+                          {allFields.map(f => (
+                            <th key={f.key} className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">{f.label}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {entry.batch_records.map((record, idx) => (
+                          <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
+                            <td className="px-3 py-2.5 text-gray-400 font-medium">{idx + 1}</td>
+                            {allFields.map(f => {
+                              let val = record[f.key] || '-';
+                              if (f.prefix && val !== '-') val = `${f.prefix}${val}`;
+                              return <td key={f.key} className="px-3 py-2.5 text-gray-700 whitespace-nowrap">{val}</td>;
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                {/* Review Section */}
+                {config?.reviewReadOnly && !isEditing && config.reviewReadOnly.show(entry) && (
+                  <div className={`p-4 ${config.reviewReadOnly.bgColor} rounded-xl border ${config.reviewReadOnly.borderColor}`}>
+                    <h4 className={`font-semibold ${config.reviewReadOnly.textColor} mb-3 flex items-center gap-2`}><FileText className="w-4 h-4" /> {config.reviewReadOnly.title}</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      {config.reviewReadOnly.fields.map(rf => (
+                        <div key={rf.key} className={rf.colSpan === 2 ? 'col-span-2' : ''}><span className="text-gray-600 text-sm block">{rf.label}</span><span className="font-medium">{rf.customRender ? rf.customRender(entry) : rf.format === 'date' ? formatDate(entry[rf.key]) : rf.format === 'datetime' ? formatDateTime(entry[rf.key]) : (entry[rf.key] || '-')}</span></div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {/* Admin Review Form */}
+                {canReview && config?.adminEdit && (
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    {!isEditing ? (
+                      <button onClick={() => setIsEditing(true)} className={`w-full py-3 bg-gradient-to-r ${config.adminEdit.btnGradient} text-white rounded-xl font-medium hover:shadow-lg transition-all flex items-center justify-center gap-2`}><Edit3 className="w-4 h-4" /> {config.adminEdit.btnLabel}</button>
+                    ) : (
+                      <div className={`space-y-4 ${config.adminEdit.editBg} p-4 rounded-xl border ${config.adminEdit.editBorder}`}>
+                        <h4 className={`font-semibold ${config.adminEdit.editTextColor} flex items-center gap-2`}><Edit3 className="w-4 h-4" /> {config.adminEdit.editTitle}</h4>
+                        <div className="grid grid-cols-2 gap-4">
+                          {config.adminEdit.fields.map(f => {
+                            if (f.type === 'select') return (<div key={f.key}><label className="text-xs font-medium text-gray-600 mb-1.5 block">{f.label}</label><select value={eodReviewForm[f.key]} onChange={ev => setEodReviewForm({ ...eodReviewForm, [f.key]: ev.target.value })} className={`w-full p-2.5 border-2 border-gray-200 rounded-xl outline-none ${config.adminEdit.focusColor} bg-white`}>{config.adminEdit.statuses.map(s => <option key={s} value={s}>{s}</option>)}</select></div>);
+                            return null;
+                          })}
+                        </div>
+                        {config.adminEdit.extraFields?.map(f => (<div key={f.key}><label className="text-xs font-medium text-gray-600 mb-1.5 block">{f.label}</label><textarea value={eodReviewForm[f.key]} onChange={ev => setEodReviewForm({ ...eodReviewForm, [f.key]: ev.target.value })} placeholder={f.placeholder} rows={3} className={`w-full p-2.5 border-2 border-gray-200 rounded-xl outline-none ${config.adminEdit.focusColor} bg-white resize-none`} /></div>))}
+                        <div className="flex gap-2">
+                          <button onClick={handleEodReviewSave} className={`flex-1 py-2.5 ${BTN.save}`}>Save Review</button>
+                          <button onClick={() => setIsEditing(false)} className={`px-4 py-2.5 ${BTN.cancel}`}>Cancel</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
-          {ENTRY_PREVIEW_CONFIG[module?.id] && (() => {
+          {/* Standard Preview for non-batch entries */}
+          {(!isEodModule(module?.id) || !entry.batch_records || entry.batch_records.length === 0) && ENTRY_PREVIEW_CONFIG[module?.id] && (() => {
             const config = ENTRY_PREVIEW_CONFIG[module?.id];
             const isEod = config.adminEdit?.isEodReview;
             const canEdit = isEod ? (currentUser?.role === 'rev_rangers_admin' || currentUser?.role === 'super_admin')
@@ -2589,18 +2664,25 @@ if (MODULE_FIELD_CONFIG[moduleId]) {
     if (!confirmed) return;
     setSaving(true);
     const module = ALL_MODULES.find(m => m.id === moduleId);
-    let successCount = 0;
-    for (const record of batch) {
-      const data = { ...record.entryData, created_by: currentUser.id, updated_by: currentUser.id };
-      const { error } = await supabase.from(module.table).insert(data);
-      if (!error) successCount++;
-      else console.error('Batch insert error:', error.message);
+    // Build batch_records JSON array from all records
+    const batchJson = batch.map(r => r.entryData);
+    // Insert ONE row: first record populates main columns, all records go in batch_records
+    const firstEntry = { ...batch[0].entryData };
+    delete firstEntry.review_status;
+    const insertData = {
+      ...firstEntry,
+      batch_records: batchJson,
+      review_status: 'For Review',
+      created_by: currentUser.id,
+      updated_by: currentUser.id,
+    };
+    const { error } = await supabase.from(module.table).insert(insertData);
+    if (error) {
+      showMessage('error', 'Failed to submit: ' + error.message);
+      setSaving(false);
+      return;
     }
-    if (successCount === batch.length) {
-      showMessage('success', `\u2713 All ${successCount} records submitted successfully!`);
-    } else {
-      showMessage('error', `${successCount}/${batch.length} records submitted. Some failed.`);
-    }
+    showMessage('success', `\u2713 Entry submitted with ${batch.length} record${batch.length > 1 ? 's' : ''}!`);
     setEodBatchRecords(prev => ({ ...prev, [moduleId]: [] }));
     setEditingBatchIndex(null);
     loadModuleData(moduleId);
@@ -5097,7 +5179,7 @@ if (filteredData.length === 0) {
                       <StatusBadge status={e.review_status || e.status} />
                     </div>
                     <p className="text-sm text-gray-600 mt-1">
-                      {isEodModule(activeModule) ? `${e.creator?.name || 'Unknown'} • ${new Date(e.created_at).toLocaleDateString()}` : `${e.locations?.name} • ${e.creator?.name || 'Unknown'} • ${new Date(e.created_at).toLocaleDateString()}`}
+                      {isEodModule(activeModule) ? `${e.creator?.name || 'Unknown'} • ${new Date(e.created_at).toLocaleDateString()} • ${e.batch_records?.length || 1} record${(e.batch_records?.length || 1) > 1 ? 's' : ''}` : `${e.locations?.name} • ${e.creator?.name || 'Unknown'} • ${new Date(e.created_at).toLocaleDateString()}`}
                     </p>
                     {e.description && <p className="text-sm text-gray-600 mt-2 line-clamp-2">{e.description}</p>}
                     {(e.amount || e.amount_requested || e.amount_in_question) && (
