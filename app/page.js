@@ -3259,7 +3259,7 @@ onDelete={isITViewOnly ? null : async (recordId) => {
           <button onClick={() => setCollapsedSections(prev => ({ ...prev, modules: !prev.modules }))} className="w-full flex items-center justify-between px-3.5 py-2.5 hover:bg-gray-100/80 transition-all duration-200 group">
             <div className="flex items-center gap-2">
               <div className="w-1 h-4 rounded-full bg-purple-400 transition-all duration-300 group-hover:h-5"></div>
-              <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Modules</p>
+              <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Clinic Operations</p>
             </div>
             <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-300 ease-in-out ${collapsedSections.modules ? '-rotate-90' : 'rotate-0'}`} />
           </button>
