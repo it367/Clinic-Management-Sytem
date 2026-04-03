@@ -1915,7 +1915,7 @@ useEffect(() => {
   const hasModules = role !== 'rev_rangers_admin';
   const hasSupport = role === 'super_admin' || role === 'it' || !isAdmin || role === 'office_manager';
   const hasEod = canAccessEod(role);
-  const sections = ['modules', 'support', 'eod', 'management'];
+  const sections = ['modules', 'eod', 'management', 'support'];
   const visible = sections.filter(s => s === 'modules' ? hasModules : s === 'support' ? hasSupport : s === 'eod' ? hasEod : isAdmin);
   const collapsed = {};
   visible.forEach((s, i) => { collapsed[s] = i > 0; });
@@ -3444,38 +3444,6 @@ onDelete={isITViewOnly ? null : async (recordId) => {
           </div>
           </div>
           )}
-{(currentUser?.role === 'super_admin' || currentUser?.role === 'it' || !isAdmin || isOfficeManager) && (
-          <div className="rounded-xl bg-gray-50/50 border border-gray-100 overflow-hidden">
-              <button onClick={() => setCollapsedSections(prev => ({ ...prev, support: !prev.support }))} className="w-full flex items-center justify-between px-3.5 py-2.5 hover:bg-gray-100/80 transition-all duration-200 group">
-                <div className="flex items-center gap-2">
-                  <div className="w-1 h-4 rounded-full bg-amber-400 transition-all duration-300 group-hover:h-5"></div>
-                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Support</p>
-                </div>
-                <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-300 ease-in-out ${collapsedSections.support ? '-rotate-90' : 'rotate-0'}`} />
-              </button>
-              <div className={`transition-all duration-300 ease-in-out overflow-hidden ${collapsedSections.support ? 'max-h-0 opacity-0' : 'max-h-[400px] opacity-100'}`}>
-                <div className="px-1.5 pb-2 space-y-0.5">
-              {SUPPORT_MODULES.map(m => {
-                const colors = MODULE_COLORS[m.id] || { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-700', accent: 'bg-gray-500', light: 'bg-gray-100' };
-                const isActive = activeModule === m.id && adminView !== 'users' && adminView !== 'export' && adminView !== 'settings' && view !== 'settings';
-                return (
-                  <button
-                    key={m.id}
-                    onClick={() => { setActiveModule(m.id); setAdminView('records'); setView('entry'); setSidebarOpen(false); }}
-                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all duration-200 group/item ${isActive ? `${colors.bg} ${colors.text} shadow-sm` : 'text-gray-600 hover:bg-white hover:shadow-sm hover:translate-x-0.5'}`}
-                  >
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 ${isActive ? colors.light : 'bg-white group-hover/item:scale-105'}`}>
-                      <m.icon className={`w-4 h-4 transition-colors duration-200 ${isActive ? colors.text : 'text-gray-400 group-hover/item:text-gray-600'}`} />
-                    </div>
-                    <span className="text-sm font-medium">{m.name}</span>
-                    {isActive && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-current animate-pulse"></div>}
-                  </button>
-                );
-              })}
-                </div>
-              </div>
-          </div>
-          )}
 {canAccessEod(currentUser?.role) && (
   <div className="rounded-xl bg-gray-50/50 border border-gray-100 overflow-hidden">
     <button onClick={() => setCollapsedSections(prev => ({ ...prev, eod: !prev.eod }))} className="w-full flex items-center justify-between px-3.5 py-2.5 hover:bg-gray-100/80 transition-all duration-200 group">
@@ -3559,6 +3527,38 @@ onDelete={isITViewOnly ? null : async (recordId) => {
                   {adminView === 'users' && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse"></div>}
                 </button>
               )}
+                </div>
+              </div>
+          </div>
+          )}
+{(currentUser?.role === 'super_admin' || currentUser?.role === 'it' || !isAdmin || isOfficeManager) && (
+          <div className="rounded-xl bg-gray-50/50 border border-gray-100 overflow-hidden">
+              <button onClick={() => setCollapsedSections(prev => ({ ...prev, support: !prev.support }))} className="w-full flex items-center justify-between px-3.5 py-2.5 hover:bg-gray-100/80 transition-all duration-200 group">
+                <div className="flex items-center gap-2">
+                  <div className="w-1 h-4 rounded-full bg-amber-400 transition-all duration-300 group-hover:h-5"></div>
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Support</p>
+                </div>
+                <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-300 ease-in-out ${collapsedSections.support ? '-rotate-90' : 'rotate-0'}`} />
+              </button>
+              <div className={`transition-all duration-300 ease-in-out overflow-hidden ${collapsedSections.support ? 'max-h-0 opacity-0' : 'max-h-[400px] opacity-100'}`}>
+                <div className="px-1.5 pb-2 space-y-0.5">
+              {SUPPORT_MODULES.map(m => {
+                const colors = MODULE_COLORS[m.id] || { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-700', accent: 'bg-gray-500', light: 'bg-gray-100' };
+                const isActive = activeModule === m.id && adminView !== 'users' && adminView !== 'export' && adminView !== 'settings' && view !== 'settings';
+                return (
+                  <button
+                    key={m.id}
+                    onClick={() => { setActiveModule(m.id); setAdminView('records'); setView('entry'); setSidebarOpen(false); }}
+                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all duration-200 group/item ${isActive ? `${colors.bg} ${colors.text} shadow-sm` : 'text-gray-600 hover:bg-white hover:shadow-sm hover:translate-x-0.5'}`}
+                  >
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 ${isActive ? colors.light : 'bg-white group-hover/item:scale-105'}`}>
+                      <m.icon className={`w-4 h-4 transition-colors duration-200 ${isActive ? colors.text : 'text-gray-400 group-hover/item:text-gray-600'}`} />
+                    </div>
+                    <span className="text-sm font-medium">{m.name}</span>
+                    {isActive && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-current animate-pulse"></div>}
+                  </button>
+                );
+              })}
                 </div>
               </div>
           </div>
