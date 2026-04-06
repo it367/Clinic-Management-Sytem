@@ -1912,7 +1912,7 @@ const isITViewOnly = currentUser?.role === 'it' && activeModule !== 'it-requests
 useEffect(() => {
   if (!currentUser) return;
   const role = currentUser.role;
-  const hasModules = role !== 'rev_rangers_admin';
+  const hasModules = true;
   const hasSupport = role === 'super_admin' || role === 'it' || !isAdmin || role === 'office_manager';
   const hasEod = canAccessEod(role);
   const sections = ['modules', 'eod', 'management', 'support'];
@@ -2143,7 +2143,7 @@ const { data: usersData, error: usersError } = await supabase
     else { showMessage('error', 'Could not download document'); }
   };
   const loadModuleData = async (moduleId) => {
-    if (currentUser?.role === 'rev_rangers_admin' && !isEodModule(moduleId)) return;
+    if (currentUser?.role === 'rev_rangers_admin' && !isEodModule(moduleId) && moduleId !== 'billing-inquiry' && moduleId !== 'hospital-cases') return;
     setLoading(true);
     const module = ALL_MODULES.find(m => m.id === moduleId);
     if (!module) return;
@@ -2574,7 +2574,7 @@ if (!confirmed) return;
     return uploadedFiles;
   };
 const saveEntry = async (moduleId) => {
-    if (currentUser?.role === 'rev_rangers_admin' && !isEodModule(moduleId)) { showMessage('error', 'Access denied'); return; }
+    if (currentUser?.role === 'rev_rangers_admin' && !isEodModule(moduleId) && moduleId !== 'billing-inquiry' && moduleId !== 'hospital-cases') { showMessage('error', 'Access denied'); return; }
     const confirmed = await showConfirm('Submit Entry', 'Are you sure you want to submit this entry?', 'Submit', 'green');
     if (!confirmed) return;;
     setSaving(true);
@@ -3034,30 +3034,64 @@ const getTotalPages = () => {
   if (recordsPerPage === 'all') return 1;
   return Math.ceil(allEntries.length / recordsPerPage);
 };
+  const [editingBatchForms, setEditingBatchForms] = useState([]);
   const startEditingStaffEntry = (entry) => {
   setEditingStaffEntry(entry.id);
-  if (MODULE_FIELD_CONFIG[activeModule]) {
+  if (isEodModule(activeModule) && entry.batch_records && entry.batch_records.length > 0) {
+    setEditingBatchForms(entry.batch_records.map(r => ({ ...r })));
+    setStaffEditForm({});
+  } else if (MODULE_FIELD_CONFIG[activeModule]) {
     setStaffEditForm(MODULE_FIELD_CONFIG[activeModule].getEditInitial(entry));
+    setEditingBatchForms([]);
   }
 };
 const updateStaffEditForm = (field, value) => {
   setStaffEditForm(prev => ({ ...prev, [field]: value }));
 };
+const updateBatchEditForm = (index, field, value) => {
+  setEditingBatchForms(prev => {
+    const updated = [...prev];
+    updated[index] = { ...updated[index], [field]: value };
+    return updated;
+  });
+};
+const addBatchEditRow = () => {
+  const fields = STAFF_FORM_CONFIG[activeModule]?.fields || [];
+  const largeField = STAFF_FORM_CONFIG[activeModule]?.largeField;
+  const emptyRow = {};
+  fields.forEach(f => { emptyRow[f.key] = ''; });
+  if (largeField) emptyRow[largeField.key] = '';
+  emptyRow.review_status = 'For Review';
+  setEditingBatchForms(prev => [...prev, emptyRow]);
+};
+const removeBatchEditRow = (index) => {
+  setEditingBatchForms(prev => prev.filter((_, i) => i !== index));
+};
 const saveStaffEntryUpdate = async () => {
   if (!editingStaffEntry) return;
   const confirmed = await showConfirm('Save Changes', 'Are you sure you want to save these changes?', 'Save', 'green');
-  if (!confirmed) return;;
+  if (!confirmed) return;
   setSaving(true);
   const module = ALL_MODULES.find(m => m.id === activeModule);
-  let updateData = { updated_by: currentUser.id };
-  if (MODULE_FIELD_CONFIG[activeModule]) {
-    updateData = { ...updateData, ...MODULE_FIELD_CONFIG[activeModule].getUpdateData(staffEditForm) };
+  if (isEodModule(activeModule) && editingBatchForms.length > 0) {
+    // Update batch_records and first record's main columns
+    const firstRecord = { ...editingBatchForms[0] };
+    delete firstRecord.review_status;
+    const updateData = { ...firstRecord, batch_records: editingBatchForms, updated_by: currentUser.id };
+    const { error } = await supabase.from(module.table).update(updateData).eq('id', editingStaffEntry);
+    if (error) { showMessage('error', 'Failed to update: ' + error.message); setSaving(false); return; }
+  } else {
+    let updateData = { updated_by: currentUser.id };
+    if (MODULE_FIELD_CONFIG[activeModule]) {
+      updateData = { ...updateData, ...MODULE_FIELD_CONFIG[activeModule].getUpdateData(staffEditForm) };
+    }
+    const { error } = await supabase.from(module.table).update(updateData).eq('id', editingStaffEntry);
+    if (error) { showMessage('error', 'Failed to update: ' + error.message); setSaving(false); return; }
   }
-  const { error } = await supabase.from(module.table).update(updateData).eq('id', editingStaffEntry);
-  if (error) { showMessage('error', 'Failed to update: ' + error.message); setSaving(false); return; }
   showMessage('success', '\u2713 Entry updated!');
   setEditingStaffEntry(null);
   setStaffEditForm({});
+  setEditingBatchForms([]);
   loadModuleData(activeModule);
   setSaving(false);
 };
@@ -3099,7 +3133,7 @@ const currentColors = MODULE_COLORS[activeModule] || { bg: 'bg-gray-50', border:
   const visibleModules = currentUser?.role === 'rev_rangers'
     ? MODULES.filter(m => m.id === 'billing-inquiry' || m.id === 'hospital-cases')
     : currentUser?.role === 'rev_rangers_admin'
-    ? []
+    ? MODULES.filter(m => m.id === 'billing-inquiry' || m.id === 'hospital-cases')
     : currentUser?.role === 'finance_admin'
     ? MODULES.filter(m => m.id !== 'billing-inquiry')
     : MODULES;
@@ -4700,7 +4734,7 @@ if (filteredData.length === 0) {
                 <div>
                   <label className="text-xs font-medium text-gray-600 mb-1.5 block">Module</label>
                   <select value={exportModule} onChange={e => setExportModule(e.target.value)} className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-purple-400 outline-none">
-                    {(currentUser?.role === 'rev_rangers_admin' ? EOD_MODULES : currentUser?.role === 'rev_rangers' ? [...MODULES.filter(m => m.id === 'billing-inquiry' || m.id === 'hospital-cases'), ...EOD_MODULES] : ALL_MODULES).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                    {(currentUser?.role === 'rev_rangers_admin' ? [...MODULES.filter(m => m.id === 'billing-inquiry' || m.id === 'hospital-cases'), ...EOD_MODULES] : currentUser?.role === 'rev_rangers' ? [...MODULES.filter(m => m.id === 'billing-inquiry' || m.id === 'hospital-cases'), ...EOD_MODULES] : ALL_MODULES).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                   </select>
                 </div>
                 <div>
@@ -5146,7 +5180,64 @@ if (filteredData.length === 0) {
             const isEditingThis = editingStaffEntry === e.id;
             return (
               <div key={e.id} className={`p-4 rounded-xl border-2 ${currentColors?.border} ${currentColors?.bg} hover:shadow-md transition-all ${selectedRecords.includes(e.id) ? 'ring-2 ring-purple-500' : ''}`}>
-              {isEditingThis && STAFF_EDIT_FIELDS_CONFIG[activeModule] ? (
+              {isEditingThis && isEodModule(activeModule) && editingBatchForms.length > 0 ? (
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h4 className={`font-semibold ${currentColors?.text} flex items-center gap-2`}><Edit3 className="w-4 h-4" /> Edit Entry ({editingBatchForms.length} Records)</h4>
+                    <button onClick={() => { setEditingStaffEntry(null); setEditingBatchForms([]); }} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
+                  </div>
+                  <div className="border border-gray-200 rounded-xl overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="bg-gray-50 border-b">
+                            <th className="px-2 py-2 text-left text-xs font-bold text-gray-500 w-8">#</th>
+                            {(STAFF_FORM_CONFIG[activeModule]?.fields || []).map(f => (
+                              <th key={f.key} className="px-2 py-2 text-left text-xs font-bold text-gray-500 whitespace-nowrap">{f.label}</th>
+                            ))}
+                            {STAFF_FORM_CONFIG[activeModule]?.largeField && <th className="px-2 py-2 text-left text-xs font-bold text-gray-500 whitespace-nowrap">{STAFF_FORM_CONFIG[activeModule].largeField.label}</th>}
+                            <th className="px-2 py-2 w-8"></th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {editingBatchForms.map((record, idx) => (
+                            <tr key={idx} className="hover:bg-gray-50/50">
+                              <td className="px-2 py-1.5 text-gray-400 font-medium text-center">{idx + 1}</td>
+                              {(STAFF_FORM_CONFIG[activeModule]?.fields || []).map(f => (
+                                <td key={f.key} className="px-1 py-1">
+                                  {f.options ? (
+                                    <select value={record[f.key] || ''} onChange={ev => updateBatchEditForm(idx, f.key, ev.target.value)} className="w-full p-1.5 text-xs border border-gray-200 rounded-lg outline-none focus:border-blue-400 bg-white min-w-[100px]">
+                                      <option value="">Select...</option>
+                                      {f.options.map(o => <option key={o} value={o}>{o}</option>)}
+                                    </select>
+                                  ) : (
+                                    <input type={f.type || 'text'} value={record[f.key] || ''} onChange={ev => updateBatchEditForm(idx, f.key, ev.target.value)} className="w-full p-1.5 text-xs border border-gray-200 rounded-lg outline-none focus:border-blue-400 min-w-[90px]" placeholder={f.placeholder || ''} />
+                                  )}
+                                </td>
+                              ))}
+                              {STAFF_FORM_CONFIG[activeModule]?.largeField && (
+                                <td className="px-1 py-1">
+                                  <input type="text" value={record[STAFF_FORM_CONFIG[activeModule].largeField.key] || ''} onChange={ev => updateBatchEditForm(idx, STAFF_FORM_CONFIG[activeModule].largeField.key, ev.target.value)} className="w-full p-1.5 text-xs border border-gray-200 rounded-lg outline-none focus:border-blue-400 min-w-[120px]" />
+                                </td>
+                              )}
+                              <td className="px-1 py-1">
+                                {editingBatchForms.length > 1 && <button onClick={() => removeBatchEditRow(idx)} className="p-1 text-red-400 hover:bg-red-50 rounded" title="Remove row"><X className="w-3.5 h-3.5" /></button>}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                  <button onClick={addBatchEditRow} className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1 px-2 py-1 hover:bg-blue-50 rounded-lg transition-all">
+                    <Plus className="w-3.5 h-3.5" /> Add Row
+                  </button>
+                  <div className="flex gap-2 pt-2">
+                    <button onClick={saveStaffEntryUpdate} disabled={saving} className={`flex-1 py-2.5 ${BTN.save} disabled:opacity-50`}>{saving ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : `Save All (${editingBatchForms.length} Records)`}</button>
+                    <button onClick={() => { setEditingStaffEntry(null); setEditingBatchForms([]); }} className={`px-4 py-2.5 ${BTN.cancel}`}>Cancel</button>
+                  </div>
+                </div>
+              ) : isEditingThis && STAFF_EDIT_FIELDS_CONFIG[activeModule] ? (
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
                     <h4 className={`font-semibold ${currentColors?.text} flex items-center gap-2`}><Edit3 className="w-4 h-4" /> Edit Entry</h4>
