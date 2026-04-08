@@ -1,12 +1,12 @@
 import './globals.css'
 export const metadata = {
-  title: 'CMS - KidShine Hawaii',
-  description: 'Clinic Management Portal',
+  title: 'Care Command Hub - KidShine Hawaii',
+  description: 'Care Command Hub',
   authors: [{ name: 'Mark Murillo', url: 'https://www.linkedin.com/in/mark-murillo/' }],
   creator: 'Mark Murillo',
   publisher: 'KidShine Hawaii',
   generator: 'Next.js',
-  applicationName: 'KidShine CMS',
+  applicationName: 'KidShine CCH',
   keywords: ['clinic', 'management', 'dental', 'pediatric'],
 
   
