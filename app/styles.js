@@ -1,4 +1,4 @@
-// Clinic Management System - Styles Configuration
+// Care Command Hub - Styles Configuration
 // All visual/UI styles extracted for easy customization
 // Change colors, spacing, and appearance here without touching logic code
 
