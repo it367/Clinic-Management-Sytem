@@ -1978,6 +1978,9 @@ const showPasswordConfirm = (title, message) => {
     setTimeout(() => setMessage({ type: '', text: '' }), 4000);
   };
 const deleteRecord = async (moduleId, recordId) => {
+  if (isEodModule(moduleId) && currentUser?.role !== 'rev_rangers_admin' && currentUser?.role !== 'super_admin' && currentUser?.role !== 'it') {
+    showMessage('error', 'Only admins can delete EOD records'); return false;
+  }
   const confirmed = await showConfirm('Delete Record', 'Are you sure you want to delete this record? This action cannot be undone.', 'Delete', 'red');
   if (!confirmed) return false;
   const passwordValid = await showPasswordConfirm('Confirm Password', 'Enter your password to confirm deletion');
@@ -2003,6 +2006,9 @@ const module = ALL_MODULES.find(m => m.id === moduleId);
 };
 const deleteSelectedRecords = async () => {
   if (selectedRecords.length === 0) { showMessage('error', 'No records selected'); return; }
+  if (isEodModule(activeModule) && currentUser?.role !== 'rev_rangers_admin' && currentUser?.role !== 'super_admin' && currentUser?.role !== 'it') {
+    showMessage('error', 'Only admins can delete EOD records'); return;
+  }
   const confirmed = await showConfirm('Delete Selected Records', `Are you sure you want to delete ${selectedRecords.length} record(s)? This action cannot be undone.`, 'Delete All', 'red');
   if (!confirmed) return;
   const passwordValid = await showPasswordConfirm('Confirm Password', `Enter your password to delete ${selectedRecords.length} record(s)`);
@@ -3059,6 +3065,9 @@ const getTotalPages = () => {
 };
   const [editingBatchForms, setEditingBatchForms] = useState([]);
   const startEditingStaffEntry = (entry) => {
+  if (isEodModule(activeModule) && currentUser?.role === 'rev_rangers' && entry.created_by !== currentUser?.id) {
+    showMessage('error', 'You can only edit your own records'); return;
+  }
   setEditingStaffEntry(entry.id);
   if (isEodModule(activeModule) && entry.batch_records && entry.batch_records.length > 0) {
     setEditingBatchForms(entry.batch_records.map(r => ({ ...r })));
@@ -3415,7 +3424,7 @@ onUpdateRefundRequest={async (entryId, formData) => {
     setViewingEntry(null);
   }}
   onEodReview={handleEodReview}
-onDelete={isITViewOnly ? null : async (recordId) => {
+onDelete={(isITViewOnly || (isEodModule(activeModule) && currentUser?.role !== 'rev_rangers_admin' && currentUser?.role !== 'super_admin' && currentUser?.role !== 'it')) ? null : async (recordId) => {
     const deleted = await deleteRecord(activeModule, recordId);
     if (deleted) setViewingEntry(null);
   }}
