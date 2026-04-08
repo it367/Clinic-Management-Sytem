@@ -2768,7 +2768,7 @@ const loadEodAnalyticsData = async (month) => {
 const loadEodCalendarEntries = async (dateStr, moduleId, moduleName) => {
   const mod = EOD_MODULES.find(m => m.id === moduleId);
   if (!mod) return;
-  let query = supabase.from(mod.table).select('id, created_by, review_status, created_at, batch_records').gte('created_at', dateStr + 'T00:00:00').lte('created_at', dateStr + 'T23:59:59');
+  let query = supabase.from(mod.table).select('*').gte('created_at', dateStr + 'T00:00:00').lte('created_at', dateStr + 'T23:59:59');
   if (eodSelectedUser !== 'all') query = query.eq('created_by', eodSelectedUser);
   const { data } = await query;
   const enriched = data ? await enrichWithLocationsAndUsers(data, false) : [];
@@ -4633,16 +4633,16 @@ if (filteredData.length === 0) {
                     ) : (
                       <p className="text-sm text-gray-500">Single record entry</p>
                     )}
+                    <button onClick={() => { setActiveModule(eodCalendarPopup.moduleId); setAdminView('records'); loadModuleData(eodCalendarPopup.moduleId); setViewingEntry(entry); setEodCalendarPopup(null); }} className={`mt-2 w-full py-1.5 text-xs font-medium rounded-lg flex items-center justify-center gap-1.5 transition-all ${MODULE_COLORS[eodCalendarPopup.moduleId]?.accent || 'bg-gray-500'} text-white hover:opacity-90`}>
+                      <Eye className="w-3 h-3" /> View Record
+                    </button>
                   </div>
                 ))}
               </div>
             )}
           </div>
-          <div className="p-4 border-t bg-gray-50 flex gap-2">
-            <button onClick={() => { setActiveModule(eodCalendarPopup.moduleId); setAdminView('records'); setEodCalendarPopup(null); loadModuleData(eodCalendarPopup.moduleId); }} className={`flex-1 py-2.5 ${BTN.primary} rounded-xl font-medium flex items-center justify-center gap-2`}>
-              <Eye className="w-4 h-4" /> View All Records
-            </button>
-            <button onClick={() => setEodCalendarPopup(null)} className={`px-6 py-2.5 ${BTN.cancel} rounded-xl`}>Close</button>
+          <div className="p-4 border-t bg-gray-50">
+            <button onClick={() => setEodCalendarPopup(null)} className={`w-full py-2.5 ${BTN.cancel} rounded-xl`}>Close</button>
           </div>
         </div>
       </div>
