@@ -1,4 +1,4 @@
-//Clinic Management System v0.89
+//Care Command Hub v0.90
 // Devoloper: Mark Murillo
 // Company: Kidshine Hawaii
 
@@ -908,7 +908,7 @@ const STAFF_EDIT_FIELDS_CONFIG = {
 
 // Helper: render InputField grid from config
 const renderFormFields = (fields, formState, updateFn, moduleId) => (
-  <div className="grid grid-cols-2 gap-4">
+  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
     {fields.map(f => (
       <InputField key={f.key} label={f.label} type={f.type || 'text'} value={formState[f.key]} onChange={e => updateFn(moduleId, f.key, e.target.value)} prefix={f.prefix} options={f.options} placeholder={f.placeholder} />
     ))}
@@ -917,7 +917,7 @@ const renderFormFields = (fields, formState, updateFn, moduleId) => (
 
 // Helper: render staff edit fields from config
 const renderStaffEditFields = (fields, staffEditForm, updateStaffEditForm) => (
-  <div className="grid grid-cols-2 gap-3">
+  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
     {fields.map(f => (
       <InputField key={f.key} label={f.label} type={f.type || 'text'} value={staffEditForm[f.key]} onChange={ev => updateStaffEditForm(f.key, ev.target.value)} prefix={f.prefix} options={f.options} placeholder={f.placeholder} />
     ))}
@@ -950,9 +950,9 @@ const renderKPICards = (cards) => (
   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
     {cards.map((c, i) => (
       <div key={i} className={ANALYTICS_CARDS[c.color]}>
-        <p className={`text-sm font-medium ${ANALYTICS_CARDS.subtitleColors[c.color]}`}>{c.label}</p>
-        <p className="text-3xl font-bold mt-1">{c.value}</p>
-        {c.detail && <p className={`text-xs mt-2 ${ANALYTICS_CARDS.detailColors[c.color]}`}>{c.detail}</p>}
+        <p className={`text-xs sm:text-sm font-medium ${ANALYTICS_CARDS.subtitleColors[c.color]}`}>{c.label}</p>
+        <p className="text-2xl sm:text-3xl font-bold mt-1">{c.value}</p>
+        {c.detail && <p className={`text-[10px] sm:text-xs mt-1 sm:mt-2 ${ANALYTICS_CARDS.detailColors[c.color]}`}>{c.detail}</p>}
       </div>
     ))}
   </div>
@@ -1090,7 +1090,7 @@ function FileViewer({ file, onClose }) {
   const isOfficeDoc = file.name?.match(/\.(doc|docx|xls|xlsx|ppt|pptx)$/i);
   return (
     <div className={LAYOUT.modalOverlay} onClick={onClose}>
-      <div className="bg-white rounded-2xl max-w-5xl max-h-[90vh] w-full overflow-auto shadow-2xl" onClick={e => e.stopPropagation()}>
+      <div className="bg-white rounded-2xl max-w-5xl max-h-[90vh] w-full mx-2 sm:mx-auto overflow-auto shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex justify-between items-center p-4 border-b sticky top-0 bg-white/90 backdrop-blur-sm z-10">
           <h3 className="font-semibold truncate text-gray-800">{file.name}</h3>
           <div className="flex items-center gap-2">
@@ -1281,19 +1281,19 @@ const handleOrderSave = () => {
                 {/* Spreadsheet Table */}
                 <div className="border border-gray-200 rounded-xl overflow-hidden">
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
+                    <table className="w-full text-xs sm:text-sm">
                       <thead>
                         <tr className="bg-gray-50 border-b border-gray-200">
-                          <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-10">#</th>
+                          <th className="px-2 sm:px-3 py-2 sm:py-2.5 text-left text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider w-8 sm:w-10">#</th>
                           {allFields.map(f => (
-                            <th key={f.key} className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">{f.label}</th>
+                            <th key={f.key} className="px-2 sm:px-3 py-2 sm:py-2.5 text-left text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">{f.label}</th>
                           ))}
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
                         {entry.batch_records.map((record, idx) => (
                           <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
-                            <td className="px-3 py-2.5 text-gray-400 font-medium">{idx + 1}</td>
+                            <td className="px-2 sm:px-3 py-2 sm:py-2.5 text-gray-400 font-medium">{idx + 1}</td>
                             {allFields.map(f => {
                               let val = record[f.key] || '-';
                               if (f.prefix && val !== '-') val = `${f.prefix}${val}`;
@@ -1309,7 +1309,7 @@ const handleOrderSave = () => {
                 {config?.reviewReadOnly && !isEditing && config.reviewReadOnly.show(entry) && (
                   <div className={`p-4 ${config.reviewReadOnly.bgColor} rounded-xl border ${config.reviewReadOnly.borderColor}`}>
                     <h4 className={`font-semibold ${config.reviewReadOnly.textColor} mb-3 flex items-center gap-2`}><FileText className="w-4 h-4" /> {config.reviewReadOnly.title}</h4>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {config.reviewReadOnly.fields.map(rf => (
                         <div key={rf.key} className={rf.colSpan === 2 ? 'col-span-2' : ''}><span className="text-gray-600 text-sm block">{rf.label}</span><span className="font-medium">{rf.customRender ? rf.customRender(entry) : rf.format === 'date' ? formatDate(entry[rf.key]) : rf.format === 'datetime' ? formatDateTime(entry[rf.key]) : (entry[rf.key] || '-')}</span></div>
                       ))}
@@ -1324,7 +1324,7 @@ const handleOrderSave = () => {
                     ) : (
                       <div className={`space-y-4 ${config.adminEdit.editBg} p-4 rounded-xl border ${config.adminEdit.editBorder}`}>
                         <h4 className={`font-semibold ${config.adminEdit.editTextColor} flex items-center gap-2`}><Edit3 className="w-4 h-4" /> {config.adminEdit.editTitle}</h4>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           {config.adminEdit.fields.map(f => {
                             if (f.type === 'select') return (<div key={f.key}><label className="text-xs font-medium text-gray-600 mb-1.5 block">{f.label}</label><select value={eodReviewForm[f.key]} onChange={ev => setEodReviewForm({ ...eodReviewForm, [f.key]: ev.target.value })} className={`w-full p-2.5 border-2 border-gray-200 rounded-xl outline-none ${config.adminEdit.focusColor} bg-white`}>{config.adminEdit.statuses.map(s => <option key={s} value={s}>{s}</option>)}</select></div>);
                             return null;
@@ -1371,7 +1371,7 @@ const handleOrderSave = () => {
                     </div>
                   );
                 })()}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {config.previewFields.map(f => {
                     const val = entry[f.key];
                     let display = val || '-';
@@ -1386,7 +1386,7 @@ const handleOrderSave = () => {
                 {config.reviewReadOnly && !isEditing && config.reviewReadOnly.show(entry) && (
                   <div className={`p-4 ${config.reviewReadOnly.bgColor} rounded-xl border ${config.reviewReadOnly.borderColor}`}>
                     <h4 className={`font-semibold ${config.reviewReadOnly.textColor} mb-3 flex items-center gap-2`}><FileText className="w-4 h-4" /> {config.reviewReadOnly.title}</h4>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {config.reviewReadOnly.fields.map(rf => (
                         <div key={rf.key} className={rf.colSpan === 2 ? 'col-span-2' : ''}><span className="text-gray-600 text-sm block">{rf.label}</span><span className="font-medium">{rf.customRender ? rf.customRender(entry) : rf.format === 'date' ? formatDate(entry[rf.key]) : rf.format === 'datetime' ? formatDateTime(entry[rf.key]) : (entry[rf.key] || '-')}</span></div>
                       ))}
@@ -1400,7 +1400,7 @@ const handleOrderSave = () => {
                     ) : (
                       <div className={`space-y-4 ${config.adminEdit.editBg} p-4 rounded-xl border ${config.adminEdit.editBorder}`}>
                         <h4 className={`font-semibold ${config.adminEdit.editTextColor} flex items-center gap-2`}><Edit3 className="w-4 h-4" /> {config.adminEdit.editTitle}</h4>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           {config.adminEdit.fields.map(f => {
                             if (f.type === 'select') return (<div key={f.key}><label className="text-xs font-medium text-gray-600 mb-1.5 block">{f.label}</label><select value={form[f.key]} onChange={ev => setForm({ ...form, [f.key]: ev.target.value })} className={`w-full p-2.5 border-2 border-gray-200 rounded-xl outline-none ${config.adminEdit.focusColor} bg-white`}>{config.adminEdit.statuses.map(s => <option key={s} value={s}>{s}</option>)}</select></div>);
                             if (f.type === 'reviewerSelect') return (<div key={f.key}><label className="text-xs font-medium text-gray-600 mb-1.5 block">{f.label}</label><select value={form[f.key]} onChange={ev => setForm({ ...form, [f.key]: ev.target.value })} className={`w-full p-2.5 border-2 border-gray-200 rounded-xl outline-none ${config.adminEdit.focusColor} bg-white`}><option value="">Select Reviewer...</option>{financeAdminUsers?.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}</select></div>);
@@ -1424,7 +1424,7 @@ const handleOrderSave = () => {
           {/* IT Requests */}
           {module?.id === 'it-requests' && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div><span className="text-gray-600 text-sm block">Ticket Number</span><span className="font-medium text-cyan-600">IT-{entry.ticket_number}</span></div>
                 <div><span className="text-gray-600 text-sm block">Date Reported</span><span className="font-medium">{formatDate(entry.date_reported)}</span></div>
                 <div><span className="text-gray-600 text-sm block">Urgency</span><span className={`font-medium ${entry.urgency === 'Critical' ? 'text-red-600' : entry.urgency === 'High' ? 'text-orange-600' : ''}`}>{entry.urgency || '-'}</span></div>
@@ -1452,7 +1452,7 @@ const handleOrderSave = () => {
                       <h4 className="font-semibold text-cyan-800 flex items-center gap-2">
                         <Edit3 className="w-4 h-4" /> Update IT Request
                       </h4>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                           <label className="text-xs font-medium text-gray-600 mb-1.5 block">Status</label>
                           <select
@@ -1590,9 +1590,9 @@ function FloatingChat({ messages, input, setInput, onSend, loading, userRole }) 
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
   const isAdmin = userRole === 'super_admin' || userRole === 'finance_admin' || userRole === 'it';
-  const chatSize = isExpanded 
-    ? 'w-[600px] h-[700px]' 
-    : 'w-96 h-[500px]';
+  const chatSize = isExpanded
+    ? 'w-full sm:w-[600px] h-[85vh] sm:h-[700px]'
+    : 'w-[calc(100vw-3rem)] sm:w-96 h-[70vh] sm:h-[500px]';
   return (
     <>
       <button
@@ -3177,9 +3177,9 @@ if (!currentUser) {
   return (
     <div className={LAYOUT.loginBg}>
       {/* Animated background orbs */}
-      <div className="absolute top-1/4 -left-20 w-72 h-72 bg-purple-500/20 rounded-full blur-3xl animate-pulse"></div>
-      <div className="absolute bottom-1/4 -right-20 w-80 h-80 bg-blue-500/20 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '2s'}}></div>
+      <div className="absolute top-1/4 -left-20 w-40 h-40 sm:w-72 sm:h-72 bg-purple-500/20 rounded-full blur-3xl animate-pulse"></div>
+      <div className="absolute bottom-1/4 -right-20 w-44 h-44 sm:w-80 sm:h-80 bg-blue-500/20 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-52 h-52 sm:w-96 sm:h-96 bg-indigo-500/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '2s'}}></div>
       {/* Floating grid pattern */}
       <div className="absolute inset-0 opacity-[0.03]" style={{backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '40px 40px'}}></div>
 
@@ -3188,10 +3188,10 @@ if (!currentUser) {
         <div className="absolute top-0 left-8 right-8 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-b-full"></div>
 
         <div className="text-center mb-8">
-          <div className="w-72 h-20 mx-auto mb-5 relative">
+          <div className="w-52 h-16 sm:w-72 sm:h-20 mx-auto mb-5 relative">
             <img src="/kidshine.png" alt="KidShine Hawaii" className="w-full h-full object-contain drop-shadow-md" />
           </div>
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">Clinic Management System</h1>
+          <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">Care Command Hub</h1>
           <p className="text-gray-400 text-sm mt-1.5 flex items-center justify-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
             Secure Portal
@@ -3279,7 +3279,7 @@ if (!currentUser) {
               <span>256-bit encrypted</span>
             </div>
             <span className="text-gray-300">|</span>
-            <p className="text-xs text-gray-400">v0.89</p>
+            <p className="text-xs text-gray-400">v0.90</p>
           </div>
         </div>
       </div>
@@ -3358,8 +3358,8 @@ return (
       )}
         {passwordDialog.open && (
   <div className={LAYOUT.passwordOverlay} onClick={passwordDialog.onCancel}>
-    <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
-      <div className="p-6">
+    <div className="bg-white rounded-2xl max-w-md w-full mx-4 sm:mx-auto shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+      <div className="p-4 sm:p-6">
         <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4 bg-red-100">
           <Lock className="w-7 h-7 text-red-600" />
         </div>
@@ -3676,10 +3676,10 @@ onDelete={(isITViewOnly || (isEodModule(activeModule) && currentUser?.role !== '
             <div className="flex items-center gap-3">
               <button onClick={() => setSidebarOpen(!sidebarOpen)} className="lg:hidden p-2 hover:bg-gray-100 rounded-xl"><Menu className="w-5 h-5" /></button>
               <div>
-<h1 className="font-bold text-gray-800 text-lg">
-                  {isAdmin ? (adminView === 'users' ? 'User Management' : adminView === 'export' ? 'Export Data' : adminView === 'documents' ? 'All Documents' : adminView === 'sop' ? 'Standard Operating Procedures' : adminView === 'settings' ? 'Settings' : adminView === 'analytics' ? 'Call Analytics' : adminView === 'eod-tracking' ? 'EOD Tracking' : adminView === 'eod-analytics' ? 'EOD Analytics' : adminView === 'eod-trends' ? 'Trend Analysis' : adminView === 'rev-entry' ? `New Entry: ${currentModule?.name}` : currentUser?.role === 'rev_rangers' ? `Review: ${currentModule?.name}` : currentModule?.name) : (view === 'settings' ? 'Settings' : view === 'sop' ? 'Standard Operating Procedures' : currentModule?.name)}
+<h1 className="font-bold text-gray-800 text-sm sm:text-lg truncate max-w-[180px] sm:max-w-none">
+                  {isAdmin ? (adminView === 'users' ? 'User Management' : adminView === 'export' ? 'Export Data' : adminView === 'documents' ? 'All Documents' : adminView === 'sop' ? 'SOPs' : adminView === 'settings' ? 'Settings' : adminView === 'analytics' ? 'Call Analytics' : adminView === 'eod-tracking' ? 'EOD Tracking' : adminView === 'eod-analytics' ? 'EOD Analytics' : adminView === 'eod-trends' ? 'Trend Analysis' : adminView === 'rev-entry' ? `New Entry: ${currentModule?.name}` : currentUser?.role === 'rev_rangers' ? `Review: ${currentModule?.name}` : currentModule?.name) : (view === 'settings' ? 'Settings' : view === 'sop' ? 'SOPs' : currentModule?.name)}
                 </h1>
-                <p className="text-sm text-gray-500">{isAdmin ? (adminLocation === 'all' ? 'All Locations' : adminLocation) : selectedLocation}</p>
+                <p className="text-xs sm:text-sm text-gray-500 truncate max-w-[180px] sm:max-w-none">{isAdmin ? (adminLocation === 'all' ? 'All Locations' : adminLocation) : selectedLocation}</p>
               </div>
 </div>
             <div className="flex items-center gap-4">
@@ -3688,7 +3688,7 @@ onDelete={(isITViewOnly || (isEodModule(activeModule) && currentUser?.role !== '
             </div>
           </div>
 {/* Tabs */}
-          <div className="flex gap-2 px-4 pb-3 overflow-x-auto">
+          <div className="flex gap-1.5 sm:gap-2 px-3 sm:px-4 pb-3 overflow-x-auto">
 {isAdmin && isEodModule(activeModule) && (adminView === 'records' || adminView === 'rev-entry') ? (
               [{ id: 'rev-entry', label: '+ New Entry' }, { id: 'records', label: 'Records' }].map(tab => (
                 <button key={tab.id} onClick={() => setAdminView(tab.id)} className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${adminView === tab.id ? `${currentColors?.accent} text-white shadow-lg` : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{tab.label}</button>
@@ -3771,7 +3771,7 @@ onDelete={(isITViewOnly || (isEodModule(activeModule) && currentUser?.role !== '
               {(showAddUser || editingUser) && (
                 <div className={CARD.base}>
                   <h3 className="font-semibold mb-4 text-gray-800">{editingUser ? 'Edit User' : 'Add New User'}</h3>
-<div className="grid grid-cols-2 gap-4">
+<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <InputField label="Name *" value={editingUser ? editingUser.name : newUser.name} onChange={e => editingUser ? setEditingUser({...editingUser, name: e.target.value}) : setNewUser({...newUser, name: e.target.value})} />
                     <InputField label="Username *" value={editingUser ? (editingUser.username || '') : newUser.username} onChange={e => editingUser ? setEditingUser({...editingUser, username: e.target.value}) : setNewUser({...newUser, username: e.target.value})} placeholder="Login username" />
                     <InputField label="Email *" value={editingUser ? editingUser.email : newUser.email} onChange={e => editingUser ? setEditingUser({...editingUser, email: e.target.value}) : setNewUser({...newUser, email: e.target.value})} />
@@ -3813,14 +3813,14 @@ onDelete={(isITViewOnly || (isEodModule(activeModule) && currentUser?.role !== '
                            u.role?.toLowerCase().includes(search);
                   }).map(u => (
       <div key={u.id}>
-        <div className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
-          <div className="flex items-center gap-3">
-           <div className={`${ICON_BOX.avatar} ${ROLE_STYLES[u.role]?.avatar || ROLE_STYLES.staff.avatar}`}>
+        <div className="p-3 sm:p-4 flex items-center justify-between gap-2 hover:bg-gray-50 transition-colors">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+           <div className={`${ICON_BOX.avatar} shrink-0 ${ROLE_STYLES[u.role]?.avatar || ROLE_STYLES.staff.avatar}`}>
               {u.name.charAt(0)}
             </div>
-            <div>
-              <p className="font-medium text-gray-800">{u.name}</p>
-             <p className="text-sm text-gray-500">{u.username && <span className="text-blue-600">@{u.username} • </span>}{u.email} • {formatRole(u.role)}</p>
+            <div className="min-w-0">
+              <p className="font-medium text-gray-800 text-sm sm:text-base truncate">{u.name}</p>
+             <p className="text-xs sm:text-sm text-gray-500 truncate">{u.username && <span className="text-blue-600">@{u.username} • </span>}{u.email} • {formatRole(u.role)}</p>
               {u.role === 'staff' && (
                 <div className="flex flex-wrap gap-1 mt-1">
                   {u.locations?.map(loc => (
@@ -4051,7 +4051,7 @@ if (filteredData.length === 0) {
             {/* Status Overview */}
             <div className={CARD.base}>
               <h3 className="font-semibold text-gray-800 mb-4">Status Distribution</h3>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-center">
                   <p className="text-3xl font-bold text-amber-600">{pendingCount}</p>
                   <p className="text-sm text-gray-600 mt-1">Pending</p>
@@ -4288,7 +4288,7 @@ if (filteredData.length === 0) {
             {/* Status Distribution */}
             <div className={CARD.base}>
               <h3 className="font-semibold text-gray-800 mb-4">Status Distribution</h3>
-              <div className="grid grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-center">
                   <p className="text-3xl font-bold text-amber-600">{pendingCount}</p>
                   <p className="text-sm text-gray-600 mt-1">Pending</p>
@@ -4313,7 +4313,7 @@ if (filteredData.length === 0) {
                 <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
                   <PieChart className="w-5 h-5 text-rose-500" /> By Type
                 </h3>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                   {Object.entries(byType).filter(([_, s]) => s.count > 0).map(([type, stats]) => (
                     <div key={type} className="p-4 rounded-xl bg-rose-50 border border-rose-100">
                       <p className="font-medium text-gray-800">{type}</p>
@@ -4424,7 +4424,7 @@ if (filteredData.length === 0) {
             {/* Status Distribution */}
             <div className={CARD.base}>
               <h3 className="font-semibold text-gray-800 mb-4">Status Distribution</h3>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-center">
                   <p className="text-3xl font-bold text-amber-600">{pendingCount}</p>
                   <p className="text-sm text-gray-600 mt-1">Pending</p>
@@ -4444,7 +4444,7 @@ if (filteredData.length === 0) {
               <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
                 <PieChart className="w-5 h-5 text-indigo-500" /> By Case Type
               </h3>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 {Object.entries(byType).filter(([_, s]) => s.count > 0).map(([type, stats]) => (
                   <div key={type} className="p-4 rounded-xl bg-indigo-50 border border-indigo-100">
                     <p className="font-medium text-gray-800">{type}</p>
@@ -4508,11 +4508,11 @@ if (filteredData.length === 0) {
   <div className="space-y-6">
     {/* Month Navigation & User Filter */}
     <div className={CARD.base}>
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <div className="flex items-center gap-3">
-          <button onClick={() => { const d = new Date(eodAnalyticsMonth); d.setMonth(d.getMonth() - 1); setEodAnalyticsMonth(d); loadEodAnalyticsData(d); }} className="p-2 hover:bg-gray-100 rounded-xl"><ChevronLeft className="w-5 h-5" /></button>
-          <h2 className="font-semibold text-gray-800 text-lg">{eodAnalyticsMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}</h2>
-          <button onClick={() => { const d = new Date(eodAnalyticsMonth); d.setMonth(d.getMonth() + 1); setEodAnalyticsMonth(d); loadEodAnalyticsData(d); }} className="p-2 hover:bg-gray-100 rounded-xl"><ChevronRight className="w-5 h-5" /></button>
+      <div className="flex items-center justify-between flex-wrap gap-3 sm:gap-4">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <button onClick={() => { const d = new Date(eodAnalyticsMonth); d.setMonth(d.getMonth() - 1); setEodAnalyticsMonth(d); loadEodAnalyticsData(d); }} className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-xl"><ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" /></button>
+          <h2 className="font-semibold text-gray-800 text-sm sm:text-lg">{eodAnalyticsMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}</h2>
+          <button onClick={() => { const d = new Date(eodAnalyticsMonth); d.setMonth(d.getMonth() + 1); setEodAnalyticsMonth(d); loadEodAnalyticsData(d); }} className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-xl"><ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" /></button>
         </div>
         {(currentUser?.role === 'rev_rangers_admin' || currentUser?.role === 'super_admin' || currentUser?.role === 'finance_admin' || currentUser?.role === 'it') && (
           <select value={eodSelectedUser} onChange={e => { setEodSelectedUser(e.target.value); loadEodAnalyticsData(eodAnalyticsMonth); }} className={INPUT.filter}>
@@ -4540,7 +4540,7 @@ if (filteredData.length === 0) {
     {/* Calendar Grid */}
     <div className={CARD.base}>
       <div className="mb-4">
-        <div className="flex items-center gap-5 text-sm text-gray-600 mb-3 flex-wrap">
+        <div className="flex items-center gap-3 sm:gap-5 text-xs sm:text-sm text-gray-600 mb-3 flex-wrap">
           <span className="flex items-center gap-1.5"><span className="w-4 h-4 rounded-lg bg-emerald-400 inline-block"></span> Approved</span>
           <span className="flex items-center gap-1.5"><span className="w-4 h-4 rounded-lg bg-amber-400 inline-block"></span> For Review</span>
           <span className="flex items-center gap-1.5"><span className="w-4 h-4 rounded-lg bg-orange-400 inline-block"></span> Updates Needed</span>
@@ -4548,9 +4548,9 @@ if (filteredData.length === 0) {
           <span className="flex items-center gap-1.5"><span className="w-4 h-4 rounded-lg bg-gray-100 inline-block"></span> No Submission</span>
         </div>
       </div>
-      <div className="grid grid-cols-7 gap-2">
+      <div className="grid grid-cols-7 gap-1 sm:gap-2">
         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-          <div key={d} className="text-center text-sm font-semibold text-gray-500 py-3">{d}</div>
+          <div key={d} className="text-center text-[10px] sm:text-sm font-semibold text-gray-500 py-2 sm:py-3">{d}</div>
         ))}
         {(() => {
           const year = eodAnalyticsMonth.getFullYear();
@@ -4559,25 +4559,25 @@ if (filteredData.length === 0) {
           const daysInMonth = new Date(year, month + 1, 0).getDate();
           const todayStr = new Date().toISOString().split('T')[0];
           const cells = [];
-          for (let i = 0; i < firstDay; i++) cells.push(<div key={`empty-${i}`} className="p-3"></div>);
+          for (let i = 0; i < firstDay; i++) cells.push(<div key={`empty-${i}`} className="p-1 sm:p-3"></div>);
           for (let day = 1; day <= daysInMonth; day++) {
             const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
             const dayData = eodAnalyticsData[dateStr] || {};
             const isToday = dateStr === todayStr;
             cells.push(
-              <div key={day} className={`p-3 rounded-xl border min-h-[110px] ${isToday ? 'border-teal-400 bg-teal-50 shadow-sm' : 'border-gray-100 hover:bg-gray-50'} transition-all`}>
-                <p className={`text-sm font-bold mb-2 ${isToday ? 'text-teal-700' : 'text-gray-700'}`}>{day}</p>
-                <div className="grid grid-cols-3 gap-1.5">
+              <div key={day} className={`p-1.5 sm:p-3 rounded-lg sm:rounded-xl border min-h-[70px] sm:min-h-[110px] ${isToday ? 'border-teal-400 bg-teal-50 shadow-sm' : 'border-gray-100 hover:bg-gray-50'} transition-all`}>
+                <p className={`text-[10px] sm:text-sm font-bold mb-1 sm:mb-2 ${isToday ? 'text-teal-700' : 'text-gray-700'}`}>{day}</p>
+                <div className="grid grid-cols-3 gap-0.5 sm:gap-1.5">
                   {EOD_MODULES.map(mod => {
                     const statuses = dayData[mod.id] || [];
                     const ModIcon = mod.icon;
-                    if (statuses.length === 0) return <div key={mod.id} className="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center" title={`${mod.name}: No submission`}><ModIcon className="w-3.5 h-3.5 text-gray-300" /></div>;
+                    if (statuses.length === 0) return <div key={mod.id} className="w-5 h-5 sm:w-7 sm:h-7 rounded sm:rounded-lg bg-gray-100 flex items-center justify-center" title={`${mod.name}: No submission`}><ModIcon className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 text-gray-300" /></div>;
                     const hasDeclined = statuses.includes('Declined');
                     const hasUpdatesNeeded = statuses.includes('Updates Needed');
                     const hasPending = statuses.includes('For Review');
                     const allApproved = statuses.every(s => s === 'Approved');
                     const dotColor = hasDeclined ? 'bg-red-400' : hasUpdatesNeeded ? 'bg-orange-400' : hasPending ? 'bg-amber-400' : allApproved ? 'bg-emerald-400' : 'bg-gray-300';
-                    return <button key={mod.id} onClick={() => loadEodCalendarEntries(dateStr, mod.id, mod.name)} className={`w-7 h-7 rounded-lg ${dotColor} flex items-center justify-center cursor-pointer hover:scale-110 hover:shadow-md transition-all duration-200`} title={`${mod.name}: ${statuses.length} entries — Click to view`}><ModIcon className="w-3.5 h-3.5 text-white" /></button>;
+                    return <button key={mod.id} onClick={() => loadEodCalendarEntries(dateStr, mod.id, mod.name)} className={`w-5 h-5 sm:w-7 sm:h-7 rounded sm:rounded-lg ${dotColor} flex items-center justify-center cursor-pointer hover:scale-110 hover:shadow-md transition-all duration-200`} title={`${mod.name}: ${statuses.length} entries — Click to view`}><ModIcon className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 text-white" /></button>;
                   })}
                 </div>
               </div>
@@ -4590,7 +4590,7 @@ if (filteredData.length === 0) {
     {/* Calendar Popup */}
     {eodCalendarPopup && (
       <div className={LAYOUT.modalOverlay} onClick={() => setEodCalendarPopup(null)}>
-        <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl overflow-hidden" onClick={ev => ev.stopPropagation()}>
+        <div className="bg-white rounded-2xl max-w-2xl w-full mx-2 sm:mx-auto shadow-2xl overflow-hidden" onClick={ev => ev.stopPropagation()}>
           <div className={`p-4 border-b ${MODULE_COLORS[eodCalendarPopup.moduleId]?.bg || 'bg-gray-50'} flex items-center justify-between`}>
             <div>
               <h3 className="font-semibold text-gray-800">{eodCalendarPopup.moduleName}</h3>
@@ -4651,7 +4651,7 @@ if (filteredData.length === 0) {
     {/* Module Legend */}
     <div className={CARD.base}>
       <h3 className="font-semibold text-gray-800 mb-3">Module Legend</h3>
-      <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
         {EOD_MODULES.map(mod => {
           const colors = MODULE_COLORS[mod.id] || {};
           return (
@@ -4894,7 +4894,7 @@ if (filteredData.length === 0) {
                   <p className="text-sm text-gray-500">Download records as CSV file</p>
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-4 mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-6">
                 <div>
                   <label className="text-xs font-medium text-gray-600 mb-1.5 block">Module</label>
                   <select value={exportModule} onChange={e => setExportModule(e.target.value)} className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-purple-400 outline-none">
@@ -4928,7 +4928,7 @@ if (filteredData.length === 0) {
         <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center"><BookOpen className="w-6 h-6 text-white" /></div>
         <div><h2 className="font-semibold text-gray-800">Upload SOP</h2><p className="text-sm text-gray-500">Add standard operating procedure documents</p></div>
       </div>
-      <div className="grid grid-cols-2 gap-4 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
         <div className="flex flex-col"><label className={INPUT.label}>Title *</label><input type="text" value={sopTitle} onChange={e => setSOPTitle(e.target.value)} placeholder="e.g., Front Desk Opening Procedure" className={`${INPUT.wrapper} p-2.5`} /></div>
         <div className="flex flex-col"><label className={INPUT.label}>Description (optional)</label><input type="text" value={sopDescription} onChange={e => setSOPDescription(e.target.value)} placeholder="Brief description..." className={`${INPUT.wrapper} p-2.5`} /></div>
       </div>
@@ -5170,7 +5170,7 @@ if (filteredData.length === 0) {
         {/* Batch Records Table */}
         {(eodBatchRecords[activeModule]?.length > 0) && (
           <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100">
-            <div className="px-5 py-4 bg-gradient-to-r from-gray-50 to-white border-b flex items-center justify-between">
+            <div className="px-3 sm:px-5 py-3 sm:py-4 bg-gradient-to-r from-gray-50 to-white border-b flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className={`w-8 h-8 rounded-lg ${currentColors?.light || 'bg-gray-100'} flex items-center justify-center`}>
                   <FileText className={`w-4 h-4 ${currentColors?.text || 'text-gray-600'}`} />
@@ -5247,9 +5247,9 @@ if (filteredData.length === 0) {
   <div className="space-y-4">
     {/* Filters and Controls */}
     <div className={CARD.analytics}>
-      <div className="flex flex-wrap items-center gap-4">
+      <div className="flex flex-wrap items-center gap-2 sm:gap-4">
         {/* Search */}
-        <div className="flex-1 min-w-[200px]">
+        <div className="flex-1 min-w-[150px] sm:min-w-[200px]">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
@@ -5257,7 +5257,7 @@ if (filteredData.length === 0) {
               value={recordSearch}
               onChange={e => { setRecordSearch(e.target.value); setCurrentPage(1); }}
               placeholder="Search records..."
-              className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-200 rounded-xl text-sm focus:border-blue-400 outline-none transition-all"
+              className="w-full pl-10 pr-4 py-2 sm:py-2.5 border-2 border-gray-200 rounded-xl text-sm focus:border-blue-400 outline-none transition-all"
             />
             {recordSearch && (
               <button onClick={() => setRecordSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
@@ -5278,11 +5278,11 @@ if (filteredData.length === 0) {
         )}
         {/* EOD Date Range Filter */}
         {isEodModule(activeModule) && (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs text-gray-500 font-medium">From:</span>
-            <input type="date" value={eodFilterDateFrom} onChange={e => { setEodFilterDateFrom(e.target.value); setCurrentPage(1); }} className="px-3 py-2.5 border-2 border-gray-200 rounded-xl text-sm focus:border-blue-400 outline-none bg-white" />
+            <input type="date" value={eodFilterDateFrom} onChange={e => { setEodFilterDateFrom(e.target.value); setCurrentPage(1); }} className="px-2 sm:px-3 py-2 sm:py-2.5 border-2 border-gray-200 rounded-xl text-xs sm:text-sm focus:border-blue-400 outline-none bg-white" />
             <span className="text-xs text-gray-500 font-medium">To:</span>
-            <input type="date" value={eodFilterDateTo} onChange={e => { setEodFilterDateTo(e.target.value); setCurrentPage(1); }} className="px-3 py-2.5 border-2 border-gray-200 rounded-xl text-sm focus:border-blue-400 outline-none bg-white" />
+            <input type="date" value={eodFilterDateTo} onChange={e => { setEodFilterDateTo(e.target.value); setCurrentPage(1); }} className="px-2 sm:px-3 py-2 sm:py-2.5 border-2 border-gray-200 rounded-xl text-xs sm:text-sm focus:border-blue-400 outline-none bg-white" />
             {(eodFilterDateFrom || eodFilterDateTo) && (
               <button onClick={() => { setEodFilterDateFrom(''); setEodFilterDateTo(''); setCurrentPage(1); }} className="text-xs text-blue-600 hover:underline font-medium">Clear</button>
             )}
@@ -5374,15 +5374,15 @@ if (filteredData.length === 0) {
                   </div>
                   <div className="border border-gray-200 rounded-xl overflow-hidden">
                     <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
+                      <table className="w-full text-xs sm:text-sm">
                         <thead>
                           <tr className="bg-gray-50 border-b">
-                            <th className="px-2 py-2 text-left text-xs font-bold text-gray-500 w-8">#</th>
+                            <th className="px-1 sm:px-2 py-2 text-left text-[10px] sm:text-xs font-bold text-gray-500 w-6 sm:w-8">#</th>
                             {(STAFF_FORM_CONFIG[activeModule]?.fields || []).map(f => (
-                              <th key={f.key} className="px-2 py-2 text-left text-xs font-bold text-gray-500 whitespace-nowrap">{f.label}</th>
+                              <th key={f.key} className="px-1 sm:px-2 py-2 text-left text-[10px] sm:text-xs font-bold text-gray-500 whitespace-nowrap">{f.label}</th>
                             ))}
-                            {STAFF_FORM_CONFIG[activeModule]?.largeField && <th className="px-2 py-2 text-left text-xs font-bold text-gray-500 whitespace-nowrap">{STAFF_FORM_CONFIG[activeModule].largeField.label}</th>}
-                            <th className="px-2 py-2 w-8"></th>
+                            {STAFF_FORM_CONFIG[activeModule]?.largeField && <th className="px-1 sm:px-2 py-2 text-left text-[10px] sm:text-xs font-bold text-gray-500 whitespace-nowrap">{STAFF_FORM_CONFIG[activeModule].largeField.label}</th>}
+                            <th className="px-1 sm:px-2 py-2 w-6 sm:w-8"></th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
@@ -5496,26 +5496,26 @@ if (filteredData.length === 0) {
       )}
       {/* Pagination Controls */}
       {!loading && getModuleEntries().length > 0 && recordsPerPage !== 'all' && getTotalPages() > 1 && (
-        <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-100">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-6 pt-4 border-t border-gray-100">
           <p className="text-sm text-gray-500">
             Page {currentPage} of {getTotalPages()}
           </p>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-center gap-1 sm:gap-2">
             <button
               onClick={() => setCurrentPage(1)}
               disabled={currentPage === 1}
-              className="px-3 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               First
             </button>
             <button
               onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
               disabled={currentPage === 1}
-              className="px-3 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
-              Previous
+              Prev
             </button>
-            <div className="flex items-center gap-1">
+            <div className="hidden sm:flex items-center gap-1">
               {Array.from({ length: Math.min(5, getTotalPages()) }, (_, i) => {
                 let pageNum;
                 if (getTotalPages() <= 5) {
@@ -5538,17 +5538,18 @@ if (filteredData.length === 0) {
                 );
               })}
             </div>
+            <span className="sm:hidden text-xs font-medium text-gray-600 px-2">{currentPage}/{getTotalPages()}</span>
             <button
               onClick={() => setCurrentPage(prev => Math.min(prev + 1, getTotalPages()))}
               disabled={currentPage === getTotalPages()}
-              className="px-3 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               Next
             </button>
             <button
               onClick={() => setCurrentPage(getTotalPages())}
               disabled={currentPage === getTotalPages()}
-              className="px-3 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               Last
             </button>
@@ -5588,7 +5589,7 @@ if (filteredData.length === 0) {
                   {/* Batch Records Table */}
                   {(eodBatchRecords[activeModule]?.length > 0) && (
                     <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100">
-                      <div className="px-5 py-4 bg-gradient-to-r from-gray-50 to-white border-b flex items-center justify-between">
+                      <div className="px-3 sm:px-5 py-3 sm:py-4 bg-gradient-to-r from-gray-50 to-white border-b flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <div className={`w-8 h-8 rounded-lg ${currentColors?.light || 'bg-gray-100'} flex items-center justify-center`}>
                             <FileText className={`w-4 h-4 ${currentColors?.text || 'text-gray-600'}`} />
@@ -5667,8 +5668,8 @@ if (filteredData.length === 0) {
   <div className="space-y-4">
     {/* Sorting Controls */}
     <div className={CARD.analytics}>
-      <div className="flex flex-wrap items-center gap-4">
-        <div className="flex-1 min-w-[200px]">
+      <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+        <div className="flex-1 min-w-[150px] sm:min-w-[200px]">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
@@ -5837,14 +5838,14 @@ if (filteredData.length === 0) {
       {/* Pagination */}
       {/* Pagination */}
       {!loading && getStaffEntries().length > 0 && staffRecordsPerPage !== 'all' && getStaffTotalPages() > 1 && (
-        <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-100">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-6 pt-4 border-t border-gray-100">
           <p className="text-sm text-gray-500">Page {staffCurrentPage} of {getStaffTotalPages()}</p>
-          <div className="flex items-center gap-2">
-            <button onClick={() => setStaffCurrentPage(1)} disabled={staffCurrentPage === 1} className="px-3 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed">First</button>
-            <button onClick={() => setStaffCurrentPage(p => Math.max(p - 1, 1))} disabled={staffCurrentPage === 1} className="px-3 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed">Previous</button>
-            <span className="px-3 py-2 text-sm font-semibold text-blue-600 bg-blue-50 rounded-lg">{staffCurrentPage}</span>
-            <button onClick={() => setStaffCurrentPage(p => Math.min(p + 1, getStaffTotalPages()))} disabled={staffCurrentPage === getStaffTotalPages()} className="px-3 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed">Next</button>
-            <button onClick={() => setStaffCurrentPage(getStaffTotalPages())} disabled={staffCurrentPage === getStaffTotalPages()} className="px-3 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed">Last</button>
+          <div className="flex flex-wrap items-center justify-center gap-1 sm:gap-2">
+            <button onClick={() => setStaffCurrentPage(1)} disabled={staffCurrentPage === 1} className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed">First</button>
+            <button onClick={() => setStaffCurrentPage(p => Math.max(p - 1, 1))} disabled={staffCurrentPage === 1} className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed">Prev</button>
+            <span className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-blue-600 bg-blue-50 rounded-lg">{staffCurrentPage}</span>
+            <button onClick={() => setStaffCurrentPage(p => Math.min(p + 1, getStaffTotalPages()))} disabled={staffCurrentPage === getStaffTotalPages()} className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed">Next</button>
+            <button onClick={() => setStaffCurrentPage(getStaffTotalPages())} disabled={staffCurrentPage === getStaffTotalPages()} className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed">Last</button>
           </div>
         </div>
       )}
@@ -5855,8 +5856,8 @@ if (filteredData.length === 0) {
       </div>
 {sidebarOpen && <div className={LAYOUT.sidebarOverlay} onClick={() => setSidebarOpen(false)} />}
 {/* Version Footer */}
-      <div className="fixed bottom-6 left-4 lg:left-[310px] z-[25] pointer-events-none">
-        <p className="text-xs text-gray-400 opacity-70">CMS v0.89</p>
+      <div className="fixed bottom-2 sm:bottom-6 left-4 lg:left-[310px] z-[25] pointer-events-none">
+        <p className="text-[10px] sm:text-xs text-gray-400 opacity-70">CCH v0.90</p>
       </div>
     </div>
   );
