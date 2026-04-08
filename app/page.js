@@ -1743,6 +1743,7 @@ const [analyticsModule, setAnalyticsModule] = useState('billing-inquiry');
 const [eodAnalyticsMonth, setEodAnalyticsMonth] = useState(new Date());
 const [eodSelectedUser, setEodSelectedUser] = useState('all');
 const [eodAnalyticsData, setEodAnalyticsData] = useState({});
+const [eodCalendarPopup, setEodCalendarPopup] = useState(null);
   const [chatMessages, setChatMessages] = useState([{
     role: 'assistant',
     content: "👋 Hi! I'm your AI assistant. I can help with:\n\n• Data summaries & reports\n• Weekly comparisons\n• Location analytics\n• IT request status\n\nWhat would you like to know?"
@@ -1828,7 +1829,7 @@ setAdminView('analytics');
 } else if (sessionData.user.role === 'rev_rangers_admin') {
   loadUsers();
   setActiveModule('eod-patient-scheduling');
-  setAdminView('eod-analytics');
+  setAdminView('eod-tracking');
 }
       }
     } catch (e) {
@@ -1915,8 +1916,8 @@ useEffect(() => {
   const hasModules = true;
   const hasSupport = role === 'super_admin' || role === 'it' || !isAdmin || role === 'office_manager';
   const hasEod = canAccessEod(role);
-  const sections = ['modules', 'eod', 'management', 'support'];
-  const visible = sections.filter(s => s === 'modules' ? hasModules : s === 'support' ? hasSupport : s === 'eod' ? hasEod : isAdmin);
+  const sections = ['modules', 'eod', 'eodReports', 'management', 'support'];
+  const visible = sections.filter(s => s === 'modules' ? hasModules : s === 'support' ? hasSupport : (s === 'eod' || s === 'eodReports') ? hasEod : isAdmin);
   const collapsed = {};
   visible.forEach((s, i) => { collapsed[s] = i > 0; });
   setCollapsedSections(collapsed);
@@ -2324,7 +2325,7 @@ setAdminView('analytics');
     } else if (user.role === 'rev_rangers_admin') {
       loadUsers();
       setActiveModule('eod-patient-scheduling');
-      setAdminView('eod-analytics');
+      setAdminView('eod-tracking');
       loadEodAnalyticsData(eodAnalyticsMonth);
     }
     showMessage('success', '✓ Login successful!');
@@ -2749,6 +2750,15 @@ const loadEodAnalyticsData = async (month) => {
     }
   }
   setEodAnalyticsData(result);
+};
+const loadEodCalendarEntries = async (dateStr, moduleId, moduleName) => {
+  const mod = EOD_MODULES.find(m => m.id === moduleId);
+  if (!mod) return;
+  let query = supabase.from(mod.table).select('id, created_by, review_status, created_at, batch_records').gte('created_at', dateStr + 'T00:00:00').lte('created_at', dateStr + 'T23:59:59');
+  if (eodSelectedUser !== 'all') query = query.eq('created_by', eodSelectedUser);
+  const { data } = await query;
+  const enriched = data ? await enrichWithLocationsAndUsers(data, false) : [];
+  setEodCalendarPopup({ date: dateStr, moduleId, moduleName, entries: enriched });
 };
 const updateEntryStatus = async (moduleId, entryId, newStatus, additionalFields = {}) => {
 const confirmed = await showConfirm('Update Status', `Are you sure you want to update the status to "${newStatus}"?`, 'Update', 'blue');
@@ -3489,19 +3499,9 @@ onDelete={isITViewOnly ? null : async (recordId) => {
     </button>
     <div className={`transition-all duration-300 ease-in-out overflow-hidden ${collapsedSections.eod ? 'max-h-0 opacity-0' : 'max-h-[600px] opacity-100'}`}>
       <div className="px-1.5 pb-2 space-y-0.5">
-    <button
-      onClick={() => { setAdminView('eod-analytics'); loadEodAnalyticsData(eodAnalyticsMonth); setSidebarOpen(false); }}
-      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all duration-200 group/item ${adminView === 'eod-analytics' ? 'bg-teal-50 text-teal-700 shadow-sm' : 'text-gray-600 hover:bg-white hover:shadow-sm hover:translate-x-0.5'}`}
-    >
-      <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 ${adminView === 'eod-analytics' ? 'bg-teal-100' : 'bg-white group-hover/item:scale-105'}`}>
-        <BarChart3 className={`w-4 h-4 transition-colors duration-200 ${adminView === 'eod-analytics' ? 'text-teal-600' : 'text-gray-400 group-hover/item:text-gray-600'}`} />
-      </div>
-      <span className="text-sm font-medium">EOD Analytics</span>
-      {adminView === 'eod-analytics' && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse"></div>}
-    </button>
     {EOD_MODULES.map(m => {
       const colors = MODULE_COLORS[m.id] || { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-700', accent: 'bg-gray-500', light: 'bg-gray-100' };
-      const isActive = activeModule === m.id && adminView !== 'eod-analytics' && adminView !== 'users' && adminView !== 'export' && adminView !== 'settings';
+      const isActive = activeModule === m.id && adminView !== 'eod-tracking' && adminView !== 'eod-analytics' && adminView !== 'users' && adminView !== 'export' && adminView !== 'settings';
       return (
         <button
           key={m.id}
@@ -3516,6 +3516,42 @@ onDelete={isITViewOnly ? null : async (recordId) => {
         </button>
       );
     })}
+      </div>
+    </div>
+  </div>
+)}
+{canAccessEod(currentUser?.role) && (
+  <div className="rounded-xl bg-gray-50/50 border border-gray-100 overflow-hidden">
+    <button onClick={() => setCollapsedSections(prev => ({ ...prev, eodReports: !prev.eodReports }))} className="w-full flex items-center justify-between px-3.5 py-2.5 hover:bg-gray-100/80 transition-all duration-200 group">
+      <div className="flex items-center gap-2">
+        <div className="w-1 h-4 rounded-full bg-emerald-400 transition-all duration-300 group-hover:h-5"></div>
+        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">EOD Reports</p>
+      </div>
+      <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-300 ease-in-out ${collapsedSections.eodReports ? '-rotate-90' : 'rotate-0'}`} />
+    </button>
+    <div className={`transition-all duration-300 ease-in-out overflow-hidden ${collapsedSections.eodReports ? 'max-h-0 opacity-0' : 'max-h-[400px] opacity-100'}`}>
+      <div className="px-1.5 pb-2 space-y-0.5">
+        <button onClick={() => { setAdminView('eod-tracking'); loadEodAnalyticsData(eodAnalyticsMonth); setSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all duration-200 group/item ${adminView === 'eod-tracking' ? 'bg-emerald-50 text-emerald-700 shadow-sm' : 'text-gray-600 hover:bg-white hover:shadow-sm hover:translate-x-0.5'}`}>
+          <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 ${adminView === 'eod-tracking' ? 'bg-emerald-100' : 'bg-white group-hover/item:scale-105'}`}>
+            <BarChart3 className={`w-4 h-4 transition-colors duration-200 ${adminView === 'eod-tracking' ? 'text-emerald-600' : 'text-gray-400 group-hover/item:text-gray-600'}`} />
+          </div>
+          <span className="text-sm font-medium">Tracking</span>
+          {adminView === 'eod-tracking' && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>}
+        </button>
+        <button onClick={() => { setAdminView('eod-analytics'); setSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all duration-200 group/item ${adminView === 'eod-analytics' ? 'bg-emerald-50 text-emerald-700 shadow-sm' : 'text-gray-600 hover:bg-white hover:shadow-sm hover:translate-x-0.5'}`}>
+          <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 ${adminView === 'eod-analytics' ? 'bg-emerald-100' : 'bg-white group-hover/item:scale-105'}`}>
+            <PieChart className={`w-4 h-4 transition-colors duration-200 ${adminView === 'eod-analytics' ? 'text-emerald-600' : 'text-gray-400 group-hover/item:text-gray-600'}`} />
+          </div>
+          <span className="text-sm font-medium">Analytics</span>
+          {adminView === 'eod-analytics' && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>}
+        </button>
+        <button onClick={() => { setAdminView('eod-trends'); setSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all duration-200 group/item ${adminView === 'eod-trends' ? 'bg-emerald-50 text-emerald-700 shadow-sm' : 'text-gray-600 hover:bg-white hover:shadow-sm hover:translate-x-0.5'}`}>
+          <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 ${adminView === 'eod-trends' ? 'bg-emerald-100' : 'bg-white group-hover/item:scale-105'}`}>
+            <TrendingUp className={`w-4 h-4 transition-colors duration-200 ${adminView === 'eod-trends' ? 'text-emerald-600' : 'text-gray-400 group-hover/item:text-gray-600'}`} />
+          </div>
+          <span className="text-sm font-medium">Trend Analysis</span>
+          {adminView === 'eod-trends' && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>}
+        </button>
       </div>
     </div>
   </div>
@@ -3619,7 +3655,7 @@ onDelete={isITViewOnly ? null : async (recordId) => {
               <button onClick={() => setSidebarOpen(!sidebarOpen)} className="lg:hidden p-2 hover:bg-gray-100 rounded-xl"><Menu className="w-5 h-5" /></button>
               <div>
 <h1 className="font-bold text-gray-800 text-lg">
-                  {isAdmin ? (adminView === 'users' ? 'User Management' : adminView === 'export' ? 'Export Data' : adminView === 'documents' ? 'All Documents' : adminView === 'sop' ? 'Standard Operating Procedures' : adminView === 'settings' ? 'Settings' : adminView === 'analytics' ? 'Analytics' : adminView === 'eod-analytics' ? 'End of Day Reports - Analytics' : adminView === 'rev-entry' ? `New Entry: ${currentModule?.name}` : currentUser?.role === 'rev_rangers' ? `Review: ${currentModule?.name}` : currentModule?.name) : (view === 'settings' ? 'Settings' : view === 'sop' ? 'Standard Operating Procedures' : currentModule?.name)}
+                  {isAdmin ? (adminView === 'users' ? 'User Management' : adminView === 'export' ? 'Export Data' : adminView === 'documents' ? 'All Documents' : adminView === 'sop' ? 'Standard Operating Procedures' : adminView === 'settings' ? 'Settings' : adminView === 'analytics' ? 'Analytics' : adminView === 'eod-tracking' ? 'EOD Tracking' : adminView === 'eod-analytics' ? 'EOD Analytics' : adminView === 'eod-trends' ? 'Trend Analysis' : adminView === 'rev-entry' ? `New Entry: ${currentModule?.name}` : currentUser?.role === 'rev_rangers' ? `Review: ${currentModule?.name}` : currentModule?.name) : (view === 'settings' ? 'Settings' : view === 'sop' ? 'Standard Operating Procedures' : currentModule?.name)}
                 </h1>
                 <p className="text-sm text-gray-500">{isAdmin ? (adminLocation === 'all' ? 'All Locations' : adminLocation) : selectedLocation}</p>
               </div>
@@ -4445,8 +4481,8 @@ if (filteredData.length === 0) {
     })()}
   </div>
 )}
-{/* ADMIN: EOD Analytics */}
-{isAdmin && adminView === 'eod-analytics' && (
+{/* ADMIN: EOD Tracking */}
+{isAdmin && adminView === 'eod-tracking' && (
   <div className="space-y-6">
     {/* Month Navigation & User Filter */}
     <div className={CARD.base}>
@@ -4519,7 +4555,7 @@ if (filteredData.length === 0) {
                     const hasPending = statuses.includes('For Review');
                     const allApproved = statuses.every(s => s === 'Approved');
                     const dotColor = hasDeclined ? 'bg-red-400' : hasUpdatesNeeded ? 'bg-orange-400' : hasPending ? 'bg-amber-400' : allApproved ? 'bg-emerald-400' : 'bg-gray-300';
-                    return <div key={mod.id} className={`w-7 h-7 rounded-lg ${dotColor} flex items-center justify-center`} title={`${mod.name}: ${statuses.length} entries (${statuses[0]})`}><ModIcon className="w-3.5 h-3.5 text-white" /></div>;
+                    return <button key={mod.id} onClick={() => loadEodCalendarEntries(dateStr, mod.id, mod.name)} className={`w-7 h-7 rounded-lg ${dotColor} flex items-center justify-center cursor-pointer hover:scale-110 hover:shadow-md transition-all duration-200`} title={`${mod.name}: ${statuses.length} entries — Click to view`}><ModIcon className="w-3.5 h-3.5 text-white" /></button>;
                   })}
                 </div>
               </div>
@@ -4529,6 +4565,67 @@ if (filteredData.length === 0) {
         })()}
       </div>
     </div>
+    {/* Calendar Popup */}
+    {eodCalendarPopup && (
+      <div className={LAYOUT.modalOverlay} onClick={() => setEodCalendarPopup(null)}>
+        <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl overflow-hidden" onClick={ev => ev.stopPropagation()}>
+          <div className={`p-4 border-b ${MODULE_COLORS[eodCalendarPopup.moduleId]?.bg || 'bg-gray-50'} flex items-center justify-between`}>
+            <div>
+              <h3 className="font-semibold text-gray-800">{eodCalendarPopup.moduleName}</h3>
+              <p className="text-sm text-gray-500">{new Date(eodCalendarPopup.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
+            </div>
+            <button onClick={() => setEodCalendarPopup(null)} className="p-2 hover:bg-white/50 rounded-xl"><X className="w-5 h-5" /></button>
+          </div>
+          <div className="p-4 max-h-[60vh] overflow-y-auto">
+            {eodCalendarPopup.entries.length === 0 ? (
+              <p className="text-gray-400 text-center py-8">No entries found.</p>
+            ) : (
+              <div className="space-y-3">
+                {eodCalendarPopup.entries.map(entry => (
+                  <div key={entry.id} className={`p-3.5 rounded-xl border ${MODULE_COLORS[eodCalendarPopup.moduleId]?.border || 'border-gray-200'} ${MODULE_COLORS[eodCalendarPopup.moduleId]?.bg || 'bg-gray-50'} hover:shadow-sm transition-all`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-gray-800">{entry.creator?.name || 'Unknown'}</span>
+                        <StatusBadge status={entry.review_status || 'For Review'} />
+                      </div>
+                      <span className="text-xs text-gray-400">{entry.batch_records?.length || 1} record{(entry.batch_records?.length || 1) > 1 ? 's' : ''}</span>
+                    </div>
+                    {entry.batch_records && entry.batch_records.length > 0 ? (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-xs">
+                          <thead><tr className="border-b border-gray-200">
+                            <th className="px-2 py-1 text-left text-gray-500 font-semibold">#</th>
+                            {(STAFF_FORM_CONFIG[eodCalendarPopup.moduleId]?.fields || []).slice(0, 4).map(f => (
+                              <th key={f.key} className="px-2 py-1 text-left text-gray-500 font-semibold whitespace-nowrap">{f.label}</th>
+                            ))}
+                          </tr></thead>
+                          <tbody>{entry.batch_records.map((r, i) => (
+                            <tr key={i} className="border-b border-gray-50">
+                              <td className="px-2 py-1 text-gray-400">{i + 1}</td>
+                              {(STAFF_FORM_CONFIG[eodCalendarPopup.moduleId]?.fields || []).slice(0, 4).map(f => (
+                                <td key={f.key} className="px-2 py-1 text-gray-700 whitespace-nowrap">{r[f.key] || '-'}</td>
+                              ))}
+                            </tr>
+                          ))}</tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500">Single record entry</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="p-4 border-t bg-gray-50 flex gap-2">
+            <button onClick={() => { setActiveModule(eodCalendarPopup.moduleId); setAdminView('records'); setEodCalendarPopup(null); loadModuleData(eodCalendarPopup.moduleId); }} className={`flex-1 py-2.5 ${BTN.primary} rounded-xl font-medium flex items-center justify-center gap-2`}>
+              <Eye className="w-4 h-4" /> View All Records
+            </button>
+            <button onClick={() => setEodCalendarPopup(null)} className={`px-6 py-2.5 ${BTN.cancel} rounded-xl`}>Close</button>
+          </div>
+        </div>
+      </div>
+    )}
     {/* Module Legend */}
     <div className={CARD.base}>
       <h3 className="font-semibold text-gray-800 mb-3">Module Legend</h3>
@@ -4542,6 +4639,51 @@ if (filteredData.length === 0) {
             </div>
           );
         })}
+      </div>
+    </div>
+  </div>
+)}
+{/* ADMIN: EOD Analytics (blank placeholder) */}
+{isAdmin && adminView === 'eod-analytics' && (
+  <div className="space-y-6">
+    <div className={CARD.base}>
+      <div className="flex items-center gap-4 mb-6">
+        <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-emerald-500 rounded-xl flex items-center justify-center shadow-lg">
+          <PieChart className="w-6 h-6 text-white" />
+        </div>
+        <div>
+          <h2 className="font-semibold text-gray-800 text-lg">EOD Analytics</h2>
+          <p className="text-sm text-gray-500">Advanced analytics and reporting — Coming Soon</p>
+        </div>
+      </div>
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <div className="w-20 h-20 bg-teal-50 rounded-2xl flex items-center justify-center mb-4">
+          <PieChart className="w-10 h-10 text-teal-300" />
+        </div>
+        <h3 className="text-lg font-semibold text-gray-700 mb-2">Analytics Dashboard</h3>
+        <p className="text-gray-400 max-w-md">Detailed charts, trends, and performance insights for End of Day reports will be available here.</p>
+      </div>
+    </div>
+  </div>
+)}
+{isAdmin && adminView === 'eod-trends' && (
+  <div className="space-y-6">
+    <div className={CARD.base}>
+      <div className="flex items-center gap-4 mb-6">
+        <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg">
+          <TrendingUp className="w-6 h-6 text-white" />
+        </div>
+        <div>
+          <h2 className="font-semibold text-gray-800 text-lg">Trend Analysis</h2>
+          <p className="text-sm text-gray-500">Track performance trends over time — Coming Soon</p>
+        </div>
+      </div>
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <div className="w-20 h-20 bg-emerald-50 rounded-2xl flex items-center justify-center mb-4">
+          <TrendingUp className="w-10 h-10 text-emerald-300" />
+        </div>
+        <h3 className="text-lg font-semibold text-gray-700 mb-2">Trend Analysis</h3>
+        <p className="text-gray-400 max-w-md">Historical trends, comparisons, and growth patterns for EOD submissions will be available here.</p>
       </div>
     </div>
   </div>
