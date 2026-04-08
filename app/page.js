@@ -3464,20 +3464,6 @@ onDelete={(isITViewOnly || (isEodModule(activeModule) && currentUser?.role !== '
         )}
         {/* Navigation */}
         <nav className="flex-1 px-3 py-4 overflow-y-auto space-y-2">
-          {/* Analytics - Admin Only (not for rev_rangers or rev_rangers_admin) */}
-{isAdmin && currentUser?.role !== 'rev_rangers_admin' && currentUser?.role !== 'rev_rangers' && (
-            <div className="mb-2">
-              <button
-                onClick={() => { setAdminView('analytics'); setSidebarOpen(false); }}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all duration-200 ${adminView === 'analytics' ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-lg shadow-purple-200' : 'text-gray-600 hover:bg-gray-50 hover:translate-x-0.5'}`}
-              >
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors duration-200 ${adminView === 'analytics' ? 'bg-white/20' : 'bg-gray-100'}`}>
-                  <BarChart3 className={`w-4 h-4 ${adminView === 'analytics' ? 'text-white' : 'text-gray-500'}`} />
-                </div>
-                <span className="text-sm font-medium">Call Analytics</span>
-              </button>
-            </div>
-          )}
 {visibleModules.length > 0 && (
           <div className="rounded-xl bg-gray-50/50 border border-gray-100 overflow-hidden">
           <button onClick={() => setCollapsedSections(prev => ({ ...prev, modules: !prev.modules }))} className="w-full flex items-center justify-between px-3.5 py-2.5 hover:bg-gray-100/80 transition-all duration-200 group">
@@ -3489,6 +3475,18 @@ onDelete={(isITViewOnly || (isEodModule(activeModule) && currentUser?.role !== '
           </button>
           <div className={`transition-all duration-300 ease-in-out overflow-hidden ${collapsedSections.modules ? 'max-h-0 opacity-0' : 'max-h-[600px] opacity-100'}`}>
             <div className="px-1.5 pb-2 space-y-0.5">
+          {isAdmin && currentUser?.role !== 'rev_rangers_admin' && currentUser?.role !== 'rev_rangers' && (
+              <button
+                onClick={() => { setAdminView('analytics'); setSidebarOpen(false); }}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all duration-200 group/item ${adminView === 'analytics' ? 'bg-purple-50 text-purple-700 shadow-sm' : 'text-gray-600 hover:bg-white hover:shadow-sm hover:translate-x-0.5'}`}
+              >
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 ${adminView === 'analytics' ? 'bg-purple-100' : 'bg-white group-hover/item:scale-105'}`}>
+                  <BarChart3 className={`w-4 h-4 transition-colors duration-200 ${adminView === 'analytics' ? 'text-purple-600' : 'text-gray-400 group-hover/item:text-gray-600'}`} />
+                </div>
+                <span className="text-sm font-medium">Operations Analytics</span>
+                {adminView === 'analytics' && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse"></div>}
+              </button>
+          )}
           {visibleModules.map(m => {
             const colors = MODULE_COLORS[m.id] || { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-700', accent: 'bg-gray-500', light: 'bg-gray-100' };
             const isActive = activeModule === m.id && adminView !== 'users' && adminView !== 'export' && adminView !== 'settings' && view !== 'settings';
@@ -3677,7 +3675,7 @@ onDelete={(isITViewOnly || (isEodModule(activeModule) && currentUser?.role !== '
               <button onClick={() => setSidebarOpen(!sidebarOpen)} className="lg:hidden p-2 hover:bg-gray-100 rounded-xl"><Menu className="w-5 h-5" /></button>
               <div>
 <h1 className="font-bold text-gray-800 text-sm sm:text-lg truncate max-w-[180px] sm:max-w-none">
-                  {isAdmin ? (adminView === 'users' ? 'User Management' : adminView === 'export' ? 'Export Data' : adminView === 'documents' ? 'All Documents' : adminView === 'sop' ? 'SOPs' : adminView === 'settings' ? 'Settings' : adminView === 'analytics' ? 'Call Analytics' : adminView === 'eod-tracking' ? 'EOD Tracking' : adminView === 'eod-analytics' ? 'EOD Analytics' : adminView === 'eod-trends' ? 'Trend Analysis' : adminView === 'rev-entry' ? `New Entry: ${currentModule?.name}` : currentUser?.role === 'rev_rangers' ? `Review: ${currentModule?.name}` : currentModule?.name) : (view === 'settings' ? 'Settings' : view === 'sop' ? 'SOPs' : currentModule?.name)}
+                  {isAdmin ? (adminView === 'users' ? 'User Management' : adminView === 'export' ? 'Export Data' : adminView === 'documents' ? 'All Documents' : adminView === 'sop' ? 'SOPs' : adminView === 'settings' ? 'Settings' : adminView === 'analytics' ? 'Operations Analytics' : adminView === 'eod-tracking' ? 'EOD Tracking' : adminView === 'eod-analytics' ? 'EOD Analytics' : adminView === 'eod-trends' ? 'Trend Analysis' : adminView === 'rev-entry' ? `New Entry: ${currentModule?.name}` : currentUser?.role === 'rev_rangers' ? `Review: ${currentModule?.name}` : currentModule?.name) : (view === 'settings' ? 'Settings' : view === 'sop' ? 'SOPs' : currentModule?.name)}
                 </h1>
                 <p className="text-xs sm:text-sm text-gray-500 truncate max-w-[180px] sm:max-w-none">{isAdmin ? (adminLocation === 'all' ? 'All Locations' : adminLocation) : selectedLocation}</p>
               </div>
@@ -3914,7 +3912,7 @@ onDelete={(isITViewOnly || (isEodModule(activeModule) && currentUser?.role !== '
   <div className="space-y-6">
     {/* Module Selector */}
     <div className={CARD.analytics}>
-<div className="flex items-center gap-2 overflow-x-auto pb-1">
+<div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1 -mx-1 px-1">
  {[
           ...(currentUser?.role === 'rev_rangers' ? MODULES.filter(m => m.id === 'billing-inquiry' || m.id === 'hospital-cases') : MODULES)
         ].map(m => {
@@ -3924,10 +3922,11 @@ onDelete={(isITViewOnly || (isEodModule(activeModule) && currentUser?.role !== '
             <button
               key={m.id}
               onClick={() => setAnalyticsModule(m.id)}
-              className={`px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 transition-all ${isActive ? `${colors.accent} text-white shadow-lg` : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+              className={`px-2.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-medium flex items-center gap-1.5 sm:gap-2 whitespace-nowrap transition-all shrink-0 ${isActive ? `${colors.accent} text-white shadow-lg` : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
             >
-              <m.icon className="w-4 h-4" />
-              {m.name}
+              <m.icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">{m.name}</span>
+              <span className="sm:hidden">{m.name.split(' ')[0]}</span>
             </button>
           );
         })}
@@ -3935,34 +3934,34 @@ onDelete={(isITViewOnly || (isEodModule(activeModule) && currentUser?.role !== '
     </div>
     {/* Date Range & Location Filter */}
     <div className={CARD.analytics}>
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${MODULE_COLORS[analyticsModule]?.light}`}>
-            <BarChart3 className={`w-5 h-5 ${MODULE_COLORS[analyticsModule]?.text}`} />
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between flex-wrap gap-3 sm:gap-4">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0 ${MODULE_COLORS[analyticsModule]?.light}`}>
+            <BarChart3 className={`w-4 h-4 sm:w-5 sm:h-5 ${MODULE_COLORS[analyticsModule]?.text}`} />
           </div>
           <div>
-            <h2 className="font-semibold text-gray-800">{ALL_MODULES.find(m => m.id === analyticsModule)?.name} Analytics</h2>
-            <p className="text-sm text-gray-500">{adminLocation === 'all' ? 'All Locations' : adminLocation}</p>
+            <h2 className="font-semibold text-gray-800 text-sm sm:text-base">{ALL_MODULES.find(m => m.id === analyticsModule)?.name} Analytics</h2>
+            <p className="text-xs sm:text-sm text-gray-500">{adminLocation === 'all' ? 'All Locations' : adminLocation}</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <Building2 className="w-4 h-4 text-gray-400" />
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-1 sm:flex-initial">
+            <Building2 className="w-4 h-4 text-gray-400 shrink-0 hidden sm:block" />
             <select
               value={adminLocation}
               onChange={e => setAdminLocation(e.target.value)}
-              className={`${INPUT.filter}`}
+              className={`${INPUT.filter} text-xs sm:text-sm flex-1 sm:flex-initial`}
             >
               <option value="all">All Locations</option>
               {locations.map(l => <option key={l.id} value={l.name}>{l.name}</option>)}
             </select>
           </div>
-          <div className="flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-gray-400" />
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-1 sm:flex-initial">
+            <Calendar className="w-4 h-4 text-gray-400 shrink-0 hidden sm:block" />
             <select
               value={analyticsRange}
               onChange={e => setAnalyticsRange(e.target.value)}
-              className={`${INPUT.filter}`}
+              className={`${INPUT.filter} text-xs sm:text-sm flex-1 sm:flex-initial`}
             >
               <option value="This Week">This Week</option>
               <option value="Last 2 Weeks">Last 2 Weeks</option>
@@ -4042,7 +4041,7 @@ if (filteredData.length === 0) {
                 {Object.entries(byType).filter(([_, stats]) => stats.count > 0).map(([type, stats]) => (
                   <div key={type} className="p-4 rounded-xl bg-blue-50 border border-blue-100">
                     <p className="font-medium text-gray-800">{type}</p>
-                    <p className="text-2xl font-bold text-blue-600 mt-1">{stats.count}</p>
+                    <p className="text-lg sm:text-2xl font-bold text-blue-600 mt-1">{stats.count}</p>
                     <p className="text-sm text-gray-500">${stats.amount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
                   </div>
                 ))}
@@ -4053,15 +4052,15 @@ if (filteredData.length === 0) {
               <h3 className="font-semibold text-gray-800 mb-4">Status Distribution</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-center">
-                  <p className="text-3xl font-bold text-amber-600">{pendingCount}</p>
+                  <p className="text-xl sm:text-3xl font-bold text-amber-600">{pendingCount}</p>
                   <p className="text-sm text-gray-600 mt-1">Pending</p>
                 </div>
                 <div className="p-4 rounded-xl bg-blue-50 border border-blue-200 text-center">
-                  <p className="text-3xl font-bold text-blue-600">{inProgressCount}</p>
+                  <p className="text-xl sm:text-3xl font-bold text-blue-600">{inProgressCount}</p>
                   <p className="text-sm text-gray-600 mt-1">In Progress</p>
                 </div>
                 <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-center">
-                  <p className="text-3xl font-bold text-emerald-600">{resolvedCount}</p>
+                  <p className="text-xl sm:text-3xl font-bold text-emerald-600">{resolvedCount}</p>
                   <p className="text-sm text-gray-600 mt-1">Resolved</p>
                 </div>
               </div>
@@ -4074,8 +4073,8 @@ if (filteredData.length === 0) {
                 </h3>
                 <div className="space-y-3">
                   {Object.entries(byLocation).sort((a, b) => b[1].count - a[1].count).map(([loc, stats]) => (
-                    <div key={loc} className="flex items-center justify-between p-3 rounded-xl bg-gray-50">
-                      <span className="font-medium text-gray-800">{loc}</span>
+                    <div key={loc} className="flex items-center justify-between p-2.5 sm:p-3 rounded-xl bg-gray-50 gap-2">
+                      <span className="font-medium text-gray-800 text-sm sm:text-base truncate">{loc}</span>
                       <div className="text-right">
                         <p className="font-bold text-blue-600">{stats.count} inquiries</p>
                         <p className="text-sm text-gray-500">${stats.total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
@@ -4167,8 +4166,8 @@ if (filteredData.length === 0) {
                   return (
                     <div key={vendor}>
                       <div className="flex justify-between items-center mb-1">
-                        <span className="font-medium text-gray-800 truncate">{vendor}</span>
-                        <span className="font-bold text-violet-600">${stats.amount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                        <span className="font-medium text-gray-800 text-sm sm:text-base truncate mr-2">{vendor}</span>
+                        <span className="font-bold text-violet-600 text-sm sm:text-base shrink-0">${stats.amount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                       </div>
                       <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
                         <div className="h-full bg-violet-500 rounded-full" style={{width: `${(stats.amount / maxAmount) * 100}%`}}></div>
@@ -4245,7 +4244,7 @@ if (filteredData.length === 0) {
                     const monthName = new Date(year, parseInt(m) - 1).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
                     return (
                       <div key={month} className="flex items-center gap-3">
-                        <span className="text-xs text-gray-500 w-20 flex-shrink-0">{monthName}</span>
+                        <span className="text-[10px] sm:text-xs text-gray-500 w-14 sm:w-20 flex-shrink-0">{monthName}</span>
                         <div className="flex-1 h-8 bg-gray-100 rounded-lg overflow-hidden flex">
                           <div className="h-full bg-amber-500 flex items-center justify-end pr-2" style={{width: `${maxVal > 0 ? (stats.amount / maxVal * 100) : 0}%`}}>
                             <span className="text-xs text-white font-medium">${(stats.amount / 1000).toFixed(1)}k</span>
@@ -4290,19 +4289,19 @@ if (filteredData.length === 0) {
               <h3 className="font-semibold text-gray-800 mb-4">Status Distribution</h3>
               <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-center">
-                  <p className="text-3xl font-bold text-amber-600">{pendingCount}</p>
+                  <p className="text-xl sm:text-3xl font-bold text-amber-600">{pendingCount}</p>
                   <p className="text-sm text-gray-600 mt-1">Pending</p>
                 </div>
                 <div className="p-4 rounded-xl bg-blue-50 border border-blue-200 text-center">
-                  <p className="text-3xl font-bold text-blue-600">{approvedCount}</p>
+                  <p className="text-xl sm:text-3xl font-bold text-blue-600">{approvedCount}</p>
                   <p className="text-sm text-gray-600 mt-1">Approved</p>
                 </div>
                 <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-center">
-                  <p className="text-3xl font-bold text-emerald-600">{completedCount}</p>
+                  <p className="text-xl sm:text-3xl font-bold text-emerald-600">{completedCount}</p>
                   <p className="text-sm text-gray-600 mt-1">Completed</p>
                 </div>
                 <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-center">
-                  <p className="text-3xl font-bold text-red-600">{deniedCount}</p>
+                  <p className="text-xl sm:text-3xl font-bold text-red-600">{deniedCount}</p>
                   <p className="text-sm text-gray-600 mt-1">Denied</p>
                 </div>
               </div>
@@ -4317,7 +4316,7 @@ if (filteredData.length === 0) {
                   {Object.entries(byType).filter(([_, s]) => s.count > 0).map(([type, stats]) => (
                     <div key={type} className="p-4 rounded-xl bg-rose-50 border border-rose-100">
                       <p className="font-medium text-gray-800">{type}</p>
-                      <p className="text-2xl font-bold text-rose-600 mt-1">{stats.count}</p>
+                      <p className="text-lg sm:text-2xl font-bold text-rose-600 mt-1">{stats.count}</p>
                       <p className="text-sm text-gray-500">${stats.amount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
                     </div>
                   ))}
@@ -4332,8 +4331,8 @@ if (filteredData.length === 0) {
                 </h3>
                 <div className="space-y-3">
                   {Object.entries(byLocation).sort((a, b) => b[1].total - a[1].total).map(([loc, stats]) => (
-                    <div key={loc} className="flex items-center justify-between p-3 rounded-xl bg-gray-50">
-                      <span className="font-medium text-gray-800">{loc}</span>
+                    <div key={loc} className="flex items-center justify-between p-2.5 sm:p-3 rounded-xl bg-gray-50 gap-2">
+                      <span className="font-medium text-gray-800 text-sm sm:text-base truncate">{loc}</span>
                       <div className="text-right">
                         <p className="font-bold text-rose-600">{stats.count} requests</p>
                         <p className="text-sm text-gray-500">${stats.total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
@@ -4408,11 +4407,11 @@ if (filteredData.length === 0) {
               </h3>
               <div className="flex items-center gap-6">
                 <div className="p-4 rounded-xl bg-indigo-50 border border-indigo-200 flex-1 text-center">
-                  <p className="text-3xl font-bold text-indigo-600">{recentCases}</p>
+                  <p className="text-xl sm:text-3xl font-bold text-indigo-600">{recentCases}</p>
                   <p className="text-sm text-gray-600 mt-1">This Week</p>
                 </div>
                 <div className="p-4 rounded-xl bg-gray-50 border border-gray-200 flex-1 text-center">
-                  <p className="text-3xl font-bold text-gray-600">{prevWeekCases}</p>
+                  <p className="text-xl sm:text-3xl font-bold text-gray-600">{prevWeekCases}</p>
                   <p className="text-sm text-gray-600 mt-1">Last Week</p>
                 </div>
                 <div className={`p-4 rounded-xl flex-1 text-center ${Number(trend) > 0 ? 'bg-red-50 border border-red-200' : Number(trend) < 0 ? 'bg-emerald-50 border border-emerald-200' : 'bg-gray-50 border border-gray-200'}`}>
@@ -4426,15 +4425,15 @@ if (filteredData.length === 0) {
               <h3 className="font-semibold text-gray-800 mb-4">Status Distribution</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-center">
-                  <p className="text-3xl font-bold text-amber-600">{pendingCount}</p>
+                  <p className="text-xl sm:text-3xl font-bold text-amber-600">{pendingCount}</p>
                   <p className="text-sm text-gray-600 mt-1">Pending</p>
                 </div>
                 <div className="p-4 rounded-xl bg-blue-50 border border-blue-200 text-center">
-                  <p className="text-3xl font-bold text-blue-600">{inProgressCount}</p>
+                  <p className="text-xl sm:text-3xl font-bold text-blue-600">{inProgressCount}</p>
                   <p className="text-sm text-gray-600 mt-1">In Progress</p>
                 </div>
                 <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-center">
-                  <p className="text-3xl font-bold text-emerald-600">{reviewedCount}</p>
+                  <p className="text-xl sm:text-3xl font-bold text-emerald-600">{reviewedCount}</p>
                   <p className="text-sm text-gray-600 mt-1">Reviewed</p>
                 </div>
               </div>
@@ -4448,7 +4447,7 @@ if (filteredData.length === 0) {
                 {Object.entries(byType).filter(([_, s]) => s.count > 0).map(([type, stats]) => (
                   <div key={type} className="p-4 rounded-xl bg-indigo-50 border border-indigo-100">
                     <p className="font-medium text-gray-800">{type}</p>
-                    <p className="text-2xl font-bold text-indigo-600 mt-1">{stats.count}</p>
+                    <p className="text-lg sm:text-2xl font-bold text-indigo-600 mt-1">{stats.count}</p>
                     <p className="text-sm text-gray-500">{stats.pending} pending</p>
                   </div>
                 ))}
@@ -4484,8 +4483,8 @@ if (filteredData.length === 0) {
                 </h3>
                 <div className="space-y-3">
                   {Object.entries(byLocation).sort((a, b) => b[1].count - a[1].count).map(([loc, stats]) => (
-                    <div key={loc} className="flex items-center justify-between p-3 rounded-xl bg-gray-50">
-                      <span className="font-medium text-gray-800">{loc}</span>
+                    <div key={loc} className="flex items-center justify-between p-2.5 sm:p-3 rounded-xl bg-gray-50 gap-2">
+                      <span className="font-medium text-gray-800 text-sm sm:text-base truncate">{loc}</span>
                       <div className="flex items-center gap-4">
                         <span className="text-sm text-amber-600 font-medium">{stats.pending} pending</span>
                         <span className="text-sm text-emerald-600 font-medium">{stats.reviewed} reviewed</span>
