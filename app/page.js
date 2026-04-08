@@ -46,6 +46,7 @@ const PATIENT_TYPES = ['New', 'Existing', 'Other'];
 const REFERRAL_SOURCES = ['Patient', 'Referral Provider', 'Practice Provider', 'General Dentist', 'Doctor Referral', 'Social Media', 'Mailers', 'Others', 'Outreach', 'Sibling', 'Online'];
 const CALL_TYPES = ['Inbound', 'Outbound', 'Appointment Confirmation'];
 const CALL_OUTCOMES = ['Scheduled', 'Appt Cancelled', 'Appt Confirmed', 'Rescheduled', 'Inquiry Handled', 'Left VM', 'No VM', 'Full VM', 'Unconfirmed', 'Call Disconnected', 'Ortho Inquiry', 'Will Callback', 'Other', 'Transfer', 'Need Follow-Up', 'No Answer'];
+const VERIFICATION_STATUSES = ['Verified', 'Pending', 'Termed', 'On Hold', 'Treatment Plan', 'Reverified'];
 const EOD_STATUSES = ['For Review', 'Approved', 'Updates Needed', 'Declined'];
 
 // MODULE_FIELD_CONFIG: maps moduleId -> fields used in saveEntry / startEditingStaffEntry / saveStaffEntryUpdate
@@ -705,7 +706,7 @@ const STAFF_FORM_CONFIG = {
       { label: 'Time Started (HST)', key: 'time_started_hst', type: 'time' },
       { label: 'Time Ended (HST)', key: 'time_ended_hst', type: 'time' },
       { label: 'Time Duration', key: 'time_duration', placeholder: 'e.g. 1h 30m' },
-      { label: 'Status', key: 'status' },
+      { label: 'Status', key: 'status', options: VERIFICATION_STATUSES },
     ],
     fileLabel: 'Documentation', fileKey: 'documentation'
   },
@@ -859,7 +860,7 @@ const STAFF_EDIT_FIELDS_CONFIG = {
       { label: 'Verified Date', key: 'verified_date', type: 'date' },
       { label: 'Date of Service', key: 'dos', type: 'date' },
       { label: 'Time Started (HST)', key: 'time_started_hst', type: 'time' }, { label: 'Time Ended (HST)', key: 'time_ended_hst', type: 'time' },
-      { label: 'Time Duration', key: 'time_duration', placeholder: 'e.g. 1h 30m' }, { label: 'Status', key: 'status' },
+      { label: 'Time Duration', key: 'time_duration', placeholder: 'e.g. 1h 30m' }, { label: 'Status', key: 'status', options: VERIFICATION_STATUSES },
     ]
   },
   'eod-claim-submission': {
@@ -3668,7 +3669,7 @@ onDelete={(isITViewOnly || (isEodModule(activeModule) && currentUser?.role !== '
         </div>
       </div>
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-h-screen">
+      <div className="flex-1 flex flex-col min-h-screen isolate">
 <header className={LAYOUT.header}>
         <div className="flex items-center justify-between px-4 py-2 min-h-[70px]">
             <div className="flex items-center gap-3">
