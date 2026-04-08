@@ -1,4 +1,4 @@
-//Clinic Management System v0.88
+//Clinic Management System v0.89
 // Devoloper: Mark Murillo
 // Company: Kidshine Hawaii
 
@@ -43,6 +43,9 @@ const CONTACT_METHODS = ['Phone', 'Email', 'Text'];
 const DATE_RANGES = ['This Week', 'Last 2 Weeks', 'This Month', 'Last Month', 'This Quarter', 'This Year', 'Custom'];
 const INSURANCE_PROVIDERS = ['AETNA', 'AMERITAS', 'Anthem BC', 'BCBS FEP', 'CIGNA DENTAL', 'DELTA DENTAL', 'GEHA', 'HDS', 'HDS MEDICAID', 'HMAA', 'HMSA', 'Hospital cases', 'METLIFE', 'GUARDIAN', 'OTHER', 'UCCI', 'UCCI FED VIP', 'UCCI TDP'];
 const PATIENT_TYPES = ['New', 'Existing', 'Other'];
+const REFERRAL_SOURCES = ['Patient', 'Referral Provider', 'Practice Provider', 'General Dentist', 'Doctor Referral', 'Social Media', 'Mailers', 'Others', 'Outreach', 'Sibling', 'Online'];
+const CALL_TYPES = ['Inbound', 'Outbound', 'Appointment Confirmation'];
+const CALL_OUTCOMES = ['Scheduled', 'Appt Cancelled', 'Appt Confirmed', 'Rescheduled', 'Inquiry Handled', 'Left VM', 'No VM', 'Full VM', 'Unconfirmed', 'Call Disconnected', 'Ortho Inquiry', 'Will Callback', 'Other', 'Transfer', 'Need Follow-Up', 'No Answer'];
 const EOD_STATUSES = ['For Review', 'Approved', 'Updates Needed', 'Declined'];
 
 // MODULE_FIELD_CONFIG: maps moduleId -> fields used in saveEntry / startEditingStaffEntry / saveStaffEntryUpdate
@@ -176,17 +179,17 @@ const MODULE_FIELD_CONFIG = {
   'eod-patient-scheduling': {
     getEntryData: (form) => ({
       patient_name_id: form.patient_name_id, patient_type: form.patient_type, insurance_provider: form.insurance_provider,
-      worked_call_date: form.worked_call_date || null, appt_booked_rs_date: form.appt_booked_rs_date || null,
+      referral_source: form.referral_source, worked_call_date: form.worked_call_date || null, appt_booked_rs_date: form.appt_booked_rs_date || null,
       call_type: form.call_type, call_outcome: form.call_outcome, memo: form.memo, review_status: 'For Review'
     }),
     getEditInitial: (e) => ({
       patient_name_id: e.patient_name_id || '', patient_type: e.patient_type || '', insurance_provider: e.insurance_provider || '',
-      worked_call_date: e.worked_call_date || '', appt_booked_rs_date: e.appt_booked_rs_date || '',
+      referral_source: e.referral_source || '', worked_call_date: e.worked_call_date || '', appt_booked_rs_date: e.appt_booked_rs_date || '',
       call_type: e.call_type || '', call_outcome: e.call_outcome || '', memo: e.memo || ''
     }),
     getUpdateData: (f) => ({
       patient_name_id: f.patient_name_id, patient_type: f.patient_type, insurance_provider: f.insurance_provider,
-      worked_call_date: f.worked_call_date || null, appt_booked_rs_date: f.appt_booked_rs_date || null,
+      referral_source: f.referral_source, worked_call_date: f.worked_call_date || null, appt_booked_rs_date: f.appt_booked_rs_date || null,
       call_type: f.call_type, call_outcome: f.call_outcome, memo: f.memo, review_status: 'For Review', reviewed_by: null, review_notes: null, date_reviewed: null
     })
   },
@@ -411,7 +414,7 @@ const ENTRY_PREVIEW_CONFIG = {
   'eod-patient-scheduling': {
     previewFields: [
       { label: 'Patient Name / ID', key: 'patient_name_id' }, { label: 'Patient Type', key: 'patient_type' },
-      { label: 'Insurance Provider', key: 'insurance_provider' },
+      { label: 'Insurance Provider', key: 'insurance_provider' }, { label: 'Referral Source', key: 'referral_source' },
       { label: 'Worked / Call Date', key: 'worked_call_date', format: 'date' }, { label: 'Appt Booked / RS Date', key: 'appt_booked_rs_date', format: 'date' },
       { label: 'Call Type', key: 'call_type' }, { label: 'Call Outcome', key: 'call_outcome' },
       { label: 'Memo', key: 'memo', colSpan: 2, isBlock: true }
@@ -683,10 +686,11 @@ const STAFF_FORM_CONFIG = {
       { label: 'Patient Name / ID', key: 'patient_name_id' },
       { label: 'Patient Type', key: 'patient_type', options: PATIENT_TYPES },
       { label: 'Insurance Provider', key: 'insurance_provider', options: INSURANCE_PROVIDERS },
+      { label: 'Referral Source', key: 'referral_source', options: REFERRAL_SOURCES },
       { label: 'Worked / Call Date', key: 'worked_call_date', type: 'date' },
       { label: 'Appt Booked / RS Date', key: 'appt_booked_rs_date', type: 'date' },
-      { label: 'Call Type', key: 'call_type' },
-      { label: 'Call Outcome', key: 'call_outcome' },
+      { label: 'Call Type', key: 'call_type', options: CALL_TYPES },
+      { label: 'Call Outcome', key: 'call_outcome', options: CALL_OUTCOMES },
     ],
     largeField: { label: 'Memo', key: 'memo' },
     fileLabel: 'Documentation', fileKey: 'documentation'
@@ -842,9 +846,10 @@ const STAFF_EDIT_FIELDS_CONFIG = {
     fields: [
       { label: 'Patient Name / ID', key: 'patient_name_id' }, { label: 'Patient Type', key: 'patient_type', options: PATIENT_TYPES },
       { label: 'Insurance Provider', key: 'insurance_provider', options: INSURANCE_PROVIDERS },
+      { label: 'Referral Source', key: 'referral_source', options: REFERRAL_SOURCES },
       { label: 'Worked / Call Date', key: 'worked_call_date', type: 'date' },
       { label: 'Appt Booked / RS Date', key: 'appt_booked_rs_date', type: 'date' },
-      { label: 'Call Type', key: 'call_type' }, { label: 'Call Outcome', key: 'call_outcome' },
+      { label: 'Call Type', key: 'call_type', options: CALL_TYPES }, { label: 'Call Outcome', key: 'call_outcome', options: CALL_OUTCOMES },
     ],
     largeField: { label: 'Memo', key: 'memo' }
   },
@@ -1704,6 +1709,9 @@ const [loginHistory, setLoginHistory] = useState([]);
 const [sortOrder, setSortOrder] = useState('desc');
 const [recordsPerPage, setRecordsPerPage] = useState(20);
 const [currentPage, setCurrentPage] = useState(1);
+const [eodFilterUser, setEodFilterUser] = useState('all');
+const [eodFilterDateFrom, setEodFilterDateFrom] = useState('');
+const [eodFilterDateTo, setEodFilterDateTo] = useState('');
 const [nameForm, setNameForm] = useState('');
   const [editingStaffEntry, setEditingStaffEntry] = useState(null);
 const [staffEditForm, setStaffEditForm] = useState({});
@@ -1780,7 +1788,7 @@ const [eodCalendarPopup, setEodCalendarPopup] = useState(null);
   'refund-requests': { patient_name: '', chart_number: '', parent_name: '', rp_address: '', date_of_request: today, type: '', description: '', amount_requested: '', best_contact_method: '', contact_info: '', eassist_audited: '', status: 'Pending' },
     'hospital-cases': { patient_name: '', chart_number: '', parent_name: '', date_of_request: today, inquiry_type: '', description: '', best_contact_method: '', best_contact_time: '' },
 'it-requests': { date_reported: today, urgency: '', requester_name: '', device_system: '', description_of_issue: '', best_contact_method: '', best_contact_time: '', assigned_to: '', status: 'Open', resolution_notes: '', completed_by: '' },
-    'eod-patient-scheduling': { patient_name_id: '', patient_type: '', insurance_provider: '', worked_call_date: today, appt_booked_rs_date: '', call_type: '', call_outcome: '', memo: '' },
+    'eod-patient-scheduling': { patient_name_id: '', patient_type: '', insurance_provider: '', referral_source: '', worked_call_date: today, appt_booked_rs_date: '', call_type: '', call_outcome: '', memo: '' },
     'eod-insurance-verification': { patient_id: '', insurance_provider: '', verified_date: today, dos: '', time_started_hst: '', time_ended_hst: '', time_duration: '', status: '' },
     'eod-claim-submission': { claim_id: '', insurance_provider: '', worked_date: today, date_of_service: '', claim_amount: '', time_started_hst: '', time_ended_hst: '', time_duration: '', claim_status: '', comments: '' },
     'eod-payment-posting': { insurance_provider: '', receipt_number: '', time_started_hst: '', payment_date: today, deposit_date: '', amount: '', payment_type: '', reference_number: '', date_posted: '', time_ended_hst: '', time_duration: '', locate_by: '', remarks: '' },
@@ -2999,6 +3007,11 @@ const deleteSelectedDocuments = async (selectedDocs) => {
 };
 const getModuleEntries = () => {
   let data = moduleData[activeModule] || [];
+  if (isEodModule(activeModule)) {
+    if (eodFilterUser !== 'all') data = data.filter(e => e.created_by === eodFilterUser);
+    if (eodFilterDateFrom) data = data.filter(e => new Date(e.created_at) >= new Date(eodFilterDateFrom + 'T00:00:00'));
+    if (eodFilterDateTo) data = data.filter(e => new Date(e.created_at) <= new Date(eodFilterDateTo + 'T23:59:59'));
+  }
   if (recordSearch.trim()) {
     const search = recordSearch.toLowerCase();
     data = data.filter(e => {
@@ -3257,7 +3270,7 @@ if (!currentUser) {
               <span>256-bit encrypted</span>
             </div>
             <span className="text-gray-300">|</span>
-            <p className="text-xs text-gray-400">v0.87</p>
+            <p className="text-xs text-gray-400">v0.89</p>
           </div>
         </div>
       </div>
@@ -3452,7 +3465,7 @@ onDelete={isITViewOnly ? null : async (recordId) => {
                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors duration-200 ${adminView === 'analytics' ? 'bg-white/20' : 'bg-gray-100'}`}>
                   <BarChart3 className={`w-4 h-4 ${adminView === 'analytics' ? 'text-white' : 'text-gray-500'}`} />
                 </div>
-                <span className="text-sm font-medium">Analytics</span>
+                <span className="text-sm font-medium">Call Analytics</span>
               </button>
             </div>
           )}
@@ -3493,7 +3506,7 @@ onDelete={isITViewOnly ? null : async (recordId) => {
     <button onClick={() => setCollapsedSections(prev => ({ ...prev, eod: !prev.eod }))} className="w-full flex items-center justify-between px-3.5 py-2.5 hover:bg-gray-100/80 transition-all duration-200 group">
       <div className="flex items-center gap-2">
         <div className="w-1 h-4 rounded-full bg-teal-400 transition-all duration-300 group-hover:h-5"></div>
-        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">End of Day Reports</p>
+        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">EOD Tracker</p>
       </div>
       <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-300 ease-in-out ${collapsedSections.eod ? '-rotate-90' : 'rotate-0'}`} />
     </button>
@@ -3655,7 +3668,7 @@ onDelete={isITViewOnly ? null : async (recordId) => {
               <button onClick={() => setSidebarOpen(!sidebarOpen)} className="lg:hidden p-2 hover:bg-gray-100 rounded-xl"><Menu className="w-5 h-5" /></button>
               <div>
 <h1 className="font-bold text-gray-800 text-lg">
-                  {isAdmin ? (adminView === 'users' ? 'User Management' : adminView === 'export' ? 'Export Data' : adminView === 'documents' ? 'All Documents' : adminView === 'sop' ? 'Standard Operating Procedures' : adminView === 'settings' ? 'Settings' : adminView === 'analytics' ? 'Analytics' : adminView === 'eod-tracking' ? 'EOD Tracking' : adminView === 'eod-analytics' ? 'EOD Analytics' : adminView === 'eod-trends' ? 'Trend Analysis' : adminView === 'rev-entry' ? `New Entry: ${currentModule?.name}` : currentUser?.role === 'rev_rangers' ? `Review: ${currentModule?.name}` : currentModule?.name) : (view === 'settings' ? 'Settings' : view === 'sop' ? 'Standard Operating Procedures' : currentModule?.name)}
+                  {isAdmin ? (adminView === 'users' ? 'User Management' : adminView === 'export' ? 'Export Data' : adminView === 'documents' ? 'All Documents' : adminView === 'sop' ? 'Standard Operating Procedures' : adminView === 'settings' ? 'Settings' : adminView === 'analytics' ? 'Call Analytics' : adminView === 'eod-tracking' ? 'EOD Tracking' : adminView === 'eod-analytics' ? 'EOD Analytics' : adminView === 'eod-trends' ? 'Trend Analysis' : adminView === 'rev-entry' ? `New Entry: ${currentModule?.name}` : currentUser?.role === 'rev_rangers' ? `Review: ${currentModule?.name}` : currentModule?.name) : (view === 'settings' ? 'Settings' : view === 'sop' ? 'Standard Operating Procedures' : currentModule?.name)}
                 </h1>
                 <p className="text-sm text-gray-500">{isAdmin ? (adminLocation === 'all' ? 'All Locations' : adminLocation) : selectedLocation}</p>
               </div>
@@ -5244,6 +5257,28 @@ if (filteredData.length === 0) {
             )}
           </div>
         </div>
+        {/* EOD User Filter */}
+        {isEodModule(activeModule) && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-500 font-medium">User:</span>
+            <select value={eodFilterUser} onChange={e => { setEodFilterUser(e.target.value); setCurrentPage(1); }} className="px-3 py-2.5 border-2 border-gray-200 rounded-xl text-sm focus:border-blue-400 outline-none bg-white">
+              <option value="all">All Users</option>
+              {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+            </select>
+          </div>
+        )}
+        {/* EOD Date Range Filter */}
+        {isEodModule(activeModule) && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-500 font-medium">From:</span>
+            <input type="date" value={eodFilterDateFrom} onChange={e => { setEodFilterDateFrom(e.target.value); setCurrentPage(1); }} className="px-3 py-2.5 border-2 border-gray-200 rounded-xl text-sm focus:border-blue-400 outline-none bg-white" />
+            <span className="text-xs text-gray-500 font-medium">To:</span>
+            <input type="date" value={eodFilterDateTo} onChange={e => { setEodFilterDateTo(e.target.value); setCurrentPage(1); }} className="px-3 py-2.5 border-2 border-gray-200 rounded-xl text-sm focus:border-blue-400 outline-none bg-white" />
+            {(eodFilterDateFrom || eodFilterDateTo) && (
+              <button onClick={() => { setEodFilterDateFrom(''); setEodFilterDateTo(''); setCurrentPage(1); }} className="text-xs text-blue-600 hover:underline font-medium">Clear</button>
+            )}
+          </div>
+        )}
         {/* Date Sort */}
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-500 font-medium">Sort:</span>
@@ -5283,7 +5318,7 @@ if (filteredData.length === 0) {
           </span>
         </div>
 {/* Mass Selection Controls */}
-        {!isITViewOnly && (<div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+        {!isITViewOnly && (!isEodModule(activeModule) || currentUser?.role === 'rev_rangers_admin' || currentUser?.role === 'super_admin' || currentUser?.role === 'it') && (<div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
           <div className="flex items-center gap-3">
 <button onClick={toggleSelectAll} className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${selectAll ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
               <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${selectAll ? 'bg-purple-600 border-purple-600' : 'border-gray-300'}`}>
@@ -5440,8 +5475,8 @@ if (filteredData.length === 0) {
                 </div>
 <div className="flex items-center gap-1" onClick={ev => ev.stopPropagation()}>
                   <button onClick={() => setViewingEntry(e)} className="p-2 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors" title="Preview"><Eye className="w-4 h-4" /></button>
-                  {isEodModule(activeModule) && <button onClick={() => startEditingStaffEntry(e)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors" title="Edit"><Edit3 className="w-4 h-4" /></button>}
-                  <button onClick={() => deleteRecord(activeModule, e.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
+                  {isEodModule(activeModule) && (currentUser?.role === 'rev_rangers_admin' || currentUser?.role === 'super_admin' || currentUser?.role === 'it' || (currentUser?.role === 'rev_rangers' && e.created_by === currentUser?.id)) && <button onClick={() => startEditingStaffEntry(e)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors" title="Edit"><Edit3 className="w-4 h-4" /></button>}
+                  {(!isEodModule(activeModule) || currentUser?.role === 'rev_rangers_admin' || currentUser?.role === 'super_admin' || currentUser?.role === 'it') && <button onClick={() => deleteRecord(activeModule, e.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>}
                 </div>
               </div>
               )}
@@ -5776,10 +5811,12 @@ if (filteredData.length === 0) {
                     </div>
 <div className="flex items-center gap-1" onClick={ev => ev.stopPropagation()}>
                       <button onClick={() => setViewingEntry(e)} className="p-2 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors" title="Preview"><Eye className="w-4 h-4" /></button>
-                      {canEdit && (
+                      {canEdit && e.created_by === currentUser?.id && (
                         <button onClick={() => startEditingStaffEntry(e)} className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors" title="Edit"><Edit3 className="w-4 h-4" /></button>
                       )}
+                      {(!isEodModule(activeModule) || currentUser?.role === 'rev_rangers_admin' || currentUser?.role === 'super_admin' || currentUser?.role === 'it') && (
                         <button onClick={() => deleteRecord(activeModule, e.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
+                      )}
                     </div>
 </div>
                 )}
@@ -5810,7 +5847,7 @@ if (filteredData.length === 0) {
 {sidebarOpen && <div className={LAYOUT.sidebarOverlay} onClick={() => setSidebarOpen(false)} />}
 {/* Version Footer */}
       <div className="fixed bottom-6 left-4 lg:left-[310px] z-[25] pointer-events-none">
-        <p className="text-xs text-gray-400 opacity-70">CMS v0.86</p>
+        <p className="text-xs text-gray-400 opacity-70">CMS v0.89</p>
       </div>
     </div>
   );
