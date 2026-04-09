@@ -1,4 +1,4 @@
-//Care Command Hub v0.90
+//Care Command Hub v0.91
 // Devoloper: Mark Murillo
 // Company: Kidshine Hawaii
 
@@ -47,6 +47,10 @@ const REFERRAL_SOURCES = ['Patient', 'Referral Provider', 'Practice Provider', '
 const CALL_TYPES = ['Inbound', 'Outbound', 'Appointment Confirmation'];
 const CALL_OUTCOMES = ['Scheduled', 'Appt Cancelled', 'Appt Confirmed', 'Rescheduled', 'Inquiry Handled', 'Left VM', 'No VM', 'Full VM', 'Unconfirmed', 'Call Disconnected', 'Ortho Inquiry', 'Will Callback', 'Other', 'Transfer', 'Need Follow-Up', 'No Answer'];
 const VERIFICATION_STATUSES = ['Verified', 'Pending', 'Termed', 'On Hold', 'Treatment Plan', 'Reverified'];
+const LOCATE_BY_OPTIONS = ['Call', 'Web & CS', 'Uploaded', 'Drive', 'FAX'];
+const PAYMENT_TYPE_OPTIONS = ['Insurance Check', 'Direct Transfer - EFT', 'Credit/Debit Card - VCC'];
+const CLAIM_STATUSES = ['Acknowledged (Payor)', 'Reopened', 'Resubmitted (Payor)', 'Partially Paid', 'Denied', 'Other', 'Submitted (Payor)', 'Patient to Contact Office', 'CS Please Review', 'Submitted Through Portal', 'Submitted Electronically', 'Claim Submission', 'Close'];
+const SCHEDULING_LOCATIONS = ['Pearl City', 'Kailua', 'Kapolei', 'HHDS', 'Ortho'];
 const EOD_STATUSES = ['For Review', 'Approved', 'Updates Needed', 'Declined'];
 
 // MODULE_FIELD_CONFIG: maps moduleId -> fields used in saveEntry / startEditingStaffEntry / saveStaffEntryUpdate
@@ -181,18 +185,25 @@ const MODULE_FIELD_CONFIG = {
     getEntryData: (form) => ({
       patient_name_id: form.patient_name_id, patient_type: form.patient_type, insurance_provider: form.insurance_provider,
       referral_source: form.referral_source, worked_call_date: form.worked_call_date || null, appt_booked_rs_date: form.appt_booked_rs_date || null,
-      call_type: form.call_type, call_outcome: form.call_outcome, memo: form.memo, review_status: 'For Review'
+      call_type: form.call_type, call_outcome: form.call_outcome, location: form.location,
+      additional_patients: form.additional_patients ? form.additional_patients.filter(p => p.trim()) : [],
+      memo: form.memo, review_status: 'For Review'
     }),
     getEditInitial: (e) => ({
       patient_name_id: e.patient_name_id || '', patient_type: e.patient_type || '', insurance_provider: e.insurance_provider || '',
       referral_source: e.referral_source || '', worked_call_date: e.worked_call_date || '', appt_booked_rs_date: e.appt_booked_rs_date || '',
-      call_type: e.call_type || '', call_outcome: e.call_outcome || '', memo: e.memo || ''
+      call_type: e.call_type || '', call_outcome: e.call_outcome || '', location: e.location || '',
+      additional_patients: e.additional_patients || [],
+      memo: e.memo || ''
     }),
     getUpdateData: (f) => ({
       patient_name_id: f.patient_name_id, patient_type: f.patient_type, insurance_provider: f.insurance_provider,
       referral_source: f.referral_source, worked_call_date: f.worked_call_date || null, appt_booked_rs_date: f.appt_booked_rs_date || null,
-      call_type: f.call_type, call_outcome: f.call_outcome, memo: f.memo, review_status: 'For Review', reviewed_by: null, review_notes: null, date_reviewed: null
-    })
+      call_type: f.call_type, call_outcome: f.call_outcome, location: f.location,
+      additional_patients: f.additional_patients ? f.additional_patients.filter(p => p.trim()) : [],
+      memo: f.memo, review_status: 'For Review', reviewed_by: null, review_notes: null, date_reviewed: null
+    }),
+    requiredFields: ['patient_name_id', 'patient_type', 'insurance_provider', 'call_type', 'location', 'call_outcome', 'memo']
   },
   'eod-insurance-verification': {
     getEntryData: (form) => ({
@@ -243,7 +254,7 @@ const MODULE_FIELD_CONFIG = {
       payment_date: form.payment_date || null, deposit_date: form.deposit_date || null,
       amount: parseFloat(form.amount) || null, payment_type: form.payment_type, reference_number: form.reference_number,
       date_posted: form.date_posted || null, time_ended_hst: form.time_ended_hst || null, time_duration: form.time_duration,
-      locate_by: form.locate_by, remarks: form.remarks, review_status: 'For Review'
+      locate_by: form.locate_by, location: form.location, remarks: form.remarks, review_status: 'For Review'
     }),
     getEditInitial: (e) => ({
       insurance_provider: e.insurance_provider || '', receipt_number: e.receipt_number || '',
@@ -251,7 +262,7 @@ const MODULE_FIELD_CONFIG = {
       payment_date: e.payment_date || '', deposit_date: e.deposit_date || '',
       amount: e.amount || '', payment_type: e.payment_type || '', reference_number: e.reference_number || '',
       date_posted: e.date_posted || '', time_ended_hst: e.time_ended_hst || '', time_duration: e.time_duration || '',
-      locate_by: e.locate_by || '', remarks: e.remarks || ''
+      locate_by: e.locate_by || '', location: e.location || '', remarks: e.remarks || ''
     }),
     getUpdateData: (f) => ({
       insurance_provider: f.insurance_provider, receipt_number: f.receipt_number,
@@ -259,27 +270,27 @@ const MODULE_FIELD_CONFIG = {
       payment_date: f.payment_date || null, deposit_date: f.deposit_date || null,
       amount: parseFloat(f.amount) || null, payment_type: f.payment_type, reference_number: f.reference_number,
       date_posted: f.date_posted || null, time_ended_hst: f.time_ended_hst || null, time_duration: f.time_duration,
-      locate_by: f.locate_by, remarks: f.remarks, review_status: 'For Review', reviewed_by: null, review_notes: null, date_reviewed: null
+      locate_by: f.locate_by, location: f.location, remarks: f.remarks, review_status: 'For Review', reviewed_by: null, review_notes: null, date_reviewed: null
     })
   },
   'eod-claim-followup': {
     getEntryData: (form) => ({
       claim_id: form.claim_id, insurance_provider: form.insurance_provider,
       worked_date: form.worked_date || null, date_of_service: form.date_of_service || null,
-      claim_amount: parseFloat(form.claim_amount) || null,
+      insurance_expected: parseFloat(form.insurance_expected) || null,
       time_started_mnl: form.time_started_mnl || null, time_ended_mnl: form.time_ended_mnl || null, time_duration: form.time_duration,
       claim_status: form.claim_status, amount_collected: parseFloat(form.amount_collected) || null, review_status: 'For Review'
     }),
     getEditInitial: (e) => ({
       claim_id: e.claim_id || '', insurance_provider: e.insurance_provider || '',
       worked_date: e.worked_date || '', date_of_service: e.date_of_service || '',
-      claim_amount: e.claim_amount || '', time_started_mnl: e.time_started_mnl || '', time_ended_mnl: e.time_ended_mnl || '',
+      insurance_expected: e.insurance_expected || e.claim_amount || '', time_started_mnl: e.time_started_mnl || '', time_ended_mnl: e.time_ended_mnl || '',
       time_duration: e.time_duration || '', claim_status: e.claim_status || '', amount_collected: e.amount_collected || ''
     }),
     getUpdateData: (f) => ({
       claim_id: f.claim_id, insurance_provider: f.insurance_provider,
       worked_date: f.worked_date || null, date_of_service: f.date_of_service || null,
-      claim_amount: parseFloat(f.claim_amount) || null,
+      insurance_expected: parseFloat(f.insurance_expected) || null,
       time_started_mnl: f.time_started_mnl || null, time_ended_mnl: f.time_ended_mnl || null, time_duration: f.time_duration,
       claim_status: f.claim_status, amount_collected: parseFloat(f.amount_collected) || null,
       review_status: 'For Review', reviewed_by: null, review_notes: null, date_reviewed: null
@@ -291,20 +302,20 @@ const MODULE_FIELD_CONFIG = {
       worked_date: form.worked_date || null, date_of_service: form.date_of_service || null,
       text_to_pay_amount_sent: parseFloat(form.text_to_pay_amount_sent) || null,
       time_started_mnl: form.time_started_mnl || null, time_ended_mnl: form.time_ended_mnl || null, time_duration: form.time_duration,
-      claim_status: form.claim_status, amount_collected: parseFloat(form.amount_collected) || null, review_status: 'For Review'
+      claim_status: form.claim_status, amount_collected: parseFloat(form.amount_collected) || null, location: form.location, review_status: 'For Review'
     }),
     getEditInitial: (e) => ({
       patient_id: e.patient_id || '', insurance_provider: e.insurance_provider || '',
       worked_date: e.worked_date || '', date_of_service: e.date_of_service || '',
       text_to_pay_amount_sent: e.text_to_pay_amount_sent || '', time_started_mnl: e.time_started_mnl || '', time_ended_mnl: e.time_ended_mnl || '',
-      time_duration: e.time_duration || '', claim_status: e.claim_status || '', amount_collected: e.amount_collected || ''
+      time_duration: e.time_duration || '', claim_status: e.claim_status || '', amount_collected: e.amount_collected || '', location: e.location || ''
     }),
     getUpdateData: (f) => ({
       patient_id: f.patient_id, insurance_provider: f.insurance_provider,
       worked_date: f.worked_date || null, date_of_service: f.date_of_service || null,
       text_to_pay_amount_sent: parseFloat(f.text_to_pay_amount_sent) || null,
       time_started_mnl: f.time_started_mnl || null, time_ended_mnl: f.time_ended_mnl || null, time_duration: f.time_duration,
-      claim_status: f.claim_status, amount_collected: parseFloat(f.amount_collected) || null,
+      claim_status: f.claim_status, amount_collected: parseFloat(f.amount_collected) || null, location: f.location,
       review_status: 'For Review', reviewed_by: null, review_notes: null, date_reviewed: null
     })
   }
@@ -416,8 +427,10 @@ const ENTRY_PREVIEW_CONFIG = {
     previewFields: [
       { label: 'Patient Name / ID', key: 'patient_name_id' }, { label: 'Patient Type', key: 'patient_type' },
       { label: 'Insurance Provider', key: 'insurance_provider' }, { label: 'Referral Source', key: 'referral_source' },
+      { label: 'Location', key: 'location' },
       { label: 'Worked / Call Date', key: 'worked_call_date', format: 'date' }, { label: 'Appt Booked / RS Date', key: 'appt_booked_rs_date', format: 'date' },
       { label: 'Call Type', key: 'call_type' }, { label: 'Call Outcome', key: 'call_outcome' },
+      { label: 'Additional Patients', key: 'additional_patients', customRender: (e) => e.additional_patients?.length > 0 ? e.additional_patients.join(', ') : '-' },
       { label: 'Memo', key: 'memo', colSpan: 2, isBlock: true }
     ],
     reviewReadOnly: { show: (e) => e.reviewed_by || e.date_reviewed || e.review_notes, bgColor: 'bg-teal-50', borderColor: 'border-teal-200', textColor: 'text-teal-800', title: 'Review Details',
@@ -470,6 +483,7 @@ const ENTRY_PREVIEW_CONFIG = {
       { label: 'Date Posted', key: 'date_posted', format: 'date' },
       { label: 'Time Started (HST)', key: 'time_started_hst' }, { label: 'Time Ended (HST)', key: 'time_ended_hst' },
       { label: 'Time Duration', key: 'time_duration' }, { label: 'Locate By', key: 'locate_by' },
+      { label: 'Location', key: 'location' },
       { label: 'Remarks', key: 'remarks', colSpan: 2, isBlock: true }
     ],
     reviewReadOnly: { show: (e) => e.reviewed_by || e.date_reviewed || e.review_notes, bgColor: 'bg-blue-50', borderColor: 'border-blue-200', textColor: 'text-blue-800', title: 'Review Details',
@@ -484,7 +498,7 @@ const ENTRY_PREVIEW_CONFIG = {
     previewFields: [
       { label: 'Claim ID', key: 'claim_id' }, { label: 'Insurance Provider', key: 'insurance_provider' },
       { label: 'Worked Date', key: 'worked_date', format: 'date' },
-      { label: 'Date of Service', key: 'date_of_service', format: 'date' }, { label: 'Claim Amount', key: 'claim_amount', format: 'currency', colorClass: 'text-emerald-600' },
+      { label: 'Date of Service', key: 'date_of_service', format: 'date' }, { label: 'Insurance Expected', key: 'insurance_expected', format: 'currency', colorClass: 'text-emerald-600' },
       { label: 'Time Started (MNL)', key: 'time_started_mnl' }, { label: 'Time Ended (MNL)', key: 'time_ended_mnl' },
       { label: 'Time Duration', key: 'time_duration' }, { label: 'Claim Status', key: 'claim_status' },
       { label: 'Amount Collected', key: 'amount_collected', format: 'currency', colorClass: 'text-emerald-600' }
@@ -500,6 +514,7 @@ const ENTRY_PREVIEW_CONFIG = {
   'eod-patient-aging': {
     previewFields: [
       { label: 'Patient ID', key: 'patient_id' }, { label: 'Insurance Provider', key: 'insurance_provider' },
+      { label: 'Location', key: 'location' },
       { label: 'Worked Date', key: 'worked_date', format: 'date' },
       { label: 'Date of Service', key: 'date_of_service', format: 'date' },
       { label: 'Text to Pay Amount Sent', key: 'text_to_pay_amount_sent', format: 'currency', colorClass: 'text-emerald-600' },
@@ -684,16 +699,18 @@ const STAFF_FORM_CONFIG = {
   'eod-patient-scheduling': {
     title: 'Patient Scheduling',
     fields: [
-      { label: 'Patient Name / ID', key: 'patient_name_id' },
-      { label: 'Patient Type', key: 'patient_type', options: PATIENT_TYPES },
-      { label: 'Insurance Provider', key: 'insurance_provider', options: INSURANCE_PROVIDERS },
+      { label: 'Patient Name / ID', key: 'patient_name_id', required: true },
+      { label: 'Patient Type', key: 'patient_type', options: PATIENT_TYPES, required: true },
+      { label: 'Insurance Provider', key: 'insurance_provider', options: INSURANCE_PROVIDERS, required: true },
       { label: 'Referral Source', key: 'referral_source', options: REFERRAL_SOURCES },
+      { label: 'Location', key: 'location', options: SCHEDULING_LOCATIONS, required: true },
       { label: 'Worked / Call Date', key: 'worked_call_date', type: 'date' },
       { label: 'Appt Booked / RS Date', key: 'appt_booked_rs_date', type: 'date' },
-      { label: 'Call Type', key: 'call_type', options: CALL_TYPES },
-      { label: 'Call Outcome', key: 'call_outcome', options: CALL_OUTCOMES },
+      { label: 'Call Type', key: 'call_type', options: CALL_TYPES, required: true },
+      { label: 'Call Outcome', key: 'call_outcome', options: CALL_OUTCOMES, required: true },
     ],
-    largeField: { label: 'Memo', key: 'memo' },
+    largeField: { label: 'Memo', key: 'memo', required: true },
+    hasMultiplePatients: true,
     fileLabel: 'Documentation', fileKey: 'documentation'
   },
   'eod-insurance-verification': {
@@ -734,13 +751,14 @@ const STAFF_FORM_CONFIG = {
       { label: 'Payment Date', key: 'payment_date', type: 'date' },
       { label: 'Deposit Date', key: 'deposit_date', type: 'date' },
       { label: 'Amount', key: 'amount', prefix: '$' },
-      { label: 'Payment Type', key: 'payment_type' },
+      { label: 'Payment Type', key: 'payment_type', options: PAYMENT_TYPE_OPTIONS },
       { label: 'Reference #', key: 'reference_number' },
       { label: 'Date Posted', key: 'date_posted', type: 'date' },
       { label: 'Time Started (HST)', key: 'time_started_hst', type: 'time' },
       { label: 'Time Ended (HST)', key: 'time_ended_hst', type: 'time' },
       { label: 'Time Duration', key: 'time_duration', placeholder: 'e.g. 1h 30m' },
-      { label: 'Locate By', key: 'locate_by' },
+      { label: 'Locate By', key: 'locate_by', options: LOCATE_BY_OPTIONS },
+      { label: 'Location', key: 'location', options: 'locations' },
     ],
     largeField: { label: 'Remarks', key: 'remarks' },
     fileLabel: 'Documentation', fileKey: 'documentation'
@@ -752,11 +770,11 @@ const STAFF_FORM_CONFIG = {
       { label: 'Insurance Provider', key: 'insurance_provider', options: INSURANCE_PROVIDERS },
       { label: 'Worked Date', key: 'worked_date', type: 'date' },
       { label: 'Date of Service', key: 'date_of_service', type: 'date' },
-      { label: 'Claim Amount', key: 'claim_amount', prefix: '$' },
+      { label: 'Insurance Expected', key: 'insurance_expected', prefix: '$' },
       { label: 'Time Started (MNL)', key: 'time_started_mnl', type: 'time' },
       { label: 'Time Ended (MNL)', key: 'time_ended_mnl', type: 'time' },
       { label: 'Time Duration', key: 'time_duration', placeholder: 'e.g. 1h 30m' },
-      { label: 'Claim Status', key: 'claim_status' },
+      { label: 'Claim Status', key: 'claim_status', options: CLAIM_STATUSES },
       { label: 'Amount Collected', key: 'amount_collected', prefix: '$' },
     ],
     fileLabel: 'Documentation', fileKey: 'documentation'
@@ -766,6 +784,7 @@ const STAFF_FORM_CONFIG = {
     fields: [
       { label: 'Patient ID', key: 'patient_id' },
       { label: 'Insurance Provider', key: 'insurance_provider', options: INSURANCE_PROVIDERS },
+      { label: 'Location', key: 'location', options: 'locations' },
       { label: 'Worked Date', key: 'worked_date', type: 'date' },
       { label: 'Date of Service', key: 'date_of_service', type: 'date' },
       { label: 'Text to Pay Amount Sent', key: 'text_to_pay_amount_sent', prefix: '$' },
@@ -848,6 +867,7 @@ const STAFF_EDIT_FIELDS_CONFIG = {
       { label: 'Patient Name / ID', key: 'patient_name_id' }, { label: 'Patient Type', key: 'patient_type', options: PATIENT_TYPES },
       { label: 'Insurance Provider', key: 'insurance_provider', options: INSURANCE_PROVIDERS },
       { label: 'Referral Source', key: 'referral_source', options: REFERRAL_SOURCES },
+      { label: 'Location', key: 'location', options: SCHEDULING_LOCATIONS },
       { label: 'Worked / Call Date', key: 'worked_call_date', type: 'date' },
       { label: 'Appt Booked / RS Date', key: 'appt_booked_rs_date', type: 'date' },
       { label: 'Call Type', key: 'call_type', options: CALL_TYPES }, { label: 'Call Outcome', key: 'call_outcome', options: CALL_OUTCOMES },
@@ -878,10 +898,11 @@ const STAFF_EDIT_FIELDS_CONFIG = {
       { label: 'Insurance Provider', key: 'insurance_provider', options: INSURANCE_PROVIDERS }, { label: 'Receipt #', key: 'receipt_number' },
       { label: 'Payment Date', key: 'payment_date', type: 'date' },
       { label: 'Deposit Date', key: 'deposit_date', type: 'date' }, { label: 'Amount', key: 'amount', prefix: '$' },
-      { label: 'Payment Type', key: 'payment_type' }, { label: 'Reference #', key: 'reference_number' },
+      { label: 'Payment Type', key: 'payment_type', options: PAYMENT_TYPE_OPTIONS }, { label: 'Reference #', key: 'reference_number' },
       { label: 'Date Posted', key: 'date_posted', type: 'date' },
       { label: 'Time Started (HST)', key: 'time_started_hst', type: 'time' }, { label: 'Time Ended (HST)', key: 'time_ended_hst', type: 'time' },
-      { label: 'Time Duration', key: 'time_duration', placeholder: 'e.g. 1h 30m' }, { label: 'Locate By', key: 'locate_by' },
+      { label: 'Time Duration', key: 'time_duration', placeholder: 'e.g. 1h 30m' }, { label: 'Locate By', key: 'locate_by', options: LOCATE_BY_OPTIONS },
+      { label: 'Location', key: 'location', options: 'locations' },
     ],
     largeField: { label: 'Remarks', key: 'remarks' }
   },
@@ -889,15 +910,16 @@ const STAFF_EDIT_FIELDS_CONFIG = {
     fields: [
       { label: 'Claim ID', key: 'claim_id' }, { label: 'Insurance Provider', key: 'insurance_provider', options: INSURANCE_PROVIDERS },
       { label: 'Worked Date', key: 'worked_date', type: 'date' },
-      { label: 'Date of Service', key: 'date_of_service', type: 'date' }, { label: 'Claim Amount', key: 'claim_amount', prefix: '$' },
+      { label: 'Date of Service', key: 'date_of_service', type: 'date' }, { label: 'Insurance Expected', key: 'insurance_expected', prefix: '$' },
       { label: 'Time Started (MNL)', key: 'time_started_mnl', type: 'time' }, { label: 'Time Ended (MNL)', key: 'time_ended_mnl', type: 'time' },
-      { label: 'Time Duration', key: 'time_duration', placeholder: 'e.g. 1h 30m' }, { label: 'Claim Status', key: 'claim_status' },
+      { label: 'Time Duration', key: 'time_duration', placeholder: 'e.g. 1h 30m' }, { label: 'Claim Status', key: 'claim_status', options: CLAIM_STATUSES },
       { label: 'Amount Collected', key: 'amount_collected', prefix: '$' },
     ]
   },
   'eod-patient-aging': {
     fields: [
       { label: 'Patient ID', key: 'patient_id' }, { label: 'Insurance Provider', key: 'insurance_provider', options: INSURANCE_PROVIDERS },
+      { label: 'Location', key: 'location', options: 'locations' },
       { label: 'Worked Date', key: 'worked_date', type: 'date' },
       { label: 'Date of Service', key: 'date_of_service', type: 'date' }, { label: 'Text to Pay Amount Sent', key: 'text_to_pay_amount_sent', prefix: '$' },
       { label: 'Time Started (MNL)', key: 'time_started_mnl', type: 'time' }, { label: 'Time Ended (MNL)', key: 'time_ended_mnl', type: 'time' },
@@ -908,20 +930,22 @@ const STAFF_EDIT_FIELDS_CONFIG = {
 };
 
 // Helper: render InputField grid from config
-const renderFormFields = (fields, formState, updateFn, moduleId) => (
+const renderFormFields = (fields, formState, updateFn, moduleId, extras) => (
   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-    {fields.map(f => (
-      <InputField key={f.key} label={f.label} type={f.type || 'text'} value={formState[f.key]} onChange={e => updateFn(moduleId, f.key, e.target.value)} prefix={f.prefix} options={f.options} placeholder={f.placeholder} />
-    ))}
+    {fields.map(f => {
+      const opts = f.options === 'locations' ? (extras?.locations || []).map(l => l.name) : f.options;
+      return <InputField key={f.key} label={f.required ? f.label + ' *' : f.label} type={f.type || 'text'} value={formState[f.key]} onChange={e => updateFn(moduleId, f.key, e.target.value)} prefix={f.prefix} options={opts} placeholder={f.placeholder} />;
+    })}
   </div>
 );
 
 // Helper: render staff edit fields from config
-const renderStaffEditFields = (fields, staffEditForm, updateStaffEditForm) => (
+const renderStaffEditFields = (fields, staffEditForm, updateStaffEditForm, extras) => (
   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-    {fields.map(f => (
-      <InputField key={f.key} label={f.label} type={f.type || 'text'} value={staffEditForm[f.key]} onChange={ev => updateStaffEditForm(f.key, ev.target.value)} prefix={f.prefix} options={f.options} placeholder={f.placeholder} />
-    ))}
+    {fields.map(f => {
+      const opts = f.options === 'locations' ? (extras?.locations || []).map(l => l.name) : f.options;
+      return <InputField key={f.key} label={f.label} type={f.type || 'text'} value={staffEditForm[f.key]} onChange={ev => updateStaffEditForm(f.key, ev.target.value)} prefix={f.prefix} options={opts} placeholder={f.placeholder} />;
+    })}
   </div>
 );
 
@@ -1789,12 +1813,12 @@ const [eodCalendarPopup, setEodCalendarPopup] = useState(null);
   'refund-requests': { patient_name: '', chart_number: '', parent_name: '', rp_address: '', date_of_request: today, type: '', description: '', amount_requested: '', best_contact_method: '', contact_info: '', eassist_audited: '', status: 'Pending' },
     'hospital-cases': { patient_name: '', chart_number: '', parent_name: '', date_of_request: today, inquiry_type: '', description: '', best_contact_method: '', best_contact_time: '' },
 'it-requests': { date_reported: today, urgency: '', requester_name: '', device_system: '', description_of_issue: '', best_contact_method: '', best_contact_time: '', assigned_to: '', status: 'Open', resolution_notes: '', completed_by: '' },
-    'eod-patient-scheduling': { patient_name_id: '', patient_type: '', insurance_provider: '', referral_source: '', worked_call_date: today, appt_booked_rs_date: '', call_type: '', call_outcome: '', memo: '' },
+    'eod-patient-scheduling': { patient_name_id: '', patient_type: '', insurance_provider: '', referral_source: '', location: '', worked_call_date: today, appt_booked_rs_date: '', call_type: '', call_outcome: '', additional_patients: [], memo: '' },
     'eod-insurance-verification': { patient_id: '', insurance_provider: '', verified_date: today, dos: '', time_started_hst: '', time_ended_hst: '', time_duration: '', status: '' },
     'eod-claim-submission': { claim_id: '', insurance_provider: '', worked_date: today, date_of_service: '', claim_amount: '', time_started_hst: '', time_ended_hst: '', time_duration: '', claim_status: '', comments: '' },
-    'eod-payment-posting': { insurance_provider: '', receipt_number: '', time_started_hst: '', payment_date: today, deposit_date: '', amount: '', payment_type: '', reference_number: '', date_posted: '', time_ended_hst: '', time_duration: '', locate_by: '', remarks: '' },
-    'eod-claim-followup': { claim_id: '', insurance_provider: '', worked_date: today, date_of_service: '', claim_amount: '', time_started_mnl: '', time_ended_mnl: '', time_duration: '', claim_status: '', amount_collected: '' },
-    'eod-patient-aging': { patient_id: '', insurance_provider: '', worked_date: today, date_of_service: '', text_to_pay_amount_sent: '', time_started_mnl: '', time_ended_mnl: '', time_duration: '', claim_status: '', amount_collected: '' },
+    'eod-payment-posting': { insurance_provider: '', receipt_number: '', time_started_hst: '', payment_date: today, deposit_date: '', amount: '', payment_type: '', reference_number: '', date_posted: '', time_ended_hst: '', time_duration: '', locate_by: '', location: '', remarks: '' },
+    'eod-claim-followup': { claim_id: '', insurance_provider: '', worked_date: today, date_of_service: '', insurance_expected: '', time_started_mnl: '', time_ended_mnl: '', time_duration: '', claim_status: '', amount_collected: '' },
+    'eod-patient-aging': { patient_id: '', insurance_provider: '', location: '', worked_date: today, date_of_service: '', text_to_pay_amount_sent: '', time_started_mnl: '', time_ended_mnl: '', time_duration: '', claim_status: '', amount_collected: '' },
   });
   const [files, setFiles] = useState({
     'billing-inquiry': { documentation: [] },
@@ -2548,8 +2572,26 @@ if (!confirmed) return;
   setCurrentUser({ ...currentUser, name: nameForm.trim() });
   showMessage('success', '✓ Name updated successfully!');
 };
+  const calcTimeDuration = (start, end) => {
+    if (!start || !end) return '';
+    const [sh, sm] = start.split(':').map(Number);
+    const [eh, em] = end.split(':').map(Number);
+    let diff = (eh * 60 + em) - (sh * 60 + sm);
+    if (diff < 0) diff += 24 * 60;
+    const h = Math.floor(diff / 60);
+    const m = diff % 60;
+    return h > 0 ? `${h}h ${m}m` : `${m}m`;
+  };
   const updateForm = (module, field, value) => {
-    setForms(prev => ({ ...prev, [module]: { ...prev[module], [field]: value } }));
+    setForms(prev => {
+      const updated = { ...prev[module], [field]: value };
+      const timeStartKey = updated.time_started_hst !== undefined ? 'time_started_hst' : updated.time_started_mnl !== undefined ? 'time_started_mnl' : null;
+      const timeEndKey = updated.time_ended_hst !== undefined ? 'time_ended_hst' : updated.time_ended_mnl !== undefined ? 'time_ended_mnl' : null;
+      if (timeStartKey && timeEndKey && (field === timeStartKey || field === timeEndKey)) {
+        updated.time_duration = calcTimeDuration(updated[timeStartKey], updated[timeEndKey]);
+      }
+      return { ...prev, [module]: updated };
+    });
   };
   const updateFiles = (module, field, newFiles) => {
     setFiles(prev => ({ ...prev, [module]: { ...prev[module], [field]: newFiles } }));
@@ -2634,9 +2676,18 @@ if (MODULE_FIELD_CONFIG[moduleId]) {
     const form = forms[moduleId];
     const cfg = STAFF_FORM_CONFIG[moduleId];
     if (!cfg) return;
-    // Check at least the first field has a value
-    const firstKey = cfg.fields[0].key;
-    if (!form[firstKey]) { showMessage('error', `Please fill in ${cfg.fields[0].label}`); return; }
+    // Check required fields
+    const reqFields = MODULE_FIELD_CONFIG[moduleId]?.requiredFields;
+    if (reqFields) {
+      const missing = reqFields.filter(k => !form[k] || (typeof form[k] === 'string' && !form[k].trim()));
+      if (missing.length > 0) {
+        const labels = missing.map(k => { const f = cfg.fields.find(f => f.key === k) || (cfg.largeField?.key === k ? cfg.largeField : null); return f?.label?.replace(' *', '') || k; });
+        showMessage('error', `Please fill in: ${labels.join(', ')}`); return;
+      }
+    } else {
+      const firstKey = cfg.fields[0].key;
+      if (!form[firstKey]) { showMessage('error', `Please fill in ${cfg.fields[0].label}`); return; }
+    }
     const entryData = MODULE_FIELD_CONFIG[moduleId]?.getEntryData(form, currentUser) || {};
     const displayData = { ...form };
     if (editingBatchIndex !== null) {
@@ -2653,10 +2704,9 @@ if (MODULE_FIELD_CONFIG[moduleId]) {
       setEodBatchRecords(prev => ({ ...prev, [moduleId]: [...(prev[moduleId] || []), { entryData, displayData }] }));
       showMessage('success', '\u2713 Record added to batch');
     }
-    // Reset form but keep date fields
-    const resetForm = { ...forms[moduleId] };
-    Object.keys(resetForm).forEach(k => { if (!k.includes('date')) resetForm[k] = ''; });
-    setForms(prev => ({ ...prev, [moduleId]: { ...resetForm, [Object.keys(resetForm).find(k => k.includes('date'))]: today } }));
+    // Reset entire form including dates
+    const initForms = { 'eod-patient-scheduling': { patient_name_id: '', patient_type: '', insurance_provider: '', referral_source: '', location: '', worked_call_date: today, appt_booked_rs_date: '', call_type: '', call_outcome: '', additional_patients: [], memo: '' }, 'eod-insurance-verification': { patient_id: '', insurance_provider: '', verified_date: today, dos: '', time_started_hst: '', time_ended_hst: '', time_duration: '', status: '' }, 'eod-claim-submission': { claim_id: '', insurance_provider: '', worked_date: today, date_of_service: '', claim_amount: '', time_started_hst: '', time_ended_hst: '', time_duration: '', claim_status: '', comments: '' }, 'eod-payment-posting': { insurance_provider: '', receipt_number: '', time_started_hst: '', payment_date: today, deposit_date: '', amount: '', payment_type: '', reference_number: '', date_posted: '', time_ended_hst: '', time_duration: '', locate_by: '', location: '', remarks: '' }, 'eod-claim-followup': { claim_id: '', insurance_provider: '', worked_date: today, date_of_service: '', insurance_expected: '', time_started_mnl: '', time_ended_mnl: '', time_duration: '', claim_status: '', amount_collected: '' }, 'eod-patient-aging': { patient_id: '', insurance_provider: '', location: '', worked_date: today, date_of_service: '', text_to_pay_amount_sent: '', time_started_mnl: '', time_ended_mnl: '', time_duration: '', claim_status: '', amount_collected: '' } };
+    setForms(prev => ({ ...prev, [moduleId]: initForms[moduleId] || prev[moduleId] }));
   };
   const editBatchRecord = (moduleId, index) => {
     const batch = eodBatchRecords[moduleId] || [];
@@ -3084,7 +3134,13 @@ const updateStaffEditForm = (field, value) => {
 const updateBatchEditForm = (index, field, value) => {
   setEditingBatchForms(prev => {
     const updated = [...prev];
-    updated[index] = { ...updated[index], [field]: value };
+    const row = { ...updated[index], [field]: value };
+    const timeStartKey = row.time_started_hst !== undefined ? 'time_started_hst' : row.time_started_mnl !== undefined ? 'time_started_mnl' : null;
+    const timeEndKey = row.time_ended_hst !== undefined ? 'time_ended_hst' : row.time_ended_mnl !== undefined ? 'time_ended_mnl' : null;
+    if (timeStartKey && timeEndKey && (field === timeStartKey || field === timeEndKey)) {
+      row.time_duration = calcTimeDuration(row[timeStartKey], row[timeEndKey]);
+    }
+    updated[index] = row;
     return updated;
   });
 };
@@ -5150,10 +5206,24 @@ if (filteredData.length === 0) {
             <h2 className="font-semibold text-gray-800">{STAFF_FORM_CONFIG[activeModule].title}</h2>
             {editingBatchIndex !== null && <span className="text-xs font-medium px-2.5 py-1 bg-amber-100 text-amber-700 rounded-full">Editing Record #{editingBatchIndex + 1}</span>}
           </div>
-          {renderFormFields(STAFF_FORM_CONFIG[activeModule].fields, forms[activeModule], updateForm, activeModule)}
+          {renderFormFields(STAFF_FORM_CONFIG[activeModule].fields, forms[activeModule], updateForm, activeModule, { locations })}
+          {STAFF_FORM_CONFIG[activeModule].hasMultiplePatients && (
+            <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
+              <label className={INPUT.label}>Multiple Patients on This Call?</label>
+              <select value={forms[activeModule]?.additional_patients?.length || 0} onChange={e => { const count = parseInt(e.target.value); const current = forms[activeModule]?.additional_patients || []; const updated = Array.from({ length: count }, (_, i) => current[i] || ''); updateForm(activeModule, 'additional_patients', updated); }} className={INPUT.select + ' mb-3'}>
+                <option value="0">No additional patients</option>
+                {[1,2,3,4,5].map(n => <option key={n} value={n}>{n} additional patient{n > 1 ? 's' : ''}</option>)}
+              </select>
+              {(forms[activeModule]?.additional_patients || []).map((pt, idx) => (
+                <div key={idx} className="mt-2">
+                  <InputField label={`Pt ${idx + 2} ID`} value={pt} onChange={e => { const updated = [...(forms[activeModule]?.additional_patients || [])]; updated[idx] = e.target.value; updateForm(activeModule, 'additional_patients', updated); }} placeholder="Patient Name / ID" />
+                </div>
+              ))}
+            </div>
+          )}
           {STAFF_FORM_CONFIG[activeModule].largeField && (
             <div className="mt-4">
-              <InputField label={STAFF_FORM_CONFIG[activeModule].largeField.label} large value={forms[activeModule][STAFF_FORM_CONFIG[activeModule].largeField.key]} onChange={e => updateForm(activeModule, STAFF_FORM_CONFIG[activeModule].largeField.key, e.target.value)} placeholder={STAFF_FORM_CONFIG[activeModule].largeField.placeholder} />
+              <InputField label={(STAFF_FORM_CONFIG[activeModule].largeField.required ? STAFF_FORM_CONFIG[activeModule].largeField.label + ' *' : STAFF_FORM_CONFIG[activeModule].largeField.label)} large value={forms[activeModule][STAFF_FORM_CONFIG[activeModule].largeField.key]} onChange={e => updateForm(activeModule, STAFF_FORM_CONFIG[activeModule].largeField.key, e.target.value)} placeholder={STAFF_FORM_CONFIG[activeModule].largeField.placeholder} />
             </div>
           )}
           <div className="flex gap-2 mt-5">
@@ -5161,7 +5231,7 @@ if (filteredData.length === 0) {
               <Plus className="w-4 h-4" /> {editingBatchIndex !== null ? 'Update Record' : 'Add Record'}
             </button>
             {editingBatchIndex !== null && (
-              <button onClick={() => { setEditingBatchIndex(null); const resetForm = { ...forms[activeModule] }; Object.keys(resetForm).forEach(k => { if (!k.includes('date')) resetForm[k] = ''; }); setForms(prev => ({ ...prev, [activeModule]: { ...resetForm, [Object.keys(resetForm).find(k => k.includes('date'))]: today } })); }} className="px-4 py-3 bg-gray-100 text-gray-600 rounded-xl font-medium hover:bg-gray-200 transition-all">
+              <button onClick={() => { setEditingBatchIndex(null); const initForms = { 'eod-patient-scheduling': { patient_name_id: '', patient_type: '', insurance_provider: '', referral_source: '', location: '', worked_call_date: today, appt_booked_rs_date: '', call_type: '', call_outcome: '', additional_patients: [], memo: '' }, 'eod-insurance-verification': { patient_id: '', insurance_provider: '', verified_date: today, dos: '', time_started_hst: '', time_ended_hst: '', time_duration: '', status: '' }, 'eod-claim-submission': { claim_id: '', insurance_provider: '', worked_date: today, date_of_service: '', claim_amount: '', time_started_hst: '', time_ended_hst: '', time_duration: '', claim_status: '', comments: '' }, 'eod-payment-posting': { insurance_provider: '', receipt_number: '', time_started_hst: '', payment_date: today, deposit_date: '', amount: '', payment_type: '', reference_number: '', date_posted: '', time_ended_hst: '', time_duration: '', locate_by: '', location: '', remarks: '' }, 'eod-claim-followup': { claim_id: '', insurance_provider: '', worked_date: today, date_of_service: '', insurance_expected: '', time_started_mnl: '', time_ended_mnl: '', time_duration: '', claim_status: '', amount_collected: '' }, 'eod-patient-aging': { patient_id: '', insurance_provider: '', location: '', worked_date: today, date_of_service: '', text_to_pay_amount_sent: '', time_started_mnl: '', time_ended_mnl: '', time_duration: '', claim_status: '', amount_collected: '' } }; setForms(prev => ({ ...prev, [activeModule]: initForms[activeModule] || prev[activeModule] })); }} className="px-4 py-3 bg-gray-100 text-gray-600 rounded-xl font-medium hover:bg-gray-200 transition-all">
                 Cancel
               </button>
             )}
@@ -5221,7 +5291,7 @@ if (filteredData.length === 0) {
           <h2 className="font-semibold mb-2 text-gray-800">{STAFF_FORM_CONFIG[activeModule].title}</h2>
           {STAFF_FORM_CONFIG[activeModule].subtitle && <p className="text-sm text-gray-500 mb-4">{STAFF_FORM_CONFIG[activeModule].subtitle}</p>}
           {!STAFF_FORM_CONFIG[activeModule].subtitle && <div className="mb-4" />}
-          {renderFormFields(STAFF_FORM_CONFIG[activeModule].fields, forms[activeModule], updateForm, activeModule)}
+          {renderFormFields(STAFF_FORM_CONFIG[activeModule].fields, forms[activeModule], updateForm, activeModule, { locations })}
           {STAFF_FORM_CONFIG[activeModule].largeField && (
             <div className="mt-4">
               <InputField label={STAFF_FORM_CONFIG[activeModule].largeField.label} large value={forms[activeModule][STAFF_FORM_CONFIG[activeModule].largeField.key]} onChange={e => updateForm(activeModule, STAFF_FORM_CONFIG[activeModule].largeField.key, e.target.value)} placeholder={STAFF_FORM_CONFIG[activeModule].largeField.placeholder} />
@@ -5394,7 +5464,7 @@ if (filteredData.length === 0) {
                                   {f.options ? (
                                     <select value={record[f.key] || ''} onChange={ev => updateBatchEditForm(idx, f.key, ev.target.value)} className="w-full p-1.5 text-xs border border-gray-200 rounded-lg outline-none focus:border-blue-400 bg-white min-w-[100px]">
                                       <option value="">Select...</option>
-                                      {f.options.map(o => <option key={o} value={o}>{o}</option>)}
+                                      {(f.options === 'locations' ? locations.map(l => l.name) : f.options).map(o => <option key={o} value={o}>{o}</option>)}
                                     </select>
                                   ) : (
                                     <input type={f.type || 'text'} value={record[f.key] || ''} onChange={ev => updateBatchEditForm(idx, f.key, ev.target.value)} className="w-full p-1.5 text-xs border border-gray-200 rounded-lg outline-none focus:border-blue-400 min-w-[90px]" placeholder={f.placeholder || ''} />
@@ -5429,7 +5499,7 @@ if (filteredData.length === 0) {
                     <h4 className={`font-semibold ${currentColors?.text} flex items-center gap-2`}><Edit3 className="w-4 h-4" /> Edit Entry</h4>
                     <button onClick={() => { setEditingStaffEntry(null); setStaffEditForm({}); }} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
                   </div>
-                  {renderStaffEditFields(STAFF_EDIT_FIELDS_CONFIG[activeModule].fields, staffEditForm, updateStaffEditForm)}
+                  {renderStaffEditFields(STAFF_EDIT_FIELDS_CONFIG[activeModule].fields, staffEditForm, updateStaffEditForm, { locations })}
                   {STAFF_EDIT_FIELDS_CONFIG[activeModule].largeField && (
                     <div className="mt-2">
                       <InputField label={STAFF_EDIT_FIELDS_CONFIG[activeModule].largeField.label} large value={staffEditForm[STAFF_EDIT_FIELDS_CONFIG[activeModule].largeField.key]} onChange={ev => updateStaffEditForm(STAFF_EDIT_FIELDS_CONFIG[activeModule].largeField.key, ev.target.value)} placeholder={STAFF_EDIT_FIELDS_CONFIG[activeModule].largeField.placeholder} />
@@ -5569,10 +5639,24 @@ if (filteredData.length === 0) {
                       <h2 className="font-semibold text-gray-800">{STAFF_FORM_CONFIG[activeModule].title}</h2>
                       {editingBatchIndex !== null && <span className="text-xs font-medium px-2.5 py-1 bg-amber-100 text-amber-700 rounded-full">Editing Record #{editingBatchIndex + 1}</span>}
                     </div>
-                    {renderFormFields(STAFF_FORM_CONFIG[activeModule].fields, forms[activeModule], updateForm, activeModule)}
+                    {renderFormFields(STAFF_FORM_CONFIG[activeModule].fields, forms[activeModule], updateForm, activeModule, { locations })}
+                    {STAFF_FORM_CONFIG[activeModule].hasMultiplePatients && (
+                      <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                        <label className={INPUT.label}>Multiple Patients on This Call?</label>
+                        <select value={forms[activeModule]?.additional_patients?.length || 0} onChange={e => { const count = parseInt(e.target.value); const current = forms[activeModule]?.additional_patients || []; const updated = Array.from({ length: count }, (_, i) => current[i] || ''); updateForm(activeModule, 'additional_patients', updated); }} className={INPUT.select + ' mb-3'}>
+                          <option value="0">No additional patients</option>
+                          {[1,2,3,4,5].map(n => <option key={n} value={n}>{n} additional patient{n > 1 ? 's' : ''}</option>)}
+                        </select>
+                        {(forms[activeModule]?.additional_patients || []).map((pt, idx) => (
+                          <div key={idx} className="mt-2">
+                            <InputField label={`Pt ${idx + 2} ID`} value={pt} onChange={e => { const updated = [...(forms[activeModule]?.additional_patients || [])]; updated[idx] = e.target.value; updateForm(activeModule, 'additional_patients', updated); }} placeholder="Patient Name / ID" />
+                          </div>
+                        ))}
+                      </div>
+                    )}
                     {STAFF_FORM_CONFIG[activeModule].largeField && (
                       <div className="mt-4">
-                        <InputField label={STAFF_FORM_CONFIG[activeModule].largeField.label} large value={forms[activeModule][STAFF_FORM_CONFIG[activeModule].largeField.key]} onChange={e => updateForm(activeModule, STAFF_FORM_CONFIG[activeModule].largeField.key, e.target.value)} placeholder={STAFF_FORM_CONFIG[activeModule].largeField.placeholder} />
+                        <InputField label={(STAFF_FORM_CONFIG[activeModule].largeField.required ? STAFF_FORM_CONFIG[activeModule].largeField.label + ' *' : STAFF_FORM_CONFIG[activeModule].largeField.label)} large value={forms[activeModule][STAFF_FORM_CONFIG[activeModule].largeField.key]} onChange={e => updateForm(activeModule, STAFF_FORM_CONFIG[activeModule].largeField.key, e.target.value)} placeholder={STAFF_FORM_CONFIG[activeModule].largeField.placeholder} />
                       </div>
                     )}
                     <div className="flex gap-2 mt-5">
@@ -5580,7 +5664,7 @@ if (filteredData.length === 0) {
                         <Plus className="w-4 h-4" /> {editingBatchIndex !== null ? 'Update Record' : 'Add Record'}
                       </button>
                       {editingBatchIndex !== null && (
-                        <button onClick={() => { setEditingBatchIndex(null); const resetForm = { ...forms[activeModule] }; Object.keys(resetForm).forEach(k => { if (!k.includes('date')) resetForm[k] = ''; }); setForms(prev => ({ ...prev, [activeModule]: { ...resetForm, [Object.keys(resetForm).find(k => k.includes('date'))]: today } })); }} className="px-4 py-3 bg-gray-100 text-gray-600 rounded-xl font-medium hover:bg-gray-200 transition-all">
+                        <button onClick={() => { setEditingBatchIndex(null); const initForms = { 'eod-patient-scheduling': { patient_name_id: '', patient_type: '', insurance_provider: '', referral_source: '', location: '', worked_call_date: today, appt_booked_rs_date: '', call_type: '', call_outcome: '', additional_patients: [], memo: '' }, 'eod-insurance-verification': { patient_id: '', insurance_provider: '', verified_date: today, dos: '', time_started_hst: '', time_ended_hst: '', time_duration: '', status: '' }, 'eod-claim-submission': { claim_id: '', insurance_provider: '', worked_date: today, date_of_service: '', claim_amount: '', time_started_hst: '', time_ended_hst: '', time_duration: '', claim_status: '', comments: '' }, 'eod-payment-posting': { insurance_provider: '', receipt_number: '', time_started_hst: '', payment_date: today, deposit_date: '', amount: '', payment_type: '', reference_number: '', date_posted: '', time_ended_hst: '', time_duration: '', locate_by: '', location: '', remarks: '' }, 'eod-claim-followup': { claim_id: '', insurance_provider: '', worked_date: today, date_of_service: '', insurance_expected: '', time_started_mnl: '', time_ended_mnl: '', time_duration: '', claim_status: '', amount_collected: '' }, 'eod-patient-aging': { patient_id: '', insurance_provider: '', location: '', worked_date: today, date_of_service: '', text_to_pay_amount_sent: '', time_started_mnl: '', time_ended_mnl: '', time_duration: '', claim_status: '', amount_collected: '' } }; setForms(prev => ({ ...prev, [activeModule]: initForms[activeModule] || prev[activeModule] })); }} className="px-4 py-3 bg-gray-100 text-gray-600 rounded-xl font-medium hover:bg-gray-200 transition-all">
                           Cancel
                         </button>
                       )}
@@ -5640,7 +5724,7 @@ if (filteredData.length === 0) {
                     <h2 className="font-semibold mb-2 text-gray-800">{STAFF_FORM_CONFIG[activeModule].title}</h2>
                     {STAFF_FORM_CONFIG[activeModule].subtitle && <p className="text-sm text-gray-500 mb-4">{STAFF_FORM_CONFIG[activeModule].subtitle}</p>}
                     {!STAFF_FORM_CONFIG[activeModule].subtitle && <div className="mb-4" />}
-                    {renderFormFields(STAFF_FORM_CONFIG[activeModule].fields, forms[activeModule], updateForm, activeModule)}
+                    {renderFormFields(STAFF_FORM_CONFIG[activeModule].fields, forms[activeModule], updateForm, activeModule, { locations })}
                     {STAFF_FORM_CONFIG[activeModule].largeField && (
                       <div className="mt-4">
                         <InputField label={STAFF_FORM_CONFIG[activeModule].largeField.label} large value={forms[activeModule][STAFF_FORM_CONFIG[activeModule].largeField.key]} onChange={e => updateForm(activeModule, STAFF_FORM_CONFIG[activeModule].largeField.key, e.target.value)} placeholder={STAFF_FORM_CONFIG[activeModule].largeField.placeholder} />
@@ -5760,7 +5844,7 @@ if (filteredData.length === 0) {
 
                     {STAFF_EDIT_FIELDS_CONFIG[activeModule] && (
                       <>
-                        {renderStaffEditFields(STAFF_EDIT_FIELDS_CONFIG[activeModule].fields, staffEditForm, updateStaffEditForm)}
+                        {renderStaffEditFields(STAFF_EDIT_FIELDS_CONFIG[activeModule].fields, staffEditForm, updateStaffEditForm, { locations })}
                         {STAFF_EDIT_FIELDS_CONFIG[activeModule].largeField && (
                           <div className="col-span-2 mt-3">
                             <InputField label={STAFF_EDIT_FIELDS_CONFIG[activeModule].largeField.label} large value={staffEditForm[STAFF_EDIT_FIELDS_CONFIG[activeModule].largeField.key]} onChange={ev => updateStaffEditForm(STAFF_EDIT_FIELDS_CONFIG[activeModule].largeField.key, ev.target.value)} placeholder={STAFF_EDIT_FIELDS_CONFIG[activeModule].largeField.placeholder} />
