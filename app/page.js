@@ -223,7 +223,8 @@ const MODULE_FIELD_CONFIG = {
       verified_date: f.verified_date || null, dos: f.dos || null,
       time_started_hst: f.time_started_hst || null, time_ended_hst: f.time_ended_hst || null, time_duration: f.time_duration,
       status: f.status, review_status: 'For Review', reviewed_by: null, review_notes: null, date_reviewed: null
-    })
+    }),
+    requiredFields: ['patient_id', 'insurance_provider', 'verified_date', 'dos', 'time_started_hst', 'time_ended_hst', 'time_duration', 'status']
   },
   'eod-claim-submission': {
     getEntryData: (form) => ({
@@ -245,7 +246,8 @@ const MODULE_FIELD_CONFIG = {
       claim_amount: parseFloat(f.claim_amount) || null,
       time_started_hst: f.time_started_hst || null, time_ended_hst: f.time_ended_hst || null, time_duration: f.time_duration,
       claim_status: f.claim_status, comments: f.comments, review_status: 'For Review', reviewed_by: null, review_notes: null, date_reviewed: null
-    })
+    }),
+    requiredFields: ['claim_id', 'insurance_provider', 'worked_date', 'date_of_service', 'claim_amount', 'time_started_hst', 'time_ended_hst', 'time_duration', 'claim_status', 'comments']
   },
   'eod-payment-posting': {
     getEntryData: (form) => ({
@@ -271,7 +273,8 @@ const MODULE_FIELD_CONFIG = {
       amount: parseFloat(f.amount) || null, payment_type: f.payment_type, reference_number: f.reference_number,
       date_posted: f.date_posted || null, time_ended_hst: f.time_ended_hst || null, time_duration: f.time_duration,
       locate_by: f.locate_by, location: f.location, remarks: f.remarks, review_status: 'For Review', reviewed_by: null, review_notes: null, date_reviewed: null
-    })
+    }),
+    requiredFields: ['insurance_provider', 'receipt_number', 'payment_date', 'deposit_date', 'amount', 'payment_type', 'reference_number', 'date_posted', 'time_started_hst', 'time_ended_hst', 'time_duration', 'locate_by', 'location', 'remarks']
   },
   'eod-claim-followup': {
     getEntryData: (form) => ({
@@ -294,7 +297,8 @@ const MODULE_FIELD_CONFIG = {
       time_started_mnl: f.time_started_mnl || null, time_ended_mnl: f.time_ended_mnl || null, time_duration: f.time_duration,
       claim_status: f.claim_status, amount_collected: parseFloat(f.amount_collected) || null,
       review_status: 'For Review', reviewed_by: null, review_notes: null, date_reviewed: null
-    })
+    }),
+    requiredFields: ['claim_id', 'insurance_provider', 'worked_date', 'date_of_service', 'insurance_expected', 'time_started_mnl', 'time_ended_mnl', 'time_duration', 'claim_status', 'amount_collected']
   },
   'eod-patient-aging': {
     getEntryData: (form) => ({
@@ -317,7 +321,8 @@ const MODULE_FIELD_CONFIG = {
       time_started_mnl: f.time_started_mnl || null, time_ended_mnl: f.time_ended_mnl || null, time_duration: f.time_duration,
       claim_status: f.claim_status, amount_collected: parseFloat(f.amount_collected) || null, location: f.location,
       review_status: 'For Review', reviewed_by: null, review_notes: null, date_reviewed: null
-    })
+    }),
+    requiredFields: ['patient_id', 'insurance_provider', 'location', 'worked_date', 'date_of_service', 'text_to_pay_amount_sent', 'time_started_mnl', 'time_ended_mnl', 'time_duration', 'claim_status', 'amount_collected']
   }
 };
 
@@ -716,83 +721,83 @@ const STAFF_FORM_CONFIG = {
   'eod-insurance-verification': {
     title: 'Insurance Verification',
     fields: [
-      { label: 'Patient ID', key: 'patient_id' },
-      { label: 'Insurance Provider', key: 'insurance_provider', options: INSURANCE_PROVIDERS },
-      { label: 'Verified Date', key: 'verified_date', type: 'date' },
-      { label: 'Date of Service', key: 'dos', type: 'date' },
-      { label: 'Time Started (HST)', key: 'time_started_hst', type: 'time' },
-      { label: 'Time Ended (HST)', key: 'time_ended_hst', type: 'time' },
-      { label: 'Time Duration', key: 'time_duration', placeholder: 'e.g. 1h 30m' },
-      { label: 'Status', key: 'status', options: VERIFICATION_STATUSES },
+      { label: 'Patient ID', key: 'patient_id', required: true },
+      { label: 'Insurance Provider', key: 'insurance_provider', options: INSURANCE_PROVIDERS, required: true },
+      { label: 'Verified Date', key: 'verified_date', type: 'date', required: true },
+      { label: 'Date of Service', key: 'dos', type: 'date', required: true },
+      { label: 'Time Started (HST)', key: 'time_started_hst', type: 'time', required: true },
+      { label: 'Time Ended (HST)', key: 'time_ended_hst', type: 'time', required: true },
+      { label: 'Time Duration', key: 'time_duration', placeholder: 'e.g. 1h 30m', required: true },
+      { label: 'Status', key: 'status', options: VERIFICATION_STATUSES, required: true },
     ],
     fileLabel: 'Documentation', fileKey: 'documentation'
   },
   'eod-claim-submission': {
     title: 'Claim Submission',
     fields: [
-      { label: 'Claim ID', key: 'claim_id' },
-      { label: 'Insurance Provider', key: 'insurance_provider', options: INSURANCE_PROVIDERS },
-      { label: 'Worked Date', key: 'worked_date', type: 'date' },
-      { label: 'Date of Service', key: 'date_of_service', type: 'date' },
-      { label: 'Claim Amount', key: 'claim_amount', prefix: '$' },
-      { label: 'Time Started (HST)', key: 'time_started_hst', type: 'time' },
-      { label: 'Time Ended (HST)', key: 'time_ended_hst', type: 'time' },
-      { label: 'Time Duration', key: 'time_duration', placeholder: 'e.g. 1h 30m' },
-      { label: 'Claim Status', key: 'claim_status' },
+      { label: 'Claim ID', key: 'claim_id', required: true },
+      { label: 'Insurance Provider', key: 'insurance_provider', options: INSURANCE_PROVIDERS, required: true },
+      { label: 'Worked Date', key: 'worked_date', type: 'date', required: true },
+      { label: 'Date of Service', key: 'date_of_service', type: 'date', required: true },
+      { label: 'Claim Amount', key: 'claim_amount', prefix: '$', required: true },
+      { label: 'Time Started (HST)', key: 'time_started_hst', type: 'time', required: true },
+      { label: 'Time Ended (HST)', key: 'time_ended_hst', type: 'time', required: true },
+      { label: 'Time Duration', key: 'time_duration', placeholder: 'e.g. 1h 30m', required: true },
+      { label: 'Claim Status', key: 'claim_status', required: true },
     ],
-    largeField: { label: 'Comments', key: 'comments' },
+    largeField: { label: 'Comments', key: 'comments', required: true },
     fileLabel: 'Documentation', fileKey: 'documentation'
   },
   'eod-payment-posting': {
     title: 'Payment Posting',
     fields: [
-      { label: 'Insurance Provider', key: 'insurance_provider', options: INSURANCE_PROVIDERS },
-      { label: 'Receipt #', key: 'receipt_number' },
-      { label: 'Payment Date', key: 'payment_date', type: 'date' },
-      { label: 'Deposit Date', key: 'deposit_date', type: 'date' },
-      { label: 'Amount', key: 'amount', prefix: '$' },
-      { label: 'Payment Type', key: 'payment_type', options: PAYMENT_TYPE_OPTIONS },
-      { label: 'Reference #', key: 'reference_number' },
-      { label: 'Date Posted', key: 'date_posted', type: 'date' },
-      { label: 'Time Started (HST)', key: 'time_started_hst', type: 'time' },
-      { label: 'Time Ended (HST)', key: 'time_ended_hst', type: 'time' },
-      { label: 'Time Duration', key: 'time_duration', placeholder: 'e.g. 1h 30m' },
-      { label: 'Locate By', key: 'locate_by', options: LOCATE_BY_OPTIONS },
-      { label: 'Location', key: 'location', options: 'locations' },
+      { label: 'Insurance Provider', key: 'insurance_provider', options: INSURANCE_PROVIDERS, required: true },
+      { label: 'Receipt #', key: 'receipt_number', required: true },
+      { label: 'Payment Date', key: 'payment_date', type: 'date', required: true },
+      { label: 'Deposit Date', key: 'deposit_date', type: 'date', required: true },
+      { label: 'Amount', key: 'amount', prefix: '$', required: true },
+      { label: 'Payment Type', key: 'payment_type', options: PAYMENT_TYPE_OPTIONS, required: true },
+      { label: 'Reference #', key: 'reference_number', required: true },
+      { label: 'Date Posted', key: 'date_posted', type: 'date', required: true },
+      { label: 'Time Started (HST)', key: 'time_started_hst', type: 'time', required: true },
+      { label: 'Time Ended (HST)', key: 'time_ended_hst', type: 'time', required: true },
+      { label: 'Time Duration', key: 'time_duration', placeholder: 'e.g. 1h 30m', required: true },
+      { label: 'Locate By', key: 'locate_by', options: LOCATE_BY_OPTIONS, required: true },
+      { label: 'Location', key: 'location', options: 'locations', required: true },
     ],
-    largeField: { label: 'Remarks', key: 'remarks' },
+    largeField: { label: 'Remarks', key: 'remarks', required: true },
     fileLabel: 'Documentation', fileKey: 'documentation'
   },
   'eod-claim-followup': {
     title: 'Claim Follow-Up',
     fields: [
-      { label: 'Claim ID', key: 'claim_id' },
-      { label: 'Insurance Provider', key: 'insurance_provider', options: INSURANCE_PROVIDERS },
-      { label: 'Worked Date', key: 'worked_date', type: 'date' },
-      { label: 'Date of Service', key: 'date_of_service', type: 'date' },
-      { label: 'Insurance Expected', key: 'insurance_expected', prefix: '$' },
-      { label: 'Time Started (MNL)', key: 'time_started_mnl', type: 'time' },
-      { label: 'Time Ended (MNL)', key: 'time_ended_mnl', type: 'time' },
-      { label: 'Time Duration', key: 'time_duration', placeholder: 'e.g. 1h 30m' },
-      { label: 'Claim Status', key: 'claim_status', options: CLAIM_STATUSES },
-      { label: 'Amount Collected', key: 'amount_collected', prefix: '$' },
+      { label: 'Claim ID', key: 'claim_id', required: true },
+      { label: 'Insurance Provider', key: 'insurance_provider', options: INSURANCE_PROVIDERS, required: true },
+      { label: 'Worked Date', key: 'worked_date', type: 'date', required: true },
+      { label: 'Date of Service', key: 'date_of_service', type: 'date', required: true },
+      { label: 'Insurance Expected', key: 'insurance_expected', prefix: '$', required: true },
+      { label: 'Time Started (MNL)', key: 'time_started_mnl', type: 'time', required: true },
+      { label: 'Time Ended (MNL)', key: 'time_ended_mnl', type: 'time', required: true },
+      { label: 'Time Duration', key: 'time_duration', placeholder: 'e.g. 1h 30m', required: true },
+      { label: 'Claim Status', key: 'claim_status', options: CLAIM_STATUSES, required: true },
+      { label: 'Amount Collected', key: 'amount_collected', prefix: '$', required: true },
     ],
     fileLabel: 'Documentation', fileKey: 'documentation'
   },
   'eod-patient-aging': {
     title: 'Patient Aging',
     fields: [
-      { label: 'Patient ID', key: 'patient_id' },
-      { label: 'Insurance Provider', key: 'insurance_provider', options: INSURANCE_PROVIDERS },
-      { label: 'Location', key: 'location', options: 'locations' },
-      { label: 'Worked Date', key: 'worked_date', type: 'date' },
-      { label: 'Date of Service', key: 'date_of_service', type: 'date' },
-      { label: 'Text to Pay Amount Sent', key: 'text_to_pay_amount_sent', prefix: '$' },
-      { label: 'Time Started (MNL)', key: 'time_started_mnl', type: 'time' },
-      { label: 'Time Ended (MNL)', key: 'time_ended_mnl', type: 'time' },
-      { label: 'Time Duration', key: 'time_duration', placeholder: 'e.g. 1h 30m' },
-      { label: 'Claim Status', key: 'claim_status' },
-      { label: 'Amount Collected', key: 'amount_collected', prefix: '$' },
+      { label: 'Patient ID', key: 'patient_id', required: true },
+      { label: 'Insurance Provider', key: 'insurance_provider', options: INSURANCE_PROVIDERS, required: true },
+      { label: 'Location', key: 'location', options: 'locations', required: true },
+      { label: 'Worked Date', key: 'worked_date', type: 'date', required: true },
+      { label: 'Date of Service', key: 'date_of_service', type: 'date', required: true },
+      { label: 'Text to Pay Amount Sent', key: 'text_to_pay_amount_sent', prefix: '$', required: true },
+      { label: 'Time Started (MNL)', key: 'time_started_mnl', type: 'time', required: true },
+      { label: 'Time Ended (MNL)', key: 'time_ended_mnl', type: 'time', required: true },
+      { label: 'Time Duration', key: 'time_duration', placeholder: 'e.g. 1h 30m', required: true },
+      { label: 'Claim Status', key: 'claim_status', required: true },
+      { label: 'Amount Collected', key: 'amount_collected', prefix: '$', required: true },
     ],
     fileLabel: 'Documentation', fileKey: 'documentation'
   }
