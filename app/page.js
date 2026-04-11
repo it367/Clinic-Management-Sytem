@@ -298,7 +298,7 @@ const MODULE_FIELD_CONFIG = {
       claim_status: f.claim_status, amount_collected: parseFloat(f.amount_collected) || null,
       review_status: 'For Review', reviewed_by: null, review_notes: null, date_reviewed: null
     }),
-    requiredFields: ['claim_id', 'insurance_provider', 'worked_date', 'date_of_service', 'insurance_expected', 'time_started_mnl', 'time_ended_mnl', 'time_duration', 'claim_status', 'amount_collected']
+    requiredFields: ['amount_collected']
   },
   'eod-patient-aging': {
     getEntryData: (form) => ({
@@ -771,15 +771,15 @@ const STAFF_FORM_CONFIG = {
   'eod-claim-followup': {
     title: 'Claim Follow-Up',
     fields: [
-      { label: 'Claim ID', key: 'claim_id', required: true },
-      { label: 'Insurance Provider', key: 'insurance_provider', options: INSURANCE_PROVIDERS, required: true },
-      { label: 'Worked Date', key: 'worked_date', type: 'date', required: true },
-      { label: 'Date of Service', key: 'date_of_service', type: 'date', required: true },
-      { label: 'Insurance Expected', key: 'insurance_expected', prefix: '$', required: true },
-      { label: 'Time Started (MNL)', key: 'time_started_mnl', type: 'time', required: true },
-      { label: 'Time Ended (MNL)', key: 'time_ended_mnl', type: 'time', required: true },
-      { label: 'Time Duration', key: 'time_duration', placeholder: 'e.g. 1h 30m', required: true },
-      { label: 'Claim Status', key: 'claim_status', options: CLAIM_STATUSES, required: true },
+      { label: 'Claim ID', key: 'claim_id' },
+      { label: 'Insurance Provider', key: 'insurance_provider', options: INSURANCE_PROVIDERS },
+      { label: 'Worked Date', key: 'worked_date', type: 'date' },
+      { label: 'Date of Service', key: 'date_of_service', type: 'date' },
+      { label: 'Insurance Expected', key: 'insurance_expected', prefix: '$' },
+      { label: 'Time Started (MNL)', key: 'time_started_mnl', type: 'time' },
+      { label: 'Time Ended (MNL)', key: 'time_ended_mnl', type: 'time' },
+      { label: 'Time Duration', key: 'time_duration', placeholder: 'e.g. 1h 30m' },
+      { label: 'Claim Status', key: 'claim_status', options: CLAIM_STATUSES },
       { label: 'Amount Collected', key: 'amount_collected', prefix: '$', required: true },
     ],
     fileLabel: 'Documentation', fileKey: 'documentation'
