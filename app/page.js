@@ -1330,7 +1330,7 @@ const handleOrderSave = () => {
                               if (f.prefix && val !== '-') val = `${f.prefix}${val}`;
                               return <td key={f.key} className="px-3 py-2.5 text-gray-700 whitespace-nowrap">{val}</td>;
                             })}
-                            <td className="px-3 py-2.5 text-gray-500 text-xs whitespace-nowrap">{record.entry_time_hst ? (() => { try { return new Date(record.entry_time_hst).toLocaleString('en-US', { timeZone: 'Pacific/Honolulu', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true }) + ' HST'; } catch { return '-'; } })() : '-'}</td>
+                            <td className="px-3 py-2.5 text-gray-500 text-xs whitespace-nowrap">{record.entry_time_hst ? (() => { try { return new Date(record.entry_time_hst).toLocaleString('en-US', { timeZone: 'Pacific/Honolulu', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true }) + ' HST'; } catch (e) { return '-'; } })() : '-'}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -2595,7 +2595,7 @@ if (!confirmed) return;
   const formatHstTime = (iso) => {
     if (!iso) return '';
     try { return new Date(iso).toLocaleString('en-US', { timeZone: 'Pacific/Honolulu', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true }) + ' HST'; }
-    catch { return ''; }
+    catch (e) { return ''; }
   };
   const calcTimeDuration = (start, end) => {
     if (!start || !end) return '';
@@ -2763,6 +2763,7 @@ if (MODULE_FIELD_CONFIG[moduleId]) {
     // Insert ONE row: first record populates main columns, all records go in batch_records
     const firstEntry = { ...batch[0].entryData };
     delete firstEntry.review_status;
+    delete firstEntry.entry_time_hst;
     const insertData = {
       ...firstEntry,
       batch_records: batchJson,
