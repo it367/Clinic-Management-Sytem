@@ -1205,9 +1205,9 @@ setEodReviewForm({
     }
   }, [entry]);
   if (!entry) return null;
-  const formatDate = (date) => date ? new Date(date).toLocaleDateString() : '-';
+  const formatDate = (date) => date ? new Date(date).toLocaleDateString('en-US', { timeZone: 'Pacific/Honolulu' }) : '-';
   const formatCurrency = (val) => val ? `$${Number(val).toFixed(2)}` : '$0.00';
-  const formatDateTime = (date) => date ? new Date(date).toLocaleString() : '-';
+  const formatDateTime = (date) => date ? new Date(date).toLocaleString('en-US', { timeZone: 'Pacific/Honolulu' }) + ' HST' : '-';
 const isITRequest = module?.id === 'it-requests';
 const isBillingInquiry = module?.id === 'billing-inquiry';
   const isBillsPayment = module?.id === 'bills-payment';
@@ -1318,6 +1318,7 @@ const handleOrderSave = () => {
                           {allFields.map(f => (
                             <th key={f.key} className="px-2 sm:px-3 py-2 sm:py-2.5 text-left text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">{f.label}</th>
                           ))}
+                          <th className="px-2 sm:px-3 py-2 sm:py-2.5 text-left text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Time of Entry (HST)</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
@@ -1329,6 +1330,7 @@ const handleOrderSave = () => {
                               if (f.prefix && val !== '-') val = `${f.prefix}${val}`;
                               return <td key={f.key} className="px-3 py-2.5 text-gray-700 whitespace-nowrap">{val}</td>;
                             })}
+                            <td className="px-3 py-2.5 text-gray-500 text-xs whitespace-nowrap">{record.entry_time_hst ? (() => { try { return new Date(record.entry_time_hst).toLocaleString('en-US', { timeZone: 'Pacific/Honolulu', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) + ' HST'; } catch { return '-'; } })() : '-'}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -1778,7 +1780,13 @@ const [sopSortOrder, setSOPSortOrder] = useState('desc');
   const [exportRange, setExportRange] = useState('This Month');
 const [analyticsRange, setAnalyticsRange] = useState('This Month');
 const [analyticsModule, setAnalyticsModule] = useState('billing-inquiry');
-const [eodAnalyticsMonth, setEodAnalyticsMonth] = useState(new Date());
+const [eodAnalyticsMonth, setEodAnalyticsMonth] = useState(() => {
+    const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Pacific/Honolulu', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+    const y = parseInt(parts.find(p => p.type === 'year').value);
+    const m = parseInt(parts.find(p => p.type === 'month').value) - 1;
+    const d = parseInt(parts.find(p => p.type === 'day').value);
+    return new Date(y, m, d);
+  });
 const [eodSelectedUser, setEodSelectedUser] = useState('all');
 const [eodAnalyticsData, setEodAnalyticsData] = useState({});
 const [eodCalendarPopup, setEodCalendarPopup] = useState(null);
@@ -1810,7 +1818,14 @@ const [eodCalendarPopup, setEodCalendarPopup] = useState(null);
       setEntryDocuments(prev => ({ ...prev, [key]: data }));
     }
   };
-  const today = new Date().toISOString().split('T')[0];
+  // Hawaii time (Pacific/Honolulu) - used for default dates throughout the system
+  const today = (() => {
+    const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Pacific/Honolulu', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+    const y = parts.find(p => p.type === 'year').value;
+    const m = parts.find(p => p.type === 'month').value;
+    const d = parts.find(p => p.type === 'day').value;
+    return `${y}-${m}-${d}`;
+  })();
   const [forms, setForms] = useState({
     'billing-inquiry': { patient_name: '', chart_number: '', parent_name: '', date_of_request: today, inquiry_type: '', description: '', amount_in_question: '', best_contact_method: '', best_contact_time: '', billing_team_reviewed: '', date_reviewed: '', status: 'Pending', result: '' },
 'bills-payment': { bill_date: today, vendor: '', transaction_id: '', description: '', amount: '', due_date: '', paid: '' },
@@ -2577,6 +2592,11 @@ if (!confirmed) return;
   setCurrentUser({ ...currentUser, name: nameForm.trim() });
   showMessage('success', '✓ Name updated successfully!');
 };
+  const formatHstTime = (iso) => {
+    if (!iso) return '';
+    try { return new Date(iso).toLocaleString('en-US', { timeZone: 'Pacific/Honolulu', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) + ' HST'; }
+    catch { return ''; }
+  };
   const calcTimeDuration = (start, end) => {
     if (!start || !end) return '';
     const [sh, sm] = start.split(':').map(Number);
@@ -2693,13 +2713,16 @@ if (MODULE_FIELD_CONFIG[moduleId]) {
       const firstKey = cfg.fields[0].key;
       if (!form[firstKey]) { showMessage('error', `Please fill in ${cfg.fields[0].label}`); return; }
     }
-    const entryData = MODULE_FIELD_CONFIG[moduleId]?.getEntryData(form, currentUser) || {};
-    const displayData = { ...form };
+    const entryTimeHst = new Date().toISOString();
+    const entryData = { ...(MODULE_FIELD_CONFIG[moduleId]?.getEntryData(form, currentUser) || {}), entry_time_hst: entryTimeHst };
+    const displayData = { ...form, entry_time_hst: entryTimeHst };
     if (editingBatchIndex !== null) {
-      // Update existing record in batch
+      // Update existing record in batch (preserve original entry_time_hst)
       setEodBatchRecords(prev => {
         const batch = [...(prev[moduleId] || [])];
-        batch[editingBatchIndex] = { entryData, displayData };
+        const original = batch[editingBatchIndex];
+        const preservedTime = original?.entryData?.entry_time_hst || original?.displayData?.entry_time_hst || entryTimeHst;
+        batch[editingBatchIndex] = { entryData: { ...entryData, entry_time_hst: preservedTime }, displayData: { ...displayData, entry_time_hst: preservedTime } };
         return { ...prev, [moduleId]: batch };
       });
       setEditingBatchIndex(null);
@@ -4618,7 +4641,7 @@ if (filteredData.length === 0) {
           const month = eodAnalyticsMonth.getMonth();
           const firstDay = new Date(year, month, 1).getDay();
           const daysInMonth = new Date(year, month + 1, 0).getDate();
-          const todayStr = new Date().toISOString().split('T')[0];
+          const todayStr = today;
           const cells = [];
           for (let i = 0; i < firstDay; i++) cells.push(<div key={`empty-${i}`} className="p-1 sm:p-3"></div>);
           for (let day = 1; day <= daysInMonth; day++) {
@@ -5266,7 +5289,10 @@ if (filteredData.length === 0) {
                   <div key={idx} className={`px-5 py-3.5 flex items-center gap-4 hover:bg-gray-50/50 transition-all duration-200 ${editingBatchIndex === idx ? 'bg-amber-50 border-l-4 border-amber-400' : ''}`}>
                     <span className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500 flex-shrink-0">{idx + 1}</span>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-gray-800 text-sm truncate">{getEodBatchLabel(activeModule, record.displayData)}</p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-medium text-gray-800 text-sm truncate">{getEodBatchLabel(activeModule, record.displayData)}</p>
+                        {record.displayData?.entry_time_hst && <span className="text-[10px] font-medium px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded whitespace-nowrap"><Clock className="w-2.5 h-2.5 inline mr-0.5" />{formatHstTime(record.displayData.entry_time_hst)}</span>}
+                      </div>
                       <p className="text-xs text-gray-400 truncate mt-0.5">{fields.slice(1, 4).map(f => record.displayData[f.key] || '-').join(' \u2022 ')}</p>
                     </div>
                     <div className="flex items-center gap-1 flex-shrink-0">
@@ -5699,7 +5725,10 @@ if (filteredData.length === 0) {
                             <div key={idx} className={`px-5 py-3.5 flex items-center gap-4 hover:bg-gray-50/50 transition-all duration-200 ${editingBatchIndex === idx ? 'bg-amber-50 border-l-4 border-amber-400' : ''}`}>
                               <span className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500 flex-shrink-0">{idx + 1}</span>
                               <div className="flex-1 min-w-0">
-                                <p className="font-medium text-gray-800 text-sm truncate">{getEodBatchLabel(activeModule, record.displayData)}</p>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <p className="font-medium text-gray-800 text-sm truncate">{getEodBatchLabel(activeModule, record.displayData)}</p>
+                                  {record.displayData?.entry_time_hst && <span className="text-[10px] font-medium px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded whitespace-nowrap"><Clock className="w-2.5 h-2.5 inline mr-0.5" />{formatHstTime(record.displayData.entry_time_hst)}</span>}
+                                </div>
                                 <p className="text-xs text-gray-400 truncate mt-0.5">{fields.slice(1, 4).map(f => record.displayData[f.key] || '-').join(' \u2022 ')}</p>
                               </div>
                               <div className="flex items-center gap-1 flex-shrink-0">
