@@ -1318,7 +1318,6 @@ const handleOrderSave = () => {
                           {allFields.map(f => (
                             <th key={f.key} className="px-2 sm:px-3 py-2 sm:py-2.5 text-left text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">{f.label}</th>
                           ))}
-                          <th className="px-2 sm:px-3 py-2 sm:py-2.5 text-left text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Time of Entry (HST)</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
@@ -1330,7 +1329,6 @@ const handleOrderSave = () => {
                               if (f.prefix && val !== '-') val = `${f.prefix}${val}`;
                               return <td key={f.key} className="px-3 py-2.5 text-gray-700 whitespace-nowrap">{val}</td>;
                             })}
-                            <td className="px-3 py-2.5 text-gray-500 text-xs whitespace-nowrap">{record.entry_time_hst ? (() => { try { return new Date(record.entry_time_hst).toLocaleString('en-US', { timeZone: 'Pacific/Honolulu', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true }) + ' HST'; } catch (e) { return '-'; } })() : '-'}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -2713,16 +2711,12 @@ if (MODULE_FIELD_CONFIG[moduleId]) {
       const firstKey = cfg.fields[0].key;
       if (!form[firstKey]) { showMessage('error', `Please fill in ${cfg.fields[0].label}`); return; }
     }
-    const entryTimeHst = new Date().toISOString();
-    const entryData = { ...(MODULE_FIELD_CONFIG[moduleId]?.getEntryData(form, currentUser) || {}), entry_time_hst: entryTimeHst };
-    const displayData = { ...form, entry_time_hst: entryTimeHst };
+    const entryData = MODULE_FIELD_CONFIG[moduleId]?.getEntryData(form, currentUser) || {};
+    const displayData = { ...form };
     if (editingBatchIndex !== null) {
-      // Update existing record in batch (preserve original entry_time_hst)
       setEodBatchRecords(prev => {
         const batch = [...(prev[moduleId] || [])];
-        const original = batch[editingBatchIndex];
-        const preservedTime = original?.entryData?.entry_time_hst || original?.displayData?.entry_time_hst || entryTimeHst;
-        batch[editingBatchIndex] = { entryData: { ...entryData, entry_time_hst: preservedTime }, displayData: { ...displayData, entry_time_hst: preservedTime } };
+        batch[editingBatchIndex] = { entryData, displayData };
         return { ...prev, [moduleId]: batch };
       });
       setEditingBatchIndex(null);
@@ -5292,7 +5286,7 @@ if (filteredData.length === 0) {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="font-medium text-gray-800 text-sm truncate">{getEodBatchLabel(activeModule, record.displayData)}</p>
-                        {record.displayData?.entry_time_hst && <span className="text-[10px] font-medium px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded whitespace-nowrap"><Clock className="w-2.5 h-2.5 inline mr-0.5" />{formatHstTime(record.displayData.entry_time_hst)}</span>}
+                        {(() => { const s = record.displayData?.time_started_hst || record.displayData?.time_started_mnl; const e = record.displayData?.time_ended_hst || record.displayData?.time_ended_mnl; return (s || e) ? <span className="text-[10px] font-medium px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded whitespace-nowrap"><Clock className="w-2.5 h-2.5 inline mr-0.5" />{s || '--'} - {e || '--'}</span> : null; })()}
                       </div>
                       <p className="text-xs text-gray-400 truncate mt-0.5">{fields.slice(1, 4).map(f => record.displayData[f.key] || '-').join(' \u2022 ')}</p>
                     </div>
@@ -5728,7 +5722,7 @@ if (filteredData.length === 0) {
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <p className="font-medium text-gray-800 text-sm truncate">{getEodBatchLabel(activeModule, record.displayData)}</p>
-                                  {record.displayData?.entry_time_hst && <span className="text-[10px] font-medium px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded whitespace-nowrap"><Clock className="w-2.5 h-2.5 inline mr-0.5" />{formatHstTime(record.displayData.entry_time_hst)}</span>}
+                                  {(() => { const s = record.displayData?.time_started_hst || record.displayData?.time_started_mnl; const e = record.displayData?.time_ended_hst || record.displayData?.time_ended_mnl; return (s || e) ? <span className="text-[10px] font-medium px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded whitespace-nowrap"><Clock className="w-2.5 h-2.5 inline mr-0.5" />{s || '--'} - {e || '--'}</span> : null; })()}
                                 </div>
                                 <p className="text-xs text-gray-400 truncate mt-0.5">{fields.slice(1, 4).map(f => record.displayData[f.key] || '-').join(' \u2022 ')}</p>
                               </div>
