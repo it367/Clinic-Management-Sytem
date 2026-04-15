@@ -584,32 +584,32 @@ const ADMIN_CARD_CONFIG = {
   'eod-patient-scheduling': {
     getTitle: (e) => <span className="font-bold text-teal-600">{e.creator?.name || 'Unknown'}</span>,
     getSubtitle: (e) => `${(e.batch_records?.length || 1)} record${(e.batch_records?.length || 1) > 1 ? 's' : ''}`,
-    getDetail: (e) => `${new Date(e.created_at).toLocaleDateString()} • Patient Scheduling`,
+    getDetail: (e) => `${new Date(e.created_at).toLocaleDateString('en-US', { timeZone: 'Pacific/Honolulu' })} • Patient Scheduling`,
   },
   'eod-insurance-verification': {
     getTitle: (e) => <span className="font-bold text-cyan-600">{e.creator?.name || 'Unknown'}</span>,
     getSubtitle: (e) => `${(e.batch_records?.length || 1)} record${(e.batch_records?.length || 1) > 1 ? 's' : ''}`,
-    getDetail: (e) => `${new Date(e.created_at).toLocaleDateString()} • Insurance Verification`,
+    getDetail: (e) => `${new Date(e.created_at).toLocaleDateString('en-US', { timeZone: 'Pacific/Honolulu' })} • Insurance Verification`,
   },
   'eod-claim-submission': {
     getTitle: (e) => <span className="font-bold text-sky-600">{e.creator?.name || 'Unknown'}</span>,
     getSubtitle: (e) => `${(e.batch_records?.length || 1)} record${(e.batch_records?.length || 1) > 1 ? 's' : ''}`,
-    getDetail: (e) => `${new Date(e.created_at).toLocaleDateString()} • Claim Submission`,
+    getDetail: (e) => `${new Date(e.created_at).toLocaleDateString('en-US', { timeZone: 'Pacific/Honolulu' })} • Claim Submission`,
   },
   'eod-payment-posting': {
     getTitle: (e) => <span className="font-bold text-blue-600">{e.creator?.name || 'Unknown'}</span>,
     getSubtitle: (e) => `${(e.batch_records?.length || 1)} record${(e.batch_records?.length || 1) > 1 ? 's' : ''}`,
-    getDetail: (e) => `${new Date(e.created_at).toLocaleDateString()} • Payment Posting`,
+    getDetail: (e) => `${new Date(e.created_at).toLocaleDateString('en-US', { timeZone: 'Pacific/Honolulu' })} • Payment Posting`,
   },
   'eod-claim-followup': {
     getTitle: (e) => <span className="font-bold text-violet-600">{e.creator?.name || 'Unknown'}</span>,
     getSubtitle: (e) => `${(e.batch_records?.length || 1)} record${(e.batch_records?.length || 1) > 1 ? 's' : ''}`,
-    getDetail: (e) => `${new Date(e.created_at).toLocaleDateString()} • Claim Follow-Up`,
+    getDetail: (e) => `${new Date(e.created_at).toLocaleDateString('en-US', { timeZone: 'Pacific/Honolulu' })} • Claim Follow-Up`,
   },
   'eod-patient-aging': {
     getTitle: (e) => <span className="font-bold text-purple-600">{e.creator?.name || 'Unknown'}</span>,
     getSubtitle: (e) => `${(e.batch_records?.length || 1)} record${(e.batch_records?.length || 1) > 1 ? 's' : ''}`,
-    getDetail: (e) => `${new Date(e.created_at).toLocaleDateString()} • Patient Aging`,
+    getDetail: (e) => `${new Date(e.created_at).toLocaleDateString('en-US', { timeZone: 'Pacific/Honolulu' })} • Patient Aging`,
   }
 };
 
@@ -1852,8 +1852,13 @@ const [eodCalendarPopup, setEodCalendarPopup] = useState(null);
     'eod-claim-followup': { documentation: [] },
     'eod-patient-aging': { documentation: [] },
   });
-  const [eodBatchRecords, setEodBatchRecords] = useState({});
+  const [eodBatchRecords, setEodBatchRecords] = useState(() => {
+    try { const saved = localStorage.getItem('eod_pending_batch'); return saved ? JSON.parse(saved) : {}; } catch (e) { return {}; }
+  });
   const [editingBatchIndex, setEditingBatchIndex] = useState(null);
+useEffect(() => {
+  try { localStorage.setItem('eod_pending_batch', JSON.stringify(eodBatchRecords)); } catch (e) {}
+}, [eodBatchRecords]);
 useEffect(() => {
   loadLocations();
   const savedSession = localStorage.getItem('cms_session') || sessionStorage.getItem('cms_session');
@@ -2830,7 +2835,7 @@ const loadEodAnalyticsData = async (month) => {
     const { data } = await query;
     if (data) {
       data.forEach(entry => {
-        const day = new Date(entry.created_at).toISOString().split('T')[0];
+        const day = new Date(entry.created_at).toLocaleDateString('en-CA', { timeZone: 'Pacific/Honolulu' });
         if (!result[day]) result[day] = {};
         if (!result[day][mod.id]) result[day][mod.id] = [];
         result[day][mod.id].push(entry.review_status);
@@ -4673,7 +4678,7 @@ if (filteredData.length === 0) {
           <div className={`p-4 border-b ${MODULE_COLORS[eodCalendarPopup.moduleId]?.bg || 'bg-gray-50'} flex items-center justify-between`}>
             <div>
               <h3 className="font-semibold text-gray-800">{eodCalendarPopup.moduleName}</h3>
-              <p className="text-sm text-gray-500">{new Date(eodCalendarPopup.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
+              <p className="text-sm text-gray-500">{new Date(eodCalendarPopup.date + 'T12:00:00').toLocaleDateString('en-US', { timeZone: 'Pacific/Honolulu', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
             </div>
             <button onClick={() => setEodCalendarPopup(null)} className="p-2 hover:bg-white/50 rounded-xl"><X className="w-5 h-5" /></button>
           </div>
@@ -5552,7 +5557,7 @@ if (filteredData.length === 0) {
                       <StatusBadge status={e.review_status || e.status} />
                     </div>
                     <p className="text-sm text-gray-600 mt-1">
-                      {isEodModule(activeModule) ? `${e.creator?.name || 'Unknown'} • ${new Date(e.created_at).toLocaleDateString()} • ${e.batch_records?.length || 1} record${(e.batch_records?.length || 1) > 1 ? 's' : ''}` : `${e.locations?.name} • ${e.creator?.name || 'Unknown'} • ${new Date(e.created_at).toLocaleDateString()}`}
+                      {isEodModule(activeModule) ? `${e.creator?.name || 'Unknown'} • ${new Date(e.created_at).toLocaleDateString('en-US', { timeZone: 'Pacific/Honolulu' })} • ${e.batch_records?.length || 1} record${(e.batch_records?.length || 1) > 1 ? 's' : ''}` : `${e.locations?.name} • ${e.creator?.name || 'Unknown'} • ${new Date(e.created_at).toLocaleDateString('en-US', { timeZone: 'Pacific/Honolulu' })}`}
                     </p>
                     {e.description && <p className="text-sm text-gray-600 mt-2 line-clamp-2">{e.description}</p>}
                     {(e.amount || e.amount_requested || e.amount_in_question) && (
@@ -5913,7 +5918,7 @@ if (filteredData.length === 0) {
                         <StatusBadge status={e.status} />
                         {!canEdit && <Lock className="w-4 h-4 text-gray-400" title="Locked (past Friday cutoff)" />}
                       </div>
-                      <p className="text-xs text-gray-500 mt-1">{new Date(e.created_at).toLocaleDateString()}</p>
+                      <p className="text-xs text-gray-500 mt-1">{new Date(e.created_at).toLocaleDateString('en-US', { timeZone: 'Pacific/Honolulu' })}</p>
                       {(e.amount || e.amount_requested || e.amount_in_question) && (
                         <p className="text-lg font-bold text-emerald-600 mt-2">${Number(e.amount || e.amount_requested || e.amount_in_question).toFixed(2)}</p>
                       )}
