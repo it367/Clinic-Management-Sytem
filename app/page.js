@@ -4913,7 +4913,7 @@ if (filteredData.length === 0) {
           </div>
           <div>
             <h2 className="font-semibold text-gray-800 text-lg">Call Analytics</h2>
-            <p className="text-sm text-gray-500">{callAnalyticsTab === 'board' ? 'Answered & Missed Calls per Location' : 'Add or manage call data'}</p>
+            <p className="text-sm text-gray-500">{!canManageCallAnalytics || callAnalyticsTab === 'board' ? 'Answered & Missed Calls per Location' : 'Add or manage call data'}</p>
           </div>
         </div>
         {canManageCallAnalytics && (
@@ -5012,7 +5012,8 @@ if (filteredData.length === 0) {
     )}
 
     {/* Board view: Filters + Tables + Pies */}
-    {callAnalyticsTab === 'board' && (<>
+    {(!canManageCallAnalytics || callAnalyticsTab === 'board') && (
+    <div className="space-y-6">
     <div className={CARD.base}>
       <div className="flex items-center gap-2 mb-4">
         <Filter className="w-4 h-4 text-gray-500" />
@@ -5169,7 +5170,8 @@ if (filteredData.length === 0) {
       </div>
     </div>
 
-    </>)}
+    </div>
+    )}
 
     {/* Records Management List (Data Entry tab, admins only) */}
     {canManageCallAnalytics && callAnalyticsTab === 'entry' && (
