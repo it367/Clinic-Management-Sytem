@@ -2794,7 +2794,8 @@ const handleEodReview = async (moduleId, entryId, reviewStatus, reviewNotes) => 
   loadModuleData(moduleId);
   setViewingEntry(null);
 };
-const loadEodAnalyticsData = async (month) => {
+const loadEodAnalyticsData = async (month, userOverride) => {
+  const selectedUser = userOverride !== undefined ? userOverride : eodSelectedUser;
   const year = month.getFullYear();
   const m = month.getMonth();
   // Hawaii is UTC-10: start of month 00:00 HST = 10:00 UTC same day
@@ -2803,7 +2804,7 @@ const loadEodAnalyticsData = async (month) => {
   const result = {};
   for (const mod of EOD_MODULES) {
     let query = supabase.from(mod.table).select('id, created_by, review_status, created_at').gte('created_at', startDate).lte('created_at', endDate);
-    if (eodSelectedUser !== 'all') query = query.eq('created_by', eodSelectedUser);
+    if (selectedUser !== 'all') query = query.eq('created_by', selectedUser);
     const { data } = await query;
     if (data) {
       data.forEach(entry => {
@@ -2816,7 +2817,8 @@ const loadEodAnalyticsData = async (month) => {
   }
   setEodAnalyticsData(result);
 };
-const loadEodCalendarEntries = async (dateStr, moduleId, moduleName) => {
+const loadEodCalendarEntries = async (dateStr, moduleId, moduleName, userOverride) => {
+  const selectedUser = userOverride !== undefined ? userOverride : eodSelectedUser;
   const mod = EOD_MODULES.find(m => m.id === moduleId);
   if (!mod) return;
   // Hawaii is UTC-10: dateStr 00:00 HST = dateStr 10:00 UTC, dateStr 23:59 HST = next day 09:59 UTC
@@ -2824,7 +2826,7 @@ const loadEodCalendarEntries = async (dateStr, moduleId, moduleName) => {
   const nextDay = new Date(Date.UTC(y, mo - 1, d + 1));
   const nextDayStr = nextDay.toISOString().split('T')[0];
   let query = supabase.from(mod.table).select('*').gte('created_at', dateStr + 'T10:00:00Z').lte('created_at', nextDayStr + 'T09:59:59Z');
-  if (eodSelectedUser !== 'all') query = query.eq('created_by', eodSelectedUser);
+  if (selectedUser !== 'all') query = query.eq('created_by', selectedUser);
   const { data } = await query;
   const enriched = data ? await enrichWithLocationsAndUsers(data, false) : [];
   setEodCalendarPopup({ date: dateStr, moduleId, moduleName, entries: enriched });
@@ -4640,7 +4642,7 @@ if (filteredData.length === 0) {
           <button onClick={() => { const d = new Date(eodAnalyticsMonth); d.setMonth(d.getMonth() + 1); setEodAnalyticsMonth(d); loadEodAnalyticsData(d); }} className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-xl"><ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" /></button>
         </div>
         {(currentUser?.role === 'rev_rangers_admin' || currentUser?.role === 'super_admin' || currentUser?.role === 'finance_admin' || currentUser?.role === 'it') && (
-          <select value={eodSelectedUser} onChange={e => { setEodSelectedUser(e.target.value); loadEodAnalyticsData(eodAnalyticsMonth); }} className={INPUT.filter}>
+          <select value={eodSelectedUser} onChange={e => { const newUser = e.target.value; setEodSelectedUser(newUser); loadEodAnalyticsData(eodAnalyticsMonth, newUser); }} className={INPUT.filter}>
             <option value="all">All Rev Rangers</option>
             {users.filter(u => u.role === 'rev_rangers').map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
           </select>
