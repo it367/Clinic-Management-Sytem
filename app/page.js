@@ -1798,7 +1798,7 @@ const [callAnalyticsFilterStart, setCallAnalyticsFilterStart] = useState('');
 const [callAnalyticsFilterEnd, setCallAnalyticsFilterEnd] = useState('');
 const [callAnalyticsFilterLocation, setCallAnalyticsFilterLocation] = useState('all');
 const [editingCallAnalyticsId, setEditingCallAnalyticsId] = useState(null);
-const [showCallAnalyticsRecords, setShowCallAnalyticsRecords] = useState(false);
+const [callAnalyticsTab, setCallAnalyticsTab] = useState('board');
   const [chatMessages, setChatMessages] = useState([{
     role: 'assistant',
     content: "👋 Hi! I'm your AI assistant. I can help with:\n\n• Data summaries & reports\n• Weekly comparisons\n• Location analytics\n• IT request status\n\nWhat would you like to know?"
@@ -4904,7 +4904,7 @@ if (filteredData.length === 0) {
   };
   return (
   <div className="space-y-6">
-    {/* Header */}
+    {/* Header with Tab switcher */}
     <div className={CARD.base}>
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-4">
@@ -4913,19 +4913,46 @@ if (filteredData.length === 0) {
           </div>
           <div>
             <h2 className="font-semibold text-gray-800 text-lg">Call Analytics</h2>
-            <p className="text-sm text-gray-500">Answered & Missed Calls per Location</p>
+            <p className="text-sm text-gray-500">{callAnalyticsTab === 'board' ? 'Answered & Missed Calls per Location' : 'Add or manage call data'}</p>
           </div>
         </div>
         {canManageCallAnalytics && (
-          <button onClick={() => setShowCallAnalyticsRecords(!showCallAnalyticsRecords)} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-200">
-            {showCallAnalyticsRecords ? 'Hide' : 'Manage'} Records
-          </button>
+          <div className="flex gap-2">
+            {callAnalyticsTab === 'board' ? (
+              <button onClick={() => setCallAnalyticsTab('entry')} className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl text-sm font-medium hover:from-emerald-600 hover:to-teal-600 shadow-md flex items-center gap-2">
+                <Plus className="w-4 h-4" />
+                Add Record
+              </button>
+            ) : (
+              <button onClick={() => {
+                const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Pacific/Honolulu', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+                const hstToday = `${parts.find(p => p.type === 'year').value}-${parts.find(p => p.type === 'month').value}-${parts.find(p => p.type === 'day').value}`;
+                setCallAnalyticsForm({ date: hstToday, location: '', answered_by_va: '', answered_by_fd: '', missed_calls: '', short_missed: '', pre_queue_drop: '', capacity_missed: '' });
+                setEditingCallAnalyticsId(null);
+                setCallAnalyticsTab('board');
+              }} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-200 flex items-center gap-2">
+                <ChevronLeft className="w-4 h-4" />
+                Back to Board
+              </button>
+            )}
+          </div>
         )}
       </div>
+      {/* Sub-tab pills */}
+      {canManageCallAnalytics && (
+        <div className="flex gap-2 mt-4 pt-4 border-t border-gray-100">
+          <button onClick={() => setCallAnalyticsTab('board')} className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${callAnalyticsTab === 'board' ? 'bg-emerald-500 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+            Dashboard
+          </button>
+          <button onClick={() => setCallAnalyticsTab('entry')} className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${callAnalyticsTab === 'entry' ? 'bg-emerald-500 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+            Data Entry
+          </button>
+        </div>
+      )}
     </div>
 
-    {/* Input Form (admins only) */}
-    {canManageCallAnalytics && (
+    {/* Input Form (admins only, Data Entry tab) */}
+    {canManageCallAnalytics && callAnalyticsTab === 'entry' && (
       <div className={CARD.base}>
         <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
           <Edit3 className="w-4 h-4 text-emerald-600" />
@@ -4984,7 +5011,8 @@ if (filteredData.length === 0) {
       </div>
     )}
 
-    {/* Filters */}
+    {/* Board view: Filters + Tables + Pies */}
+    {callAnalyticsTab === 'board' && (<>
     <div className={CARD.base}>
       <div className="flex items-center gap-2 mb-4">
         <Filter className="w-4 h-4 text-gray-500" />
@@ -5141,8 +5169,10 @@ if (filteredData.length === 0) {
       </div>
     </div>
 
-    {/* Records Management List */}
-    {canManageCallAnalytics && showCallAnalyticsRecords && (
+    </>)}
+
+    {/* Records Management List (Data Entry tab, admins only) */}
+    {canManageCallAnalytics && callAnalyticsTab === 'entry' && (
       <div className={CARD.base}>
         <h3 className="font-semibold text-gray-800 mb-4">All Records ({callAnalyticsRecords.length})</h3>
         <div className="overflow-x-auto">
