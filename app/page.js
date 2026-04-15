@@ -43,7 +43,7 @@ const CONTACT_METHODS = ['Phone', 'Email', 'Text'];
 const DATE_RANGES = ['This Week', 'Last 2 Weeks', 'This Month', 'Last Month', 'This Quarter', 'This Year', 'Custom'];
 const INSURANCE_PROVIDERS = ['AETNA', 'AMERITAS', 'Anthem BC', 'BCBS FEP', 'CIGNA DENTAL', 'DELTA DENTAL', 'GEHA', 'HDS', 'HDS MEDICAID', 'HMAA', 'HMSA', 'Hospital cases', 'METLIFE', 'GUARDIAN', 'OTHER', 'UCCI', 'UCCI FED VIP', 'UCCI TDP'];
 const PATIENT_TYPES = ['New', 'Existing', 'Other'];
-const REFERRAL_SOURCES = ['Patient', 'Referral Provider', 'Practice Provider', 'General Dentist', 'Doctor Referral', 'Social Media', 'Mailers', 'Others', 'Outreach', 'Sibling', 'Online'];
+const REFERRAL_SOURCES = ['Patient', 'Referral Provider', 'Practice Provider', 'General Dentist', 'Doctor Referral', 'Social Media', 'Mailers', 'Others', 'Outreach', 'Sibling', 'Online', 'Posters', 'Friend', 'School', 'Community Event'];
 const CALL_TYPES = ['Inbound', 'Outbound', 'Appointment Confirmation'];
 const CALL_OUTCOMES = ['Scheduled', 'Appt Cancelled', 'Appt Confirmed', 'Rescheduled', 'Inquiry Handled', 'Left VM', 'No VM', 'Full VM', 'Unconfirmed', 'Call Disconnected', 'Ortho Inquiry', 'Will Callback', 'Other', 'Transfer', 'Need Follow-Up', 'No Answer'];
 const VERIFICATION_STATUSES = ['Verified', 'Pending', 'Termed', 'On Hold', 'Treatment Plan', 'Reverified'];
@@ -1720,9 +1720,15 @@ const [lastLogin, setLastLogin] = useState(null);
 const [loginHistory, setLoginHistory] = useState([]);
   const [locations, setLocations] = useState([]);
   const [users, setUsers] = useState([]);
-  const [activeModule, setActiveModule] = useState('billing-inquiry');
-  const [view, setView] = useState('entry');
-  const [adminView, setAdminView] = useState('records');
+  const [activeModule, setActiveModule] = useState(() => {
+    try { return localStorage.getItem('cch_last_activeModule') || 'billing-inquiry'; } catch (e) { return 'billing-inquiry'; }
+  });
+  const [view, setView] = useState(() => {
+    try { return localStorage.getItem('cch_last_view') || 'entry'; } catch (e) { return 'entry'; }
+  });
+  const [adminView, setAdminView] = useState(() => {
+    try { return localStorage.getItem('cch_last_adminView') || 'records'; } catch (e) { return 'records'; }
+  });
   const [moduleData, setModuleData] = useState({});
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -1730,6 +1736,15 @@ const [loginHistory, setLoginHistory] = useState([]);
   const [viewingFile, setViewingFile] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsedSections, setCollapsedSections] = useState({});
+  const toggleSection = (key) => {
+    setCollapsedSections(prev => {
+      const wasCollapsed = prev[key] !== false;
+      const next = {};
+      Object.keys(prev).forEach(k => { next[k] = true; });
+      if (wasCollapsed) next[key] = false;
+      return next;
+    });
+  };
   const [adminLocation, setAdminLocation] = useState('all');
   const [editingStatus, setEditingStatus] = useState(null);
   const [editingEntry, setEditingEntry] = useState(null);
@@ -1968,6 +1983,9 @@ useEffect(() => { if (currentUser) setNameForm(currentUser.name || ''); }, [curr
       loadModuleData(activeModule);
     }
   }, [currentUser, selectedLocation, activeModule, adminLocation]);
+useEffect(() => { try { localStorage.setItem('cch_last_activeModule', activeModule); } catch (e) {} }, [activeModule]);
+useEffect(() => { try { localStorage.setItem('cch_last_view', view); } catch (e) {} }, [view]);
+useEffect(() => { try { localStorage.setItem('cch_last_adminView', adminView); } catch (e) {} }, [adminView]);
 useEffect(() => { setCurrentPage(1); setRecordSearch(''); }, [activeModule, adminLocation]);
   useEffect(() => { setStaffCurrentPage(1); setStaffRecordSearch(''); setEditingStaffEntry(null); }, [activeModule, selectedLocation]);
 useEffect(() => { setSelectedRecords([]); setSelectAll(false); }, [activeModule, adminLocation, currentPage, recordSearch]);
@@ -1998,7 +2016,7 @@ useEffect(() => {
   const hasModules = true;
   const hasSupport = role === 'super_admin' || role === 'it' || !isAdmin || role === 'office_manager';
   const hasEod = canAccessEod(role);
-  const sections = ['modules', 'eod', 'eodReports', 'management', 'support'];
+  const sections = ['modules', 'eodReports', 'eod', 'management', 'support'];
   const visible = sections.filter(s => s === 'modules' ? hasModules : s === 'support' ? hasSupport : (s === 'eod' || s === 'eodReports') ? hasEod : isAdmin);
   const collapsed = {};
   visible.forEach((s, i) => { collapsed[s] = i > 0; });
@@ -3647,7 +3665,7 @@ onDelete={(isITViewOnly || (isEodModule(activeModule) && currentUser?.role !== '
         <nav className="flex-1 px-3 py-4 overflow-y-auto space-y-2">
 {visibleModules.length > 0 && (
           <div className="rounded-xl bg-gray-50/50 border border-gray-100 overflow-hidden">
-          <button onClick={() => setCollapsedSections(prev => ({ ...prev, modules: !prev.modules }))} className="w-full flex items-center justify-between px-3.5 py-2.5 hover:bg-gray-100/80 transition-all duration-200 group">
+          <button onClick={() => toggleSection('modules')} className="w-full flex items-center justify-between px-3.5 py-2.5 hover:bg-gray-100/80 transition-all duration-200 group">
             <div className="flex items-center gap-2">
               <div className="w-1 h-4 rounded-full bg-purple-400 transition-all duration-300 group-hover:h-5"></div>
               <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Clinic Operations</p>
@@ -3691,39 +3709,7 @@ onDelete={(isITViewOnly || (isEodModule(activeModule) && currentUser?.role !== '
           )}
 {canAccessEod(currentUser?.role) && (
   <div className="rounded-xl bg-gray-50/50 border border-gray-100 overflow-hidden">
-    <button onClick={() => setCollapsedSections(prev => ({ ...prev, eod: !prev.eod }))} className="w-full flex items-center justify-between px-3.5 py-2.5 hover:bg-gray-100/80 transition-all duration-200 group">
-      <div className="flex items-center gap-2">
-        <div className="w-1 h-4 rounded-full bg-teal-400 transition-all duration-300 group-hover:h-5"></div>
-        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">EOD Tracker</p>
-      </div>
-      <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-300 ease-in-out ${collapsedSections.eod ? '-rotate-90' : 'rotate-0'}`} />
-    </button>
-    <div className={`transition-all duration-300 ease-in-out overflow-hidden ${collapsedSections.eod ? 'max-h-0 opacity-0' : 'max-h-[600px] opacity-100'}`}>
-      <div className="px-1.5 pb-2 space-y-0.5">
-    {EOD_MODULES.map(m => {
-      const colors = MODULE_COLORS[m.id] || { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-700', accent: 'bg-gray-500', light: 'bg-gray-100' };
-      const isActive = activeModule === m.id && adminView !== 'eod-tracking' && adminView !== 'eod-analytics' && adminView !== 'users' && adminView !== 'export' && adminView !== 'settings';
-      return (
-        <button
-          key={m.id}
-          onClick={() => { setActiveModule(m.id); setAdminView('rev-entry'); setView('entry'); setSidebarOpen(false); loadModuleData(m.id); }}
-          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all duration-200 group/item ${isActive ? `${colors.bg} ${colors.text} shadow-sm` : 'text-gray-600 hover:bg-white hover:shadow-sm hover:translate-x-0.5'}`}
-        >
-          <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 ${isActive ? colors.light : 'bg-white group-hover/item:scale-105'}`}>
-            <m.icon className={`w-4 h-4 transition-colors duration-200 ${isActive ? colors.text : 'text-gray-400 group-hover/item:text-gray-600'}`} />
-          </div>
-          <span className="text-sm font-medium">{m.name}</span>
-          {isActive && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-current animate-pulse"></div>}
-        </button>
-      );
-    })}
-      </div>
-    </div>
-  </div>
-)}
-{canAccessEod(currentUser?.role) && (
-  <div className="rounded-xl bg-gray-50/50 border border-gray-100 overflow-hidden">
-    <button onClick={() => setCollapsedSections(prev => ({ ...prev, eodReports: !prev.eodReports }))} className="w-full flex items-center justify-between px-3.5 py-2.5 hover:bg-gray-100/80 transition-all duration-200 group">
+    <button onClick={() => toggleSection('eodReports')} className="w-full flex items-center justify-between px-3.5 py-2.5 hover:bg-gray-100/80 transition-all duration-200 group">
       <div className="flex items-center gap-2">
         <div className="w-1 h-4 rounded-full bg-emerald-400 transition-all duration-300 group-hover:h-5"></div>
         <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">EOD Reports</p>
@@ -3757,6 +3743,38 @@ onDelete={(isITViewOnly || (isEodModule(activeModule) && currentUser?.role !== '
     </div>
   </div>
 )}
+{canAccessEod(currentUser?.role) && (
+  <div className="rounded-xl bg-gray-50/50 border border-gray-100 overflow-hidden">
+    <button onClick={() => toggleSection('eod')} className="w-full flex items-center justify-between px-3.5 py-2.5 hover:bg-gray-100/80 transition-all duration-200 group">
+      <div className="flex items-center gap-2">
+        <div className="w-1 h-4 rounded-full bg-teal-400 transition-all duration-300 group-hover:h-5"></div>
+        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">EOD Tracker</p>
+      </div>
+      <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-300 ease-in-out ${collapsedSections.eod ? '-rotate-90' : 'rotate-0'}`} />
+    </button>
+    <div className={`transition-all duration-300 ease-in-out overflow-hidden ${collapsedSections.eod ? 'max-h-0 opacity-0' : 'max-h-[600px] opacity-100'}`}>
+      <div className="px-1.5 pb-2 space-y-0.5">
+    {EOD_MODULES.map(m => {
+      const colors = MODULE_COLORS[m.id] || { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-700', accent: 'bg-gray-500', light: 'bg-gray-100' };
+      const isActive = activeModule === m.id && adminView !== 'eod-tracking' && adminView !== 'eod-analytics' && adminView !== 'users' && adminView !== 'export' && adminView !== 'settings';
+      return (
+        <button
+          key={m.id}
+          onClick={() => { setActiveModule(m.id); setAdminView('rev-entry'); setView('entry'); setSidebarOpen(false); loadModuleData(m.id); }}
+          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all duration-200 group/item ${isActive ? `${colors.bg} ${colors.text} shadow-sm` : 'text-gray-600 hover:bg-white hover:shadow-sm hover:translate-x-0.5'}`}
+        >
+          <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 ${isActive ? colors.light : 'bg-white group-hover/item:scale-105'}`}>
+            <m.icon className={`w-4 h-4 transition-colors duration-200 ${isActive ? colors.text : 'text-gray-400 group-hover/item:text-gray-600'}`} />
+          </div>
+          <span className="text-sm font-medium">{m.name}</span>
+          {isActive && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-current animate-pulse"></div>}
+        </button>
+      );
+    })}
+      </div>
+    </div>
+  </div>
+)}
 {!isAdmin && (
   <div className="mt-1">
     <button onClick={() => { setView('sop'); loadSOPs(); setSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all duration-200 ${view === 'sop' ? 'bg-blue-50 text-blue-700 shadow-sm' : 'text-gray-600 hover:bg-gray-50 hover:translate-x-0.5'}`}>
@@ -3767,7 +3785,7 @@ onDelete={(isITViewOnly || (isEodModule(activeModule) && currentUser?.role !== '
 )}
 {isAdmin && (
           <div className="rounded-xl bg-gray-50/50 border border-gray-100 overflow-hidden">
-              <button onClick={() => setCollapsedSections(prev => ({ ...prev, management: !prev.management }))} className="w-full flex items-center justify-between px-3.5 py-2.5 hover:bg-gray-100/80 transition-all duration-200 group">
+              <button onClick={() => toggleSection('management')} className="w-full flex items-center justify-between px-3.5 py-2.5 hover:bg-gray-100/80 transition-all duration-200 group">
                 <div className="flex items-center gap-2">
                   <div className="w-1 h-4 rounded-full bg-indigo-400 transition-all duration-300 group-hover:h-5"></div>
                   <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Management</p>
@@ -3804,7 +3822,7 @@ onDelete={(isITViewOnly || (isEodModule(activeModule) && currentUser?.role !== '
           )}
 {(currentUser?.role === 'super_admin' || currentUser?.role === 'it' || !isAdmin || isOfficeManager) && (
           <div className="rounded-xl bg-gray-50/50 border border-gray-100 overflow-hidden">
-              <button onClick={() => setCollapsedSections(prev => ({ ...prev, support: !prev.support }))} className="w-full flex items-center justify-between px-3.5 py-2.5 hover:bg-gray-100/80 transition-all duration-200 group">
+              <button onClick={() => toggleSection('support')} className="w-full flex items-center justify-between px-3.5 py-2.5 hover:bg-gray-100/80 transition-all duration-200 group">
                 <div className="flex items-center gap-2">
                   <div className="w-1 h-4 rounded-full bg-amber-400 transition-all duration-300 group-hover:h-5"></div>
                   <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Support</p>
