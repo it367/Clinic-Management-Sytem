@@ -437,14 +437,7 @@ const ENTRY_PREVIEW_CONFIG = {
       { label: 'Call Type', key: 'call_type' }, { label: 'Call Outcome', key: 'call_outcome' },
       { label: 'Additional Patients', key: 'additional_patients', customRender: (e) => e.additional_patients?.length > 0 ? e.additional_patients.join(', ') : '-' },
       { label: 'Memo', key: 'memo', colSpan: 2, isBlock: true }
-    ],
-    reviewReadOnly: { show: (e) => e.reviewed_by || e.date_reviewed || e.review_notes, bgColor: 'bg-teal-50', borderColor: 'border-teal-200', textColor: 'text-teal-800', title: 'Review Details',
-      fields: [{ label: 'Review Status', key: 'review_status' }, { label: 'Reviewed By', key: 'reviewed_by', customRender: (e) => e.reviewer?.name || '-' }, { label: 'Date Reviewed', key: 'date_reviewed', format: 'date' }, { label: 'Review Notes', key: 'review_notes', colSpan: 2 }] },
-    adminEdit: { btnGradient: 'from-teal-500 to-cyan-500', btnLabel: 'Review Entry', editBg: 'bg-teal-50', editBorder: 'border-teal-200', editTextColor: 'text-teal-800', editTitle: 'Review EOD Entry', focusColor: 'focus:border-teal-400',
-      statuses: EOD_STATUSES, formKey: 'eodReview', saveHandler: 'handleEodReviewSave', isEodReview: true,
-      fields: [{ type: 'select', label: 'Review Status', key: 'review_status' }],
-      extraFields: [{ type: 'textarea', label: 'Review Notes', key: 'review_notes', placeholder: 'Enter review notes...' }]
-    }
+    ]
   },
   'eod-insurance-verification': {
     previewFields: [
@@ -453,14 +446,7 @@ const ENTRY_PREVIEW_CONFIG = {
       { label: 'Date of Service', key: 'dos', format: 'date' },
       { label: 'Time Started (HST)', key: 'time_started_hst' }, { label: 'Time Ended (HST)', key: 'time_ended_hst' },
       { label: 'Time Duration', key: 'time_duration' }, { label: 'Status', key: 'status' }
-    ],
-    reviewReadOnly: { show: (e) => e.reviewed_by || e.date_reviewed || e.review_notes, bgColor: 'bg-cyan-50', borderColor: 'border-cyan-200', textColor: 'text-cyan-800', title: 'Review Details',
-      fields: [{ label: 'Review Status', key: 'review_status' }, { label: 'Reviewed By', key: 'reviewed_by', customRender: (e) => e.reviewer?.name || '-' }, { label: 'Date Reviewed', key: 'date_reviewed', format: 'date' }, { label: 'Review Notes', key: 'review_notes', colSpan: 2 }] },
-    adminEdit: { btnGradient: 'from-cyan-500 to-sky-500', btnLabel: 'Review Entry', editBg: 'bg-cyan-50', editBorder: 'border-cyan-200', editTextColor: 'text-cyan-800', editTitle: 'Review EOD Entry', focusColor: 'focus:border-cyan-400',
-      statuses: EOD_STATUSES, formKey: 'eodReview', saveHandler: 'handleEodReviewSave', isEodReview: true,
-      fields: [{ type: 'select', label: 'Review Status', key: 'review_status' }],
-      extraFields: [{ type: 'textarea', label: 'Review Notes', key: 'review_notes', placeholder: 'Enter review notes...' }]
-    }
+    ]
   },
   'eod-claim-submission': {
     previewFields: [
@@ -470,14 +456,7 @@ const ENTRY_PREVIEW_CONFIG = {
       { label: 'Time Started (HST)', key: 'time_started_hst' }, { label: 'Time Ended (HST)', key: 'time_ended_hst' },
       { label: 'Time Duration', key: 'time_duration' }, { label: 'Claim Status', key: 'claim_status' },
       { label: 'Comments', key: 'comments', colSpan: 2, isBlock: true }
-    ],
-    reviewReadOnly: { show: (e) => e.reviewed_by || e.date_reviewed || e.review_notes, bgColor: 'bg-sky-50', borderColor: 'border-sky-200', textColor: 'text-sky-800', title: 'Review Details',
-      fields: [{ label: 'Review Status', key: 'review_status' }, { label: 'Reviewed By', key: 'reviewed_by', customRender: (e) => e.reviewer?.name || '-' }, { label: 'Date Reviewed', key: 'date_reviewed', format: 'date' }, { label: 'Review Notes', key: 'review_notes', colSpan: 2 }] },
-    adminEdit: { btnGradient: 'from-sky-500 to-blue-500', btnLabel: 'Review Entry', editBg: 'bg-sky-50', editBorder: 'border-sky-200', editTextColor: 'text-sky-800', editTitle: 'Review EOD Entry', focusColor: 'focus:border-sky-400',
-      statuses: EOD_STATUSES, formKey: 'eodReview', saveHandler: 'handleEodReviewSave', isEodReview: true,
-      fields: [{ type: 'select', label: 'Review Status', key: 'review_status' }],
-      extraFields: [{ type: 'textarea', label: 'Review Notes', key: 'review_notes', placeholder: 'Enter review notes...' }]
-    }
+    ]
   },
   'eod-payment-posting': {
     previewFields: [
@@ -490,14 +469,7 @@ const ENTRY_PREVIEW_CONFIG = {
       { label: 'Time Duration', key: 'time_duration' }, { label: 'Locate By', key: 'locate_by' },
       { label: 'Location', key: 'location' },
       { label: 'Remarks', key: 'remarks', colSpan: 2, isBlock: true }
-    ],
-    reviewReadOnly: { show: (e) => e.reviewed_by || e.date_reviewed || e.review_notes, bgColor: 'bg-blue-50', borderColor: 'border-blue-200', textColor: 'text-blue-800', title: 'Review Details',
-      fields: [{ label: 'Review Status', key: 'review_status' }, { label: 'Reviewed By', key: 'reviewed_by', customRender: (e) => e.reviewer?.name || '-' }, { label: 'Date Reviewed', key: 'date_reviewed', format: 'date' }, { label: 'Review Notes', key: 'review_notes', colSpan: 2 }] },
-    adminEdit: { btnGradient: 'from-blue-500 to-indigo-500', btnLabel: 'Review Entry', editBg: 'bg-blue-50', editBorder: 'border-blue-200', editTextColor: 'text-blue-800', editTitle: 'Review EOD Entry', focusColor: 'focus:border-blue-400',
-      statuses: EOD_STATUSES, formKey: 'eodReview', saveHandler: 'handleEodReviewSave', isEodReview: true,
-      fields: [{ type: 'select', label: 'Review Status', key: 'review_status' }],
-      extraFields: [{ type: 'textarea', label: 'Review Notes', key: 'review_notes', placeholder: 'Enter review notes...' }]
-    }
+    ]
   },
   'eod-claim-followup': {
     previewFields: [
@@ -507,14 +479,7 @@ const ENTRY_PREVIEW_CONFIG = {
       { label: 'Time Started (MNL)', key: 'time_started_mnl' }, { label: 'Time Ended (MNL)', key: 'time_ended_mnl' },
       { label: 'Time Duration', key: 'time_duration' }, { label: 'Claim Status', key: 'claim_status' },
       { label: 'Amount Collected', key: 'amount_collected', format: 'currency', colorClass: 'text-emerald-600' }
-    ],
-    reviewReadOnly: { show: (e) => e.reviewed_by || e.date_reviewed || e.review_notes, bgColor: 'bg-violet-50', borderColor: 'border-violet-200', textColor: 'text-violet-800', title: 'Review Details',
-      fields: [{ label: 'Review Status', key: 'review_status' }, { label: 'Reviewed By', key: 'reviewed_by', customRender: (e) => e.reviewer?.name || '-' }, { label: 'Date Reviewed', key: 'date_reviewed', format: 'date' }, { label: 'Review Notes', key: 'review_notes', colSpan: 2 }] },
-    adminEdit: { btnGradient: 'from-violet-500 to-purple-500', btnLabel: 'Review Entry', editBg: 'bg-violet-50', editBorder: 'border-violet-200', editTextColor: 'text-violet-800', editTitle: 'Review EOD Entry', focusColor: 'focus:border-violet-400',
-      statuses: EOD_STATUSES, formKey: 'eodReview', saveHandler: 'handleEodReviewSave', isEodReview: true,
-      fields: [{ type: 'select', label: 'Review Status', key: 'review_status' }],
-      extraFields: [{ type: 'textarea', label: 'Review Notes', key: 'review_notes', placeholder: 'Enter review notes...' }]
-    }
+    ]
   },
   'eod-patient-aging': {
     previewFields: [
@@ -526,14 +491,7 @@ const ENTRY_PREVIEW_CONFIG = {
       { label: 'Time Started (MNL)', key: 'time_started_mnl' }, { label: 'Time Ended (MNL)', key: 'time_ended_mnl' },
       { label: 'Time Duration', key: 'time_duration' }, { label: 'Claim Status', key: 'claim_status' },
       { label: 'Amount Collected', key: 'amount_collected', format: 'currency', colorClass: 'text-emerald-600' }
-    ],
-    reviewReadOnly: { show: (e) => e.reviewed_by || e.date_reviewed || e.review_notes, bgColor: 'bg-purple-50', borderColor: 'border-purple-200', textColor: 'text-purple-800', title: 'Review Details',
-      fields: [{ label: 'Review Status', key: 'review_status' }, { label: 'Reviewed By', key: 'reviewed_by', customRender: (e) => e.reviewer?.name || '-' }, { label: 'Date Reviewed', key: 'date_reviewed', format: 'date' }, { label: 'Review Notes', key: 'review_notes', colSpan: 2 }] },
-    adminEdit: { btnGradient: 'from-purple-500 to-pink-500', btnLabel: 'Review Entry', editBg: 'bg-purple-50', editBorder: 'border-purple-200', editTextColor: 'text-purple-800', editTitle: 'Review EOD Entry', focusColor: 'focus:border-purple-400',
-      statuses: EOD_STATUSES, formKey: 'eodReview', saveHandler: 'handleEodReviewSave', isEodReview: true,
-      fields: [{ type: 'select', label: 'Review Status', key: 'review_status' }],
-      extraFields: [{ type: 'textarea', label: 'Review Notes', key: 'review_notes', placeholder: 'Enter review notes...' }]
-    }
+    ]
   }
 };
 
@@ -1280,8 +1238,11 @@ const handleOrderSave = () => {
         <div className="p-6 space-y-4">
           {/* Status and Meta */}
           <div className="flex items-center gap-3 flex-wrap">
-            <StatusBadge status={entry.status || entry.review_status || 'Pending'} />
-            {entry.review_status && entry.status && <StatusBadge status={entry.review_status} />}
+            {isEodModule(module?.id) ? (
+              <span className="px-2.5 py-1 rounded-lg text-xs font-semibold border bg-emerald-50 text-emerald-700 border-emerald-200">Submitted</span>
+            ) : (
+              <StatusBadge status={entry.status || 'Pending'} />
+            )}
             <span className="text-sm text-gray-500">Created: {formatDateTime(entry.created_at)}</span>
             {entry.updated_at !== entry.created_at && (
               <span className="text-sm text-gray-500">Updated: {formatDateTime(entry.updated_at)}</span>
@@ -1299,7 +1260,6 @@ const handleOrderSave = () => {
             const fields = STAFF_FORM_CONFIG[module?.id]?.fields || [];
             const largeField = STAFF_FORM_CONFIG[module?.id]?.largeField;
             const allFields = largeField ? [...fields, largeField] : fields;
-            const canReview = currentUser?.role === 'rev_rangers_admin' || currentUser?.role === 'super_admin';
             return (
               <div className="space-y-4">
                 {/* Record Count Badge */}
@@ -1336,39 +1296,6 @@ const handleOrderSave = () => {
                   </div>
                 </div>
                 {/* Review Section */}
-                {config?.reviewReadOnly && !isEditing && config.reviewReadOnly.show(entry) && (
-                  <div className={`p-4 ${config.reviewReadOnly.bgColor} rounded-xl border ${config.reviewReadOnly.borderColor}`}>
-                    <h4 className={`font-semibold ${config.reviewReadOnly.textColor} mb-3 flex items-center gap-2`}><FileText className="w-4 h-4" /> {config.reviewReadOnly.title}</h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {config.reviewReadOnly.fields.map(rf => (
-                        <div key={rf.key} className={rf.colSpan === 2 ? 'col-span-2' : ''}><span className="text-gray-600 text-sm block">{rf.label}</span><span className="font-medium">{rf.customRender ? rf.customRender(entry) : rf.format === 'date' ? formatDate(entry[rf.key]) : rf.format === 'datetime' ? formatDateTime(entry[rf.key]) : (entry[rf.key] || '-')}</span></div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {/* Admin Review Form */}
-                {canReview && config?.adminEdit && (
-                  <div className="mt-4 pt-4 border-t border-gray-200">
-                    {!isEditing ? (
-                      <button onClick={() => setIsEditing(true)} className={`w-full py-3 bg-gradient-to-r ${config.adminEdit.btnGradient} text-white rounded-xl font-medium hover:shadow-lg transition-all flex items-center justify-center gap-2`}><Edit3 className="w-4 h-4" /> {config.adminEdit.btnLabel}</button>
-                    ) : (
-                      <div className={`space-y-4 ${config.adminEdit.editBg} p-4 rounded-xl border ${config.adminEdit.editBorder}`}>
-                        <h4 className={`font-semibold ${config.adminEdit.editTextColor} flex items-center gap-2`}><Edit3 className="w-4 h-4" /> {config.adminEdit.editTitle}</h4>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          {config.adminEdit.fields.map(f => {
-                            if (f.type === 'select') return (<div key={f.key}><label className="text-xs font-medium text-gray-600 mb-1.5 block">{f.label}</label><select value={eodReviewForm[f.key]} onChange={ev => setEodReviewForm({ ...eodReviewForm, [f.key]: ev.target.value })} className={`w-full p-2.5 border-2 border-gray-200 rounded-xl outline-none ${config.adminEdit.focusColor} bg-white`}>{config.adminEdit.statuses.map(s => <option key={s} value={s}>{s}</option>)}</select></div>);
-                            return null;
-                          })}
-                        </div>
-                        {config.adminEdit.extraFields?.map(f => (<div key={f.key}><label className="text-xs font-medium text-gray-600 mb-1.5 block">{f.label}</label><textarea value={eodReviewForm[f.key]} onChange={ev => setEodReviewForm({ ...eodReviewForm, [f.key]: ev.target.value })} placeholder={f.placeholder} rows={3} className={`w-full p-2.5 border-2 border-gray-200 rounded-xl outline-none ${config.adminEdit.focusColor} bg-white resize-none`} /></div>))}
-                        <div className="flex gap-2">
-                          <button onClick={handleEodReviewSave} className={`flex-1 py-2.5 ${BTN.save}`}>Save Review</button>
-                          <button onClick={() => setIsEditing(false)} className={`px-4 py-2.5 ${BTN.cancel}`}>Cancel</button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
               </div>
             );
           })()}
@@ -4720,29 +4647,49 @@ if (filteredData.length === 0) {
         )}
       </div>
     </div>
-    {/* KPI Summary */}
+    {/* Per-Module Submission Counts */}
     {(() => {
-      const allStatuses = Object.values(eodAnalyticsData).flatMap(day => Object.values(day).flat());
-      const totalEntries = allStatuses.length;
-      const pendingCount = allStatuses.filter(s => s === 'For Review').length;
-      const approvedCount = allStatuses.filter(s => s === 'Approved').length;
-      const needsUpdateCount = allStatuses.filter(s => s === 'Updates Needed').length;
-      const declinedCount = allStatuses.filter(s => s === 'Declined').length;
-      return renderKPICards([
-        { color: 'teal', label: 'Total Entries', value: totalEntries, detail: eodAnalyticsMonth.toLocaleString('default', { month: 'long' }) },
-        { color: 'amber', label: 'Pending Review', value: pendingCount, detail: `${totalEntries > 0 ? ((pendingCount / totalEntries) * 100).toFixed(0) : 0}%` },
-        { color: 'emerald', label: 'Approved', value: approvedCount, detail: `${totalEntries > 0 ? ((approvedCount / totalEntries) * 100).toFixed(0) : 0}%` },
-        { color: 'orange', label: 'Needs Update / Declined', value: needsUpdateCount + declinedCount, detail: `${needsUpdateCount} updates, ${declinedCount} declined` },
-      ]);
+      const monthLabel = eodAnalyticsMonth.toLocaleString('default', { month: 'long' });
+      const perModuleCounts = {};
+      EOD_MODULES.forEach(mod => { perModuleCounts[mod.id] = 0; });
+      Object.values(eodAnalyticsData).forEach(day => {
+        Object.entries(day).forEach(([modId, statuses]) => {
+          if (perModuleCounts[modId] !== undefined) perModuleCounts[modId] += statuses.length;
+        });
+      });
+      const totalEntries = Object.values(perModuleCounts).reduce((a, b) => a + b, 0);
+      return (
+        <div>
+          <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+            <h3 className="text-sm font-semibold text-gray-700">Submissions per Module — {monthLabel}</h3>
+            <span className="text-xs font-semibold px-3 py-1 rounded-full bg-teal-50 text-teal-700">Total: {totalEntries}</span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            {EOD_MODULES.map(mod => {
+              const colors = MODULE_COLORS[mod.id] || { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-700', light: 'bg-gray-100' };
+              const count = perModuleCounts[mod.id] || 0;
+              const ModIcon = mod.icon;
+              return (
+                <div key={mod.id} className={`p-3 rounded-xl border-2 ${colors.border} ${colors.bg} hover:shadow-md transition-all`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className={`w-9 h-9 rounded-lg ${colors.light} flex items-center justify-center`}>
+                      <ModIcon className={`w-4 h-4 ${colors.text}`} />
+                    </div>
+                    <span className={`text-2xl font-bold ${colors.text}`}>{count}</span>
+                  </div>
+                  <p className="text-xs font-medium text-gray-600 leading-tight">{mod.name}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
     })()}
     {/* Calendar Grid */}
     <div className={CARD.base}>
       <div className="mb-4">
         <div className="flex items-center gap-3 sm:gap-5 text-xs sm:text-sm text-gray-600 mb-3 flex-wrap">
-          <span className="flex items-center gap-1.5"><span className="w-4 h-4 rounded-lg bg-emerald-400 inline-block"></span> Approved</span>
-          <span className="flex items-center gap-1.5"><span className="w-4 h-4 rounded-lg bg-amber-400 inline-block"></span> For Review</span>
-          <span className="flex items-center gap-1.5"><span className="w-4 h-4 rounded-lg bg-orange-400 inline-block"></span> Updates Needed</span>
-          <span className="flex items-center gap-1.5"><span className="w-4 h-4 rounded-lg bg-red-400 inline-block"></span> Declined</span>
+          <span className="flex items-center gap-1.5"><span className="w-4 h-4 rounded-lg bg-emerald-400 inline-block"></span> Submitted</span>
           <span className="flex items-center gap-1.5"><span className="w-4 h-4 rounded-lg bg-gray-100 inline-block"></span> No Submission</span>
         </div>
       </div>
@@ -4770,12 +4717,7 @@ if (filteredData.length === 0) {
                     const statuses = dayData[mod.id] || [];
                     const ModIcon = mod.icon;
                     if (statuses.length === 0) return <div key={mod.id} className="w-5 h-5 sm:w-7 sm:h-7 rounded sm:rounded-lg bg-gray-100 flex items-center justify-center" title={`${mod.name}: No submission`}><ModIcon className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 text-gray-300" /></div>;
-                    const hasDeclined = statuses.includes('Declined');
-                    const hasUpdatesNeeded = statuses.includes('Updates Needed');
-                    const hasPending = statuses.includes('For Review');
-                    const allApproved = statuses.every(s => s === 'Approved');
-                    const dotColor = hasDeclined ? 'bg-red-400' : hasUpdatesNeeded ? 'bg-orange-400' : hasPending ? 'bg-amber-400' : allApproved ? 'bg-emerald-400' : 'bg-gray-300';
-                    return <button key={mod.id} onClick={() => loadEodCalendarEntries(dateStr, mod.id, mod.name)} className={`w-5 h-5 sm:w-7 sm:h-7 rounded sm:rounded-lg ${dotColor} flex items-center justify-center cursor-pointer hover:scale-110 hover:shadow-md transition-all duration-200`} title={`${mod.name}: ${statuses.length} entries — Click to view`}><ModIcon className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 text-white" /></button>;
+                    return <button key={mod.id} onClick={() => loadEodCalendarEntries(dateStr, mod.id, mod.name)} className="w-5 h-5 sm:w-7 sm:h-7 rounded sm:rounded-lg bg-emerald-400 flex items-center justify-center cursor-pointer hover:scale-110 hover:shadow-md transition-all duration-200" title={`${mod.name}: ${statuses.length} entries — Click to view`}><ModIcon className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 text-white" /></button>;
                   })}
                 </div>
               </div>
@@ -4806,7 +4748,7 @@ if (filteredData.length === 0) {
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <span className="font-semibold text-gray-800">{entry.creator?.name || 'Unknown'}</span>
-                        <StatusBadge status={entry.review_status || 'For Review'} />
+                        <span className="px-2.5 py-1 rounded-lg text-xs font-semibold border bg-emerald-50 text-emerald-700 border-emerald-200">Submitted</span>
                       </div>
                       <span className="text-xs text-gray-400">{entry.batch_records?.length || 1} record{(entry.batch_records?.length || 1) > 1 ? 's' : ''}</span>
                     </div>
@@ -6023,7 +5965,11 @@ if (filteredData.length === 0) {
                           ? (e.chart_number ? `Chart #${e.chart_number}` : e.patient_name || 'No Chart #')
                           : (e.patient_name || e.vendor || e.created_at?.split('T')[0]))}
                       </p>
-                      <StatusBadge status={e.review_status || e.status} />
+                      {isEodModule(activeModule) ? (
+                        <span className="px-2.5 py-1 rounded-lg text-xs font-semibold border bg-emerald-50 text-emerald-700 border-emerald-200">Submitted</span>
+                      ) : (
+                        <StatusBadge status={e.status} />
+                      )}
                     </div>
                     <p className="text-sm text-gray-600 mt-1">
                       {isEodModule(activeModule) ? `${e.creator?.name || 'Unknown'} • ${new Date(e.created_at).toLocaleDateString('en-US', { timeZone: 'Pacific/Honolulu' })} • ${e.batch_records?.length || 1} record${(e.batch_records?.length || 1) > 1 ? 's' : ''}` : `${e.locations?.name} • ${e.creator?.name || 'Unknown'} • ${new Date(e.created_at).toLocaleDateString('en-US', { timeZone: 'Pacific/Honolulu' })}`}
