@@ -1852,13 +1852,28 @@ const [eodCalendarPopup, setEodCalendarPopup] = useState(null);
     'eod-claim-followup': { documentation: [] },
     'eod-patient-aging': { documentation: [] },
   });
-  const [eodBatchRecords, setEodBatchRecords] = useState(() => {
-    try { const saved = localStorage.getItem('eod_pending_batch'); return saved ? JSON.parse(saved) : {}; } catch (e) { return {}; }
-  });
+  const [eodBatchRecords, setEodBatchRecords] = useState({});
   const [editingBatchIndex, setEditingBatchIndex] = useState(null);
-useEffect(() => {
-  try { localStorage.setItem('eod_pending_batch', JSON.stringify(eodBatchRecords)); } catch (e) {}
-}, [eodBatchRecords]);
+  const [pendingBatchLoaded, setPendingBatchLoaded] = useState(false);
+  const savePendingBatch = async (moduleId, batchArray) => {
+    if (!currentUser?.id) return;
+    if (batchArray.length === 0) {
+      await supabase.from('eod_pending_batches').delete().eq('user_id', currentUser.id).eq('module_id', moduleId);
+    } else {
+      await supabase.from('eod_pending_batches').upsert({ user_id: currentUser.id, module_id: moduleId, batch_data: batchArray, updated_at: new Date().toISOString() }, { onConflict: 'user_id,module_id' });
+    }
+  };
+  const loadPendingBatches = async () => {
+    if (!currentUser?.id) return;
+    const { data } = await supabase.from('eod_pending_batches').select('module_id, batch_data').eq('user_id', currentUser.id);
+    if (data && data.length > 0) {
+      const restored = {};
+      data.forEach(row => { if (row.batch_data && row.batch_data.length > 0) restored[row.module_id] = row.batch_data; });
+      setEodBatchRecords(prev => ({ ...prev, ...restored }));
+    }
+    setPendingBatchLoaded(true);
+  };
+useEffect(() => { if (currentUser?.id) loadPendingBatches(); }, [currentUser?.id]);
 useEffect(() => {
   loadLocations();
   const savedSession = localStorage.getItem('cms_session') || sessionStorage.getItem('cms_session');
@@ -2719,16 +2734,16 @@ if (MODULE_FIELD_CONFIG[moduleId]) {
     const entryData = MODULE_FIELD_CONFIG[moduleId]?.getEntryData(form, currentUser) || {};
     const displayData = { ...form };
     if (editingBatchIndex !== null) {
-      setEodBatchRecords(prev => {
-        const batch = [...(prev[moduleId] || [])];
-        batch[editingBatchIndex] = { entryData, displayData };
-        return { ...prev, [moduleId]: batch };
-      });
+      const updatedBatch = [...(eodBatchRecords[moduleId] || [])];
+      updatedBatch[editingBatchIndex] = { entryData, displayData };
+      setEodBatchRecords(prev => ({ ...prev, [moduleId]: updatedBatch }));
+      savePendingBatch(moduleId, updatedBatch);
       setEditingBatchIndex(null);
       showMessage('success', '\u2713 Record updated in batch');
     } else {
-      // Add new record to batch
-      setEodBatchRecords(prev => ({ ...prev, [moduleId]: [...(prev[moduleId] || []), { entryData, displayData }] }));
+      const updatedBatch = [...(eodBatchRecords[moduleId] || []), { entryData, displayData }];
+      setEodBatchRecords(prev => ({ ...prev, [moduleId]: updatedBatch }));
+      savePendingBatch(moduleId, updatedBatch);
       showMessage('success', '\u2713 Record added to batch');
     }
     // Reset entire form including dates
@@ -2742,11 +2757,10 @@ if (MODULE_FIELD_CONFIG[moduleId]) {
     setEditingBatchIndex(index);
   };
   const removeFromEodBatch = (moduleId, index) => {
-    setEodBatchRecords(prev => {
-      const batch = [...(prev[moduleId] || [])];
-      batch.splice(index, 1);
-      return { ...prev, [moduleId]: batch };
-    });
+    const batch = [...(eodBatchRecords[moduleId] || [])];
+    batch.splice(index, 1);
+    setEodBatchRecords(prev => ({ ...prev, [moduleId]: batch }));
+    savePendingBatch(moduleId, batch);
     if (editingBatchIndex === index) { setEditingBatchIndex(null); }
     else if (editingBatchIndex !== null && editingBatchIndex > index) { setEditingBatchIndex(editingBatchIndex - 1); }
   };
@@ -2778,6 +2792,7 @@ if (MODULE_FIELD_CONFIG[moduleId]) {
     }
     showMessage('success', `\u2713 Entry submitted with ${batch.length} record${batch.length > 1 ? 's' : ''}!`);
     setEodBatchRecords(prev => ({ ...prev, [moduleId]: [] }));
+    savePendingBatch(moduleId, []);
     setEditingBatchIndex(null);
     loadModuleData(moduleId);
     setSaving(false);
@@ -2826,8 +2841,9 @@ const handleEodReview = async (moduleId, entryId, reviewStatus, reviewNotes) => 
 const loadEodAnalyticsData = async (month) => {
   const year = month.getFullYear();
   const m = month.getMonth();
-  const startDate = new Date(year, m, 1).toISOString();
-  const endDate = new Date(year, m + 1, 0, 23, 59, 59).toISOString();
+  // Hawaii is UTC-10: start of month 00:00 HST = 10:00 UTC same day
+  const startDate = new Date(Date.UTC(year, m, 1, 10, 0, 0)).toISOString();
+  const endDate = new Date(Date.UTC(year, m + 1, 1, 9, 59, 59)).toISOString();
   const result = {};
   for (const mod of EOD_MODULES) {
     let query = supabase.from(mod.table).select('id, created_by, review_status, created_at').gte('created_at', startDate).lte('created_at', endDate);
@@ -2847,7 +2863,9 @@ const loadEodAnalyticsData = async (month) => {
 const loadEodCalendarEntries = async (dateStr, moduleId, moduleName) => {
   const mod = EOD_MODULES.find(m => m.id === moduleId);
   if (!mod) return;
-  let query = supabase.from(mod.table).select('*').gte('created_at', dateStr + 'T00:00:00').lte('created_at', dateStr + 'T23:59:59');
+  // Hawaii is UTC-10: dateStr 00:00 HST = dateStr 10:00 UTC, dateStr 23:59 HST = next day 09:59 UTC
+  const nextDay = new Date(dateStr + 'T00:00:00'); nextDay.setDate(nextDay.getDate() + 1); const nextDayStr = nextDay.toISOString().split('T')[0];
+  let query = supabase.from(mod.table).select('*').gte('created_at', dateStr + 'T10:00:00Z').lte('created_at', nextDayStr + 'T09:59:59Z');
   if (eodSelectedUser !== 'all') query = query.eq('created_by', eodSelectedUser);
   const { data } = await query;
   const enriched = data ? await enrichWithLocationsAndUsers(data, false) : [];
