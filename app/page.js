@@ -6,7 +6,7 @@
 import { useState, useEffect, useRef } from 'react';
 import JSZip from 'jszip';
 import { supabase } from '../lib/supabase';
-import { FileText, Building2, Bot, Send, Loader2, LogOut, User, Upload, X, File, Shield, Receipt, CreditCard, Package, RefreshCw, Monitor, Menu, Eye, EyeOff, FolderOpen, Edit3, Users, Plus, Trash2, Lock, Download, Settings, MessageCircle, Sparkles, AlertCircle, Maximize2, Minimize2, Search, TrendingUp, TrendingDown, Calendar, PieChart, BarChart3, BookOpen, Clock, FileCheck, Banknote, PhoneCall, UserCheck, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
+import { FileText, Building2, Bot, Send, Loader2, LogOut, User, Upload, X, File, Shield, Receipt, CreditCard, Package, RefreshCw, Monitor, Menu, Eye, EyeOff, FolderOpen, Edit3, Users, Plus, Trash2, Lock, Download, Settings, MessageCircle, Sparkles, AlertCircle, Maximize2, Minimize2, Search, TrendingUp, TrendingDown, Calendar, PieChart, BarChart3, BookOpen, Clock, FileCheck, Banknote, PhoneCall, UserCheck, ChevronLeft, ChevronRight, ChevronDown, Filter } from 'lucide-react';
 import { MODULE_COLORS, STATUS_COLORS, ROLE_STYLES, BTN, CARD, INPUT, LAYOUT, ANALYTICS_CARDS, ICON_BOX, URGENCY_COLORS, CONFIRM_COLORS, FILE_UPLOAD, CHECKBOX } from './styles';
 const MODULES = [
   { id: 'billing-inquiry', name: 'Billing Inquiry', icon: Receipt, color: 'blue', table: 'billing_inquiries' },
@@ -1788,6 +1788,17 @@ const [eodAnalyticsMonth, setEodAnalyticsMonth] = useState(() => {
 const [eodSelectedUser, setEodSelectedUser] = useState('all');
 const [eodAnalyticsData, setEodAnalyticsData] = useState({});
 const [eodCalendarPopup, setEodCalendarPopup] = useState(null);
+const [callAnalyticsRecords, setCallAnalyticsRecords] = useState([]);
+const [callAnalyticsForm, setCallAnalyticsForm] = useState(() => {
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Pacific/Honolulu', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+  const hstToday = `${parts.find(p => p.type === 'year').value}-${parts.find(p => p.type === 'month').value}-${parts.find(p => p.type === 'day').value}`;
+  return { date: hstToday, location: '', answered_by_va: '', answered_by_fd: '', missed_calls: '', short_missed: '', pre_queue_drop: '', capacity_missed: '' };
+});
+const [callAnalyticsFilterStart, setCallAnalyticsFilterStart] = useState('');
+const [callAnalyticsFilterEnd, setCallAnalyticsFilterEnd] = useState('');
+const [callAnalyticsFilterLocation, setCallAnalyticsFilterLocation] = useState('all');
+const [editingCallAnalyticsId, setEditingCallAnalyticsId] = useState(null);
+const [showCallAnalyticsRecords, setShowCallAnalyticsRecords] = useState(false);
   const [chatMessages, setChatMessages] = useState([{
     role: 'assistant',
     content: "👋 Hi! I'm your AI assistant. I can help with:\n\n• Data summaries & reports\n• Weekly comparisons\n• Location analytics\n• IT request status\n\nWhat would you like to know?"
@@ -2871,6 +2882,71 @@ const loadEodCalendarEntries = async (dateStr, moduleId, moduleName) => {
   const enriched = data ? await enrichWithLocationsAndUsers(data, false) : [];
   setEodCalendarPopup({ date: dateStr, moduleId, moduleName, entries: enriched });
 };
+const canManageCallAnalytics = currentUser?.role === 'super_admin' || currentUser?.role === 'rev_rangers_admin';
+const loadCallAnalytics = async () => {
+  let query = supabase.from('eod_call_analytics').select('*').order('date', { ascending: false });
+  if (callAnalyticsFilterStart) query = query.gte('date', callAnalyticsFilterStart);
+  if (callAnalyticsFilterEnd) query = query.lte('date', callAnalyticsFilterEnd);
+  if (callAnalyticsFilterLocation !== 'all') query = query.eq('location', callAnalyticsFilterLocation);
+  const { data, error } = await query;
+  if (error) { showMessage('error', 'Failed to load call analytics: ' + error.message); return; }
+  setCallAnalyticsRecords(data || []);
+};
+const saveCallAnalytics = async () => {
+  if (!canManageCallAnalytics) { showMessage('error', 'You do not have permission'); return; }
+  const f = callAnalyticsForm;
+  if (!f.date || !f.location) { showMessage('error', 'Date and Location are required'); return; }
+  const payload = {
+    date: f.date,
+    location: f.location,
+    answered_by_va: parseInt(f.answered_by_va) || 0,
+    answered_by_fd: parseInt(f.answered_by_fd) || 0,
+    missed_calls: parseInt(f.missed_calls) || 0,
+    short_missed: parseInt(f.short_missed) || 0,
+    pre_queue_drop: parseInt(f.pre_queue_drop) || 0,
+    capacity_missed: parseInt(f.capacity_missed) || 0,
+    updated_by: currentUser.id,
+    updated_at: new Date().toISOString(),
+  };
+  let error;
+  if (editingCallAnalyticsId) {
+    ({ error } = await supabase.from('eod_call_analytics').update(payload).eq('id', editingCallAnalyticsId));
+  } else {
+    payload.created_by = currentUser.id;
+    ({ error } = await supabase.from('eod_call_analytics').upsert(payload, { onConflict: 'date,location' }));
+  }
+  if (error) { showMessage('error', 'Failed to save: ' + error.message); return; }
+  showMessage('success', editingCallAnalyticsId ? '\u2713 Record updated' : '\u2713 Record saved');
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Pacific/Honolulu', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+  const hstToday = `${parts.find(p => p.type === 'year').value}-${parts.find(p => p.type === 'month').value}-${parts.find(p => p.type === 'day').value}`;
+  setCallAnalyticsForm({ date: hstToday, location: '', answered_by_va: '', answered_by_fd: '', missed_calls: '', short_missed: '', pre_queue_drop: '', capacity_missed: '' });
+  setEditingCallAnalyticsId(null);
+  loadCallAnalytics();
+};
+const editCallAnalytics = (record) => {
+  if (!canManageCallAnalytics) return;
+  setCallAnalyticsForm({
+    date: record.date,
+    location: record.location,
+    answered_by_va: record.answered_by_va || '',
+    answered_by_fd: record.answered_by_fd || '',
+    missed_calls: record.missed_calls || '',
+    short_missed: record.short_missed || '',
+    pre_queue_drop: record.pre_queue_drop || '',
+    capacity_missed: record.capacity_missed || '',
+  });
+  setEditingCallAnalyticsId(record.id);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+const deleteCallAnalytics = async (id) => {
+  if (!canManageCallAnalytics) return;
+  const confirmed = await showConfirm('Delete Record', 'Are you sure you want to delete this call analytics record?', 'Delete', 'red');
+  if (!confirmed) return;
+  const { error } = await supabase.from('eod_call_analytics').delete().eq('id', id);
+  if (error) { showMessage('error', 'Failed to delete: ' + error.message); return; }
+  showMessage('success', '\u2713 Record deleted');
+  loadCallAnalytics();
+};
 const updateEntryStatus = async (moduleId, entryId, newStatus, additionalFields = {}) => {
 const confirmed = await showConfirm('Update Status', `Are you sure you want to update the status to "${newStatus}"?`, 'Update', 'blue');
 if (!confirmed) return;
@@ -3661,11 +3737,11 @@ onDelete={(isITViewOnly || (isEodModule(activeModule) && currentUser?.role !== '
           <span className="text-sm font-medium">Tracking</span>
           {adminView === 'eod-tracking' && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>}
         </button>
-        <button onClick={() => { setAdminView('eod-analytics'); setSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all duration-200 group/item ${adminView === 'eod-analytics' ? 'bg-emerald-50 text-emerald-700 shadow-sm' : 'text-gray-600 hover:bg-white hover:shadow-sm hover:translate-x-0.5'}`}>
+        <button onClick={() => { setAdminView('eod-analytics'); loadCallAnalytics(); setSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all duration-200 group/item ${adminView === 'eod-analytics' ? 'bg-emerald-50 text-emerald-700 shadow-sm' : 'text-gray-600 hover:bg-white hover:shadow-sm hover:translate-x-0.5'}`}>
           <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 ${adminView === 'eod-analytics' ? 'bg-emerald-100' : 'bg-white group-hover/item:scale-105'}`}>
             <PieChart className={`w-4 h-4 transition-colors duration-200 ${adminView === 'eod-analytics' ? 'text-emerald-600' : 'text-gray-400 group-hover/item:text-gray-600'}`} />
           </div>
-          <span className="text-sm font-medium">Analytics</span>
+          <span className="text-sm font-medium">Call Analytics</span>
           {adminView === 'eod-analytics' && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>}
         </button>
         <button onClick={() => { setAdminView('eod-trends'); setSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all duration-200 group/item ${adminView === 'eod-trends' ? 'bg-emerald-50 text-emerald-700 shadow-sm' : 'text-gray-600 hover:bg-white hover:shadow-sm hover:translate-x-0.5'}`}>
@@ -4768,28 +4844,351 @@ if (filteredData.length === 0) {
   </div>
 )}
 {/* ADMIN: EOD Analytics (blank placeholder) */}
-{isAdmin && adminView === 'eod-analytics' && (
+{isAdmin && adminView === 'eod-analytics' && (() => {
+  const aggregates = {};
+  SCHEDULING_LOCATIONS.forEach(loc => { aggregates[loc] = { answered_by_va: 0, answered_by_fd: 0, missed_calls: 0, short_missed: 0, pre_queue_drop: 0, capacity_missed: 0 }; });
+  callAnalyticsRecords.forEach(r => {
+    if (!aggregates[r.location]) aggregates[r.location] = { answered_by_va: 0, answered_by_fd: 0, missed_calls: 0, short_missed: 0, pre_queue_drop: 0, capacity_missed: 0 };
+    aggregates[r.location].answered_by_va += r.answered_by_va || 0;
+    aggregates[r.location].answered_by_fd += r.answered_by_fd || 0;
+    aggregates[r.location].missed_calls += r.missed_calls || 0;
+    aggregates[r.location].short_missed += r.short_missed || 0;
+    aggregates[r.location].pre_queue_drop += r.pre_queue_drop || 0;
+    aggregates[r.location].capacity_missed += r.capacity_missed || 0;
+  });
+  const locationRows = Object.entries(aggregates).filter(([loc, v]) => v.answered_by_va + v.answered_by_fd + v.missed_calls + v.short_missed + v.pre_queue_drop + v.capacity_missed > 0);
+  const grandTotals = locationRows.reduce((acc, [_, v]) => {
+    acc.answered_by_va += v.answered_by_va; acc.answered_by_fd += v.answered_by_fd;
+    acc.missed_calls += v.missed_calls; acc.short_missed += v.short_missed;
+    acc.pre_queue_drop += v.pre_queue_drop; acc.capacity_missed += v.capacity_missed;
+    return acc;
+  }, { answered_by_va: 0, answered_by_fd: 0, missed_calls: 0, short_missed: 0, pre_queue_drop: 0, capacity_missed: 0 });
+  const totalAnswered = grandTotals.answered_by_va + grandTotals.answered_by_fd;
+  const totalMissed = grandTotals.missed_calls + grandTotals.short_missed + grandTotals.pre_queue_drop + grandTotals.capacity_missed;
+  const totalCalls = totalAnswered + totalMissed;
+  // Pie chart 1: Answered vs Missed breakdown (Answered, Missed Call, Pre-Queue Drop, Short Missed, Capacity Missed)
+  const pie1Data = [
+    { label: 'Answered Calls', value: totalAnswered, color: '#10b981' },
+    { label: 'Missed Call', value: grandTotals.missed_calls, color: '#ef4444' },
+    { label: 'Pre-Queue Drop', value: grandTotals.pre_queue_drop, color: '#a855f7' },
+    { label: 'Short Missed', value: grandTotals.short_missed, color: '#eab308' },
+    { label: 'Capacity Missed', value: grandTotals.capacity_missed, color: '#06b6d4' },
+  ].filter(s => s.value > 0);
+  // Pie chart 2: VA vs FD
+  const pie2Data = [
+    { label: "Answered by VA's", value: grandTotals.answered_by_va, color: '#10b981' },
+    { label: 'Answered by FD', value: grandTotals.answered_by_fd, color: '#06b6d4' },
+  ].filter(s => s.value > 0);
+  const renderPie = (data, size = 180) => {
+    const total = data.reduce((s, d) => s + d.value, 0);
+    if (total === 0) return <div className="flex items-center justify-center text-gray-400 text-sm" style={{width: size, height: size}}>No data</div>;
+    let cumulative = 0;
+    const cx = size / 2, cy = size / 2, r = size / 2 - 4;
+    return (
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="drop-shadow-md">
+        {data.map((d, i) => {
+          const pct = d.value / total;
+          const startAngle = cumulative * 2 * Math.PI - Math.PI / 2;
+          cumulative += pct;
+          const endAngle = cumulative * 2 * Math.PI - Math.PI / 2;
+          const x1 = cx + r * Math.cos(startAngle);
+          const y1 = cy + r * Math.sin(startAngle);
+          const x2 = cx + r * Math.cos(endAngle);
+          const y2 = cy + r * Math.sin(endAngle);
+          const largeArc = pct > 0.5 ? 1 : 0;
+          if (data.length === 1) return <circle key={i} cx={cx} cy={cy} r={r} fill={d.color} />;
+          return <path key={i} d={`M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} Z`} fill={d.color} stroke="white" strokeWidth="2" />;
+        })}
+      </svg>
+    );
+  };
+  return (
   <div className="space-y-6">
+    {/* Header */}
     <div className={CARD.base}>
-      <div className="flex items-center gap-4 mb-6">
-        <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-emerald-500 rounded-xl flex items-center justify-center shadow-lg">
-          <PieChart className="w-6 h-6 text-white" />
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-emerald-500 rounded-xl flex items-center justify-center shadow-lg">
+            <PieChart className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h2 className="font-semibold text-gray-800 text-lg">Call Analytics</h2>
+            <p className="text-sm text-gray-500">Answered & Missed Calls per Location</p>
+          </div>
         </div>
-        <div>
-          <h2 className="font-semibold text-gray-800 text-lg">EOD Analytics</h2>
-          <p className="text-sm text-gray-500">Advanced analytics and reporting — Coming Soon</p>
-        </div>
-      </div>
-      <div className="flex flex-col items-center justify-center py-16 text-center">
-        <div className="w-20 h-20 bg-teal-50 rounded-2xl flex items-center justify-center mb-4">
-          <PieChart className="w-10 h-10 text-teal-300" />
-        </div>
-        <h3 className="text-lg font-semibold text-gray-700 mb-2">Analytics Dashboard</h3>
-        <p className="text-gray-400 max-w-md">Detailed charts, trends, and performance insights for End of Day reports will be available here.</p>
+        {canManageCallAnalytics && (
+          <button onClick={() => setShowCallAnalyticsRecords(!showCallAnalyticsRecords)} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-200">
+            {showCallAnalyticsRecords ? 'Hide' : 'Manage'} Records
+          </button>
+        )}
       </div>
     </div>
+
+    {/* Input Form (admins only) */}
+    {canManageCallAnalytics && (
+      <div className={CARD.base}>
+        <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+          <Edit3 className="w-4 h-4 text-emerald-600" />
+          {editingCallAnalyticsId ? 'Edit Call Data' : 'Add Call Data'}
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div>
+            <label className={INPUT.label}>Date *</label>
+            <input type="date" value={callAnalyticsForm.date} onChange={e => setCallAnalyticsForm({ ...callAnalyticsForm, date: e.target.value })} className={INPUT.base} />
+          </div>
+          <div>
+            <label className={INPUT.label}>Location *</label>
+            <select value={callAnalyticsForm.location} onChange={e => setCallAnalyticsForm({ ...callAnalyticsForm, location: e.target.value })} className={INPUT.select}>
+              <option value="">Select Location</option>
+              {SCHEDULING_LOCATIONS.map(loc => <option key={loc} value={loc}>{loc}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className={INPUT.label}>Answered by VA's</label>
+            <input type="number" min="0" value={callAnalyticsForm.answered_by_va} onChange={e => setCallAnalyticsForm({ ...callAnalyticsForm, answered_by_va: e.target.value })} className={INPUT.base} placeholder="0" />
+          </div>
+          <div>
+            <label className={INPUT.label}>Answered by FD</label>
+            <input type="number" min="0" value={callAnalyticsForm.answered_by_fd} onChange={e => setCallAnalyticsForm({ ...callAnalyticsForm, answered_by_fd: e.target.value })} className={INPUT.base} placeholder="0" />
+          </div>
+          <div>
+            <label className={INPUT.label}>Missed Calls</label>
+            <input type="number" min="0" value={callAnalyticsForm.missed_calls} onChange={e => setCallAnalyticsForm({ ...callAnalyticsForm, missed_calls: e.target.value })} className={INPUT.base} placeholder="0" />
+          </div>
+          <div>
+            <label className={INPUT.label}>Short Missed</label>
+            <input type="number" min="0" value={callAnalyticsForm.short_missed} onChange={e => setCallAnalyticsForm({ ...callAnalyticsForm, short_missed: e.target.value })} className={INPUT.base} placeholder="0" />
+          </div>
+          <div>
+            <label className={INPUT.label}>Pre-Queue Drop</label>
+            <input type="number" min="0" value={callAnalyticsForm.pre_queue_drop} onChange={e => setCallAnalyticsForm({ ...callAnalyticsForm, pre_queue_drop: e.target.value })} className={INPUT.base} placeholder="0" />
+          </div>
+          <div>
+            <label className={INPUT.label}>Capacity Missed</label>
+            <input type="number" min="0" value={callAnalyticsForm.capacity_missed} onChange={e => setCallAnalyticsForm({ ...callAnalyticsForm, capacity_missed: e.target.value })} className={INPUT.base} placeholder="0" />
+          </div>
+        </div>
+        <div className="flex gap-3 mt-5">
+          <button onClick={saveCallAnalytics} className="px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl font-medium hover:from-emerald-600 hover:to-teal-600 shadow-md">
+            {editingCallAnalyticsId ? 'Update Record' : 'Save Record'}
+          </button>
+          {editingCallAnalyticsId && (
+            <button onClick={() => {
+              const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Pacific/Honolulu', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+              const hstToday = `${parts.find(p => p.type === 'year').value}-${parts.find(p => p.type === 'month').value}-${parts.find(p => p.type === 'day').value}`;
+              setCallAnalyticsForm({ date: hstToday, location: '', answered_by_va: '', answered_by_fd: '', missed_calls: '', short_missed: '', pre_queue_drop: '', capacity_missed: '' });
+              setEditingCallAnalyticsId(null);
+            }} className="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200">Cancel</button>
+          )}
+        </div>
+      </div>
+    )}
+
+    {/* Filters */}
+    <div className={CARD.base}>
+      <div className="flex items-center gap-2 mb-4">
+        <Filter className="w-4 h-4 text-gray-500" />
+        <h3 className="font-semibold text-gray-800">Filters</h3>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+        <div>
+          <label className={INPUT.label}>Start Date</label>
+          <input type="date" value={callAnalyticsFilterStart} onChange={e => setCallAnalyticsFilterStart(e.target.value)} className={INPUT.base} />
+        </div>
+        <div>
+          <label className={INPUT.label}>End Date</label>
+          <input type="date" value={callAnalyticsFilterEnd} onChange={e => setCallAnalyticsFilterEnd(e.target.value)} className={INPUT.base} />
+        </div>
+        <div>
+          <label className={INPUT.label}>Location</label>
+          <select value={callAnalyticsFilterLocation} onChange={e => setCallAnalyticsFilterLocation(e.target.value)} className={INPUT.select}>
+            <option value="all">All Locations</option>
+            {SCHEDULING_LOCATIONS.map(loc => <option key={loc} value={loc}>{loc}</option>)}
+          </select>
+        </div>
+        <div className="flex items-end gap-2">
+          <button onClick={loadCallAnalytics} className="flex-1 px-4 py-2.5 bg-emerald-500 text-white rounded-xl text-sm font-medium hover:bg-emerald-600">Apply</button>
+          <button onClick={() => { setCallAnalyticsFilterStart(''); setCallAnalyticsFilterEnd(''); setCallAnalyticsFilterLocation('all'); setTimeout(loadCallAnalytics, 0); }} className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-200">Reset</button>
+        </div>
+      </div>
+    </div>
+
+    {/* Answered Calls Table + Pie */}
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className={`${CARD.base} lg:col-span-2`}>
+        <h3 className="font-semibold text-gray-800 mb-4">Calls per Location (Answered)</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-200">
+                <th className="px-3 py-2.5 text-left font-semibold text-gray-600">Location</th>
+                <th className="px-3 py-2.5 text-right font-semibold text-gray-600">Total Calls</th>
+                <th className="px-3 py-2.5 text-right font-semibold text-gray-600">Answered Calls</th>
+                <th className="px-3 py-2.5 text-right font-semibold text-gray-600">Answered by VA's</th>
+                <th className="px-3 py-2.5 text-right font-semibold text-gray-600">Answered by FD</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {locationRows.length === 0 ? (
+                <tr><td colSpan="5" className="px-3 py-6 text-center text-gray-400">No data available</td></tr>
+              ) : locationRows.map(([loc, v]) => {
+                const ans = v.answered_by_va + v.answered_by_fd;
+                const miss = v.missed_calls + v.short_missed + v.pre_queue_drop + v.capacity_missed;
+                return (
+                  <tr key={loc} className="hover:bg-gray-50/50">
+                    <td className="px-3 py-2.5 font-medium text-gray-700">{loc}</td>
+                    <td className="px-3 py-2.5 text-right text-gray-700">{(ans + miss).toLocaleString()}</td>
+                    <td className="px-3 py-2.5 text-right text-gray-700">{ans.toLocaleString()}</td>
+                    <td className="px-3 py-2.5 text-right text-gray-700">{v.answered_by_va.toLocaleString()}</td>
+                    <td className="px-3 py-2.5 text-right text-gray-700">{v.answered_by_fd.toLocaleString()}</td>
+                  </tr>
+                );
+              })}
+              {locationRows.length > 0 && (
+                <tr className="bg-gray-50 font-bold">
+                  <td className="px-3 py-2.5 text-gray-800">Grand total</td>
+                  <td className="px-3 py-2.5 text-right text-gray-800">{totalCalls.toLocaleString()}</td>
+                  <td className="px-3 py-2.5 text-right text-gray-800">{totalAnswered.toLocaleString()}</td>
+                  <td className="px-3 py-2.5 text-right text-gray-800">{grandTotals.answered_by_va.toLocaleString()}</td>
+                  <td className="px-3 py-2.5 text-right text-gray-800">{grandTotals.answered_by_fd.toLocaleString()}</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div className={CARD.base}>
+        <h3 className="font-semibold text-gray-800 mb-4 text-center">Distribution</h3>
+        <div className="flex flex-col items-center gap-4">
+          {renderPie(pie1Data)}
+          <div className="w-full space-y-1.5">
+            {pie1Data.map(d => (
+              <div key={d.label} className="flex items-center justify-between gap-2 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded" style={{backgroundColor: d.color}}></span>
+                  <span className="text-gray-700">{d.label}</span>
+                </div>
+                <span className="text-gray-500 font-medium">{totalCalls > 0 ? ((d.value / totalCalls) * 100).toFixed(1) : 0}%</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {/* Missed Calls Table + Pie */}
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className={`${CARD.base} lg:col-span-2`}>
+        <h3 className="font-semibold text-gray-800 mb-4">Calls per Location (Missed)</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-200">
+                <th className="px-3 py-2.5 text-left font-semibold text-gray-600">Location</th>
+                <th className="px-3 py-2.5 text-right font-semibold text-gray-600">Total Missed</th>
+                <th className="px-3 py-2.5 text-right font-semibold text-gray-600">Missed Call</th>
+                <th className="px-3 py-2.5 text-right font-semibold text-gray-600">Short Missed</th>
+                <th className="px-3 py-2.5 text-right font-semibold text-gray-600">Pre-Queue Drop</th>
+                <th className="px-3 py-2.5 text-right font-semibold text-gray-600">Capacity Missed</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {locationRows.length === 0 ? (
+                <tr><td colSpan="6" className="px-3 py-6 text-center text-gray-400">No data available</td></tr>
+              ) : locationRows.map(([loc, v]) => {
+                const miss = v.missed_calls + v.short_missed + v.pre_queue_drop + v.capacity_missed;
+                return (
+                  <tr key={loc} className="hover:bg-gray-50/50">
+                    <td className="px-3 py-2.5 font-medium text-gray-700">{loc}</td>
+                    <td className="px-3 py-2.5 text-right text-gray-700">{miss.toLocaleString()}</td>
+                    <td className="px-3 py-2.5 text-right text-gray-700">{v.missed_calls.toLocaleString()}</td>
+                    <td className="px-3 py-2.5 text-right text-gray-700">{v.short_missed.toLocaleString()}</td>
+                    <td className="px-3 py-2.5 text-right text-gray-700">{v.pre_queue_drop.toLocaleString()}</td>
+                    <td className="px-3 py-2.5 text-right text-gray-700">{v.capacity_missed.toLocaleString()}</td>
+                  </tr>
+                );
+              })}
+              {locationRows.length > 0 && (
+                <tr className="bg-gray-50 font-bold">
+                  <td className="px-3 py-2.5 text-gray-800">Grand total</td>
+                  <td className="px-3 py-2.5 text-right text-gray-800">{totalMissed.toLocaleString()}</td>
+                  <td className="px-3 py-2.5 text-right text-gray-800">{grandTotals.missed_calls.toLocaleString()}</td>
+                  <td className="px-3 py-2.5 text-right text-gray-800">{grandTotals.short_missed.toLocaleString()}</td>
+                  <td className="px-3 py-2.5 text-right text-gray-800">{grandTotals.pre_queue_drop.toLocaleString()}</td>
+                  <td className="px-3 py-2.5 text-right text-gray-800">{grandTotals.capacity_missed.toLocaleString()}</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div className={CARD.base}>
+        <h3 className="font-semibold text-gray-800 mb-4 text-center">VA vs FD</h3>
+        <div className="flex flex-col items-center gap-4">
+          {renderPie(pie2Data)}
+          <div className="w-full space-y-1.5">
+            {pie2Data.map(d => (
+              <div key={d.label} className="flex items-center justify-between gap-2 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded" style={{backgroundColor: d.color}}></span>
+                  <span className="text-gray-700">{d.label}</span>
+                </div>
+                <span className="text-gray-500 font-medium">{totalAnswered > 0 ? ((d.value / totalAnswered) * 100).toFixed(1) : 0}%</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {/* Records Management List */}
+    {canManageCallAnalytics && showCallAnalyticsRecords && (
+      <div className={CARD.base}>
+        <h3 className="font-semibold text-gray-800 mb-4">All Records ({callAnalyticsRecords.length})</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-200">
+                <th className="px-3 py-2.5 text-left font-semibold text-gray-600">Date</th>
+                <th className="px-3 py-2.5 text-left font-semibold text-gray-600">Location</th>
+                <th className="px-3 py-2.5 text-right font-semibold text-gray-600">VA's</th>
+                <th className="px-3 py-2.5 text-right font-semibold text-gray-600">FD</th>
+                <th className="px-3 py-2.5 text-right font-semibold text-gray-600">Missed</th>
+                <th className="px-3 py-2.5 text-right font-semibold text-gray-600">Short</th>
+                <th className="px-3 py-2.5 text-right font-semibold text-gray-600">Pre-Queue</th>
+                <th className="px-3 py-2.5 text-right font-semibold text-gray-600">Capacity</th>
+                <th className="px-3 py-2.5 text-right font-semibold text-gray-600">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {callAnalyticsRecords.length === 0 ? (
+                <tr><td colSpan="9" className="px-3 py-6 text-center text-gray-400">No records</td></tr>
+              ) : callAnalyticsRecords.map(r => (
+                <tr key={r.id} className="hover:bg-gray-50/50">
+                  <td className="px-3 py-2.5 text-gray-700">{r.date}</td>
+                  <td className="px-3 py-2.5 font-medium text-gray-700">{r.location}</td>
+                  <td className="px-3 py-2.5 text-right text-gray-700">{r.answered_by_va}</td>
+                  <td className="px-3 py-2.5 text-right text-gray-700">{r.answered_by_fd}</td>
+                  <td className="px-3 py-2.5 text-right text-gray-700">{r.missed_calls}</td>
+                  <td className="px-3 py-2.5 text-right text-gray-700">{r.short_missed}</td>
+                  <td className="px-3 py-2.5 text-right text-gray-700">{r.pre_queue_drop}</td>
+                  <td className="px-3 py-2.5 text-right text-gray-700">{r.capacity_missed}</td>
+                  <td className="px-3 py-2.5 text-right">
+                    <div className="flex gap-1 justify-end">
+                      <button onClick={() => editCallAnalytics(r)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg" title="Edit"><Edit3 className="w-3.5 h-3.5" /></button>
+                      <button onClick={() => deleteCallAnalytics(r.id)} className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg" title="Delete"><X className="w-3.5 h-3.5" /></button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    )}
   </div>
-)}
+  );
+})()}
 {isAdmin && adminView === 'eod-trends' && (
   <div className="space-y-6">
     <div className={CARD.base}>
