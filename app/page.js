@@ -2875,7 +2875,9 @@ const loadEodCalendarEntries = async (dateStr, moduleId, moduleName) => {
   const mod = EOD_MODULES.find(m => m.id === moduleId);
   if (!mod) return;
   // Hawaii is UTC-10: dateStr 00:00 HST = dateStr 10:00 UTC, dateStr 23:59 HST = next day 09:59 UTC
-  const nextDay = new Date(dateStr + 'T00:00:00'); nextDay.setDate(nextDay.getDate() + 1); const nextDayStr = nextDay.toISOString().split('T')[0];
+  const [y, mo, d] = dateStr.split('-').map(Number);
+  const nextDay = new Date(Date.UTC(y, mo - 1, d + 1));
+  const nextDayStr = nextDay.toISOString().split('T')[0];
   let query = supabase.from(mod.table).select('*').gte('created_at', dateStr + 'T10:00:00Z').lte('created_at', nextDayStr + 'T09:59:59Z');
   if (eodSelectedUser !== 'all') query = query.eq('created_by', eodSelectedUser);
   const { data } = await query;
