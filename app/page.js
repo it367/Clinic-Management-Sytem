@@ -41,7 +41,7 @@ const HOSPITAL_CASE_TYPES = ['Claim', 'Referral', 'Patient Balance'];
 const REFUND_TYPES = ['Refund', 'Credit', 'Adjustment'];
 const CONTACT_METHODS = ['Phone', 'Email', 'Text'];
 const DATE_RANGES = ['This Week', 'Last 2 Weeks', 'This Month', 'Last Month', 'This Quarter', 'This Year', 'Custom'];
-const INSURANCE_PROVIDERS = ['AETNA', 'AMERITAS', 'Anthem BC', 'BCBS FEP', 'CIGNA DENTAL', 'DELTA DENTAL', 'GEHA', 'HDS', 'HDS MEDICAID', 'HMAA', 'HMSA', 'Hospital cases', 'METLIFE', 'GUARDIAN', 'OTHER', 'UCCI', 'UCCI FED VIP', 'UCCI TDP'];
+const INSURANCE_PROVIDERS = ['AETNA', 'AMERITAS', 'Anthem BC', 'BCBS FEP', 'CIGNA DENTAL', 'DELTA DENTAL', 'GEHA', 'HDS', 'HDS MEDICAID', 'HMAA', 'HMSA', 'Hospital cases', 'METLIFE', 'GUARDIAN', 'No Insurance', 'OTHER', 'UCCI', 'UCCI FED VIP', 'UCCI TDP'];
 const PATIENT_TYPES = ['New', 'Existing', 'Other'];
 const REFERRAL_SOURCES = ['Patient', 'Referral Provider', 'Practice Provider', 'General Dentist', 'Doctor Referral', 'Social Media', 'Mailers', 'Outreach', 'Family', 'Online', 'Posters', 'Campaign Poster', 'Friend', 'School', 'Community Event'];
 const CALL_TYPES = ['Inbound', 'Outbound', 'Appointment Confirmation'];
@@ -207,24 +207,24 @@ const MODULE_FIELD_CONFIG = {
   },
   'eod-insurance-verification': {
     getEntryData: (form) => ({
-      patient_id: form.patient_id, insurance_provider: form.insurance_provider,
+      patient_id: form.patient_id, insurance_provider: form.insurance_provider, location: form.location,
       verified_date: form.verified_date || null, dos: form.dos || null,
       time_started_hst: form.time_started_hst || null, time_ended_hst: form.time_ended_hst || null, time_duration: form.time_duration,
       status: form.status, review_status: 'For Review'
     }),
     getEditInitial: (e) => ({
-      patient_id: e.patient_id || '', insurance_provider: e.insurance_provider || '',
+      patient_id: e.patient_id || '', insurance_provider: e.insurance_provider || '', location: e.location || '',
       verified_date: e.verified_date || '', dos: e.dos || '',
       time_started_hst: e.time_started_hst || '', time_ended_hst: e.time_ended_hst || '', time_duration: e.time_duration || '',
       status: e.status || ''
     }),
     getUpdateData: (f) => ({
-      patient_id: f.patient_id, insurance_provider: f.insurance_provider,
+      patient_id: f.patient_id, insurance_provider: f.insurance_provider, location: f.location,
       verified_date: f.verified_date || null, dos: f.dos || null,
       time_started_hst: f.time_started_hst || null, time_ended_hst: f.time_ended_hst || null, time_duration: f.time_duration,
       status: f.status, review_status: 'For Review', reviewed_by: null, review_notes: null, date_reviewed: null
     }),
-    requiredFields: ['patient_id', 'insurance_provider', 'verified_date', 'dos', 'time_started_hst', 'time_ended_hst', 'time_duration', 'status']
+    requiredFields: ['patient_id', 'insurance_provider', 'location', 'verified_date', 'dos', 'time_started_hst', 'time_ended_hst', 'time_duration', 'status']
   },
   'eod-claim-submission': {
     getEntryData: (form) => ({
@@ -442,6 +442,7 @@ const ENTRY_PREVIEW_CONFIG = {
   'eod-insurance-verification': {
     previewFields: [
       { label: 'Patient ID', key: 'patient_id' }, { label: 'Insurance Provider', key: 'insurance_provider' },
+      { label: 'Location', key: 'location' },
       { label: 'Verified Date', key: 'verified_date', format: 'date' },
       { label: 'Date of Service', key: 'dos', format: 'date' },
       { label: 'Time Started (HST)', key: 'time_started_hst' }, { label: 'Time Ended (HST)', key: 'time_ended_hst' },
@@ -681,6 +682,7 @@ const STAFF_FORM_CONFIG = {
     fields: [
       { label: 'Patient ID', key: 'patient_id', required: true },
       { label: 'Insurance Provider', key: 'insurance_provider', options: INSURANCE_PROVIDERS, required: true },
+      { label: 'Location', key: 'location', options: SCHEDULING_LOCATIONS, required: true },
       { label: 'Verified Date', key: 'verified_date', type: 'date', required: true },
       { label: 'Date of Service', key: 'dos', type: 'date', required: true },
       { label: 'Time Started (HST)', key: 'time_started_hst', type: 'time', required: true },
@@ -840,6 +842,7 @@ const STAFF_EDIT_FIELDS_CONFIG = {
   'eod-insurance-verification': {
     fields: [
       { label: 'Patient ID', key: 'patient_id' }, { label: 'Insurance Provider', key: 'insurance_provider', options: INSURANCE_PROVIDERS },
+      { label: 'Location', key: 'location', options: SCHEDULING_LOCATIONS },
       { label: 'Verified Date', key: 'verified_date', type: 'date' },
       { label: 'Date of Service', key: 'dos', type: 'date' },
       { label: 'Time Started (HST)', key: 'time_started_hst', type: 'time' }, { label: 'Time Ended (HST)', key: 'time_ended_hst', type: 'time' },
@@ -1785,7 +1788,7 @@ const [callAnalyticsTab, setCallAnalyticsTab] = useState('board');
     'hospital-cases': { patient_name: '', chart_number: '', parent_name: '', date_of_request: today, inquiry_type: '', description: '', best_contact_method: '', best_contact_time: '' },
 'it-requests': { date_reported: today, urgency: '', requester_name: '', device_system: '', description_of_issue: '', best_contact_method: '', best_contact_time: '', assigned_to: '', status: 'Open', resolution_notes: '', completed_by: '' },
     'eod-patient-scheduling': { patient_name_id: '', patient_type: '', insurance_provider: '', referral_source: '', location: '', worked_call_date: today, appt_booked_rs_date: '', call_type: '', call_outcome: '', additional_patients: [], memo: '' },
-    'eod-insurance-verification': { patient_id: '', insurance_provider: '', verified_date: today, dos: '', time_started_hst: '', time_ended_hst: '', time_duration: '', status: '' },
+    'eod-insurance-verification': { patient_id: '', insurance_provider: '', location: '', verified_date: today, dos: '', time_started_hst: '', time_ended_hst: '', time_duration: '', status: '' },
     'eod-claim-submission': { claim_id: '', insurance_provider: '', worked_date: today, date_of_service: '', claim_amount: '', time_started_hst: '', time_ended_hst: '', time_duration: '', claim_status: '', comments: '' },
     'eod-payment-posting': { insurance_provider: '', receipt_number: '', time_started_hst: '', payment_date: today, deposit_date: '', amount: '', payment_type: '', reference_number: '', date_posted: '', time_ended_hst: '', time_duration: '', locate_by: '', location: '', remarks: '' },
     'eod-claim-followup': { claim_id: '', insurance_provider: '', worked_date: today, date_of_service: '', insurance_expected: '', time_started_mnl: '', time_ended_mnl: '', time_duration: '', claim_status: '', amount_collected: '' },
