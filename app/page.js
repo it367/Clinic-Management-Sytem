@@ -1761,6 +1761,18 @@ const [activityFilterDate, setActivityFilterDate] = useState(() => {
   return `${parts.find(p => p.type === 'year').value}-${parts.find(p => p.type === 'month').value}-${parts.find(p => p.type === 'day').value}`;
 });
 const [timeTrackerPopup, setTimeTrackerPopup] = useState(null);
+const [timeTrackerSubTab, setTimeTrackerSubTab] = useState('daily');
+const [reportMonth, setReportMonth] = useState(() => {
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Pacific/Honolulu', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+  return new Date(parseInt(parts.find(p => p.type === 'year').value), parseInt(parts.find(p => p.type === 'month').value) - 1, 1);
+});
+const [reportCutoff, setReportCutoff] = useState(() => {
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Pacific/Honolulu', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+  const day = parseInt(parts.find(p => p.type === 'day').value);
+  return day <= 15 ? '1-15' : '16-end';
+});
+const [reportData, setReportData] = useState([]);
+const [reportUserPopup, setReportUserPopup] = useState(null);
 const [callAnalyticsRecords, setCallAnalyticsRecords] = useState([]);
 const [callAnalyticsForm, setCallAnalyticsForm] = useState(() => {
   const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Pacific/Honolulu', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
@@ -3006,6 +3018,118 @@ const changeTimeState = async (newState) => {
 const formatTimeFromIso = (iso) => {
   if (!iso) return '';
   return new Date(iso).toLocaleTimeString('en-US', { timeZone: 'Pacific/Honolulu', hour: 'numeric', minute: '2-digit' });
+};
+const getCutoffDates = (monthDate, cutoff) => {
+  const y = monthDate.getFullYear();
+  const m = monthDate.getMonth();
+  if (cutoff === '1-15') {
+    return { startDay: 1, endDay: 15, startStr: `${y}-${String(m + 1).padStart(2, '0')}-01`, endStr: `${y}-${String(m + 1).padStart(2, '0')}-15` };
+  }
+  // 16-end
+  const lastDay = new Date(y, m + 1, 0).getDate();
+  return { startDay: 16, endDay: lastDay, startStr: `${y}-${String(m + 1).padStart(2, '0')}-16`, endStr: `${y}-${String(m + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}` };
+};
+const loadReportData = async (monthOverride, cutoffOverride) => {
+  const month = monthOverride || reportMonth;
+  const cutoff = cutoffOverride || reportCutoff;
+  const { startStr, endStr } = getCutoffDates(month, cutoff);
+  // Hawaii UTC-10 window
+  const [ey, emo, ed] = endStr.split('-').map(Number);
+  const next = new Date(Date.UTC(ey, emo - 1, ed + 1)).toISOString().split('T')[0];
+  const { data, error } = await supabase.from('user_activity_logs').select('*, user:users!user_activity_logs_user_id_fkey(id, name, role)').gte('started_at', startStr + 'T10:00:00Z').lte('started_at', next + 'T09:59:59Z').order('started_at', { ascending: true });
+  if (error) { showMessage('error', 'Failed to load report: ' + error.message); return; }
+  // Aggregate per user (skip super_admin)
+  const byUser = {};
+  (data || []).forEach(log => {
+    if (log.user?.role === 'super_admin') return;
+    const uid = log.user_id;
+    if (!byUser[uid]) {
+      byUser[uid] = {
+        userId: uid,
+        userName: log.user?.name || 'Unknown',
+        userRole: log.user?.role || '',
+        totalWorkSeconds: 0,
+        days: {} // day -> { day, states, timeInFirst, timeOutLast, rows }
+      };
+    }
+    const u = byUser[uid];
+    const day = new Date(log.started_at).toLocaleDateString('en-CA', { timeZone: 'Pacific/Honolulu' });
+    if (!u.days[day]) {
+      u.days[day] = { day, states: { 'Time In': 0, 'Break': 0, 'Bio Break': 0, 'Lunch': 0, 'Meeting': 0 }, timeInFirst: null, timeOutLast: null, rows: [] };
+    }
+    const dayObj = u.days[day];
+    const dur = log.duration_seconds != null ? log.duration_seconds : (log.ended_at ? 0 : Math.floor((Date.now() - new Date(log.started_at).getTime()) / 1000));
+    if (dayObj.states[log.activity_type] != null) dayObj.states[log.activity_type] += dur;
+    if (log.activity_type === 'Time In' && (!dayObj.timeInFirst || new Date(log.started_at) < new Date(dayObj.timeInFirst))) dayObj.timeInFirst = log.started_at;
+    if (log.ended_at && (!dayObj.timeOutLast || new Date(log.ended_at) > new Date(dayObj.timeOutLast))) dayObj.timeOutLast = log.ended_at;
+    dayObj.rows.push(log);
+    if (WORKING_STATES.includes(log.activity_type)) u.totalWorkSeconds += dur;
+  });
+  // Sort users alphabetically and convert days to sorted array
+  const result = Object.values(byUser).map(u => ({
+    ...u,
+    daysList: Object.values(u.days).sort((a, b) => a.day.localeCompare(b.day))
+  })).sort((a, b) => a.userName.localeCompare(b.userName));
+  setReportData(result);
+};
+const exportReportToExcel = (rows, month, cutoff, scope) => {
+  const monthLabel = month.toLocaleString('default', { month: 'long', year: 'numeric' });
+  const { startStr, endStr } = getCutoffDates(month, cutoff);
+  const fmtDay = (d) => { const [y, mo, da] = d.split('-').map(Number); return new Date(Date.UTC(y, mo - 1, da, 12, 0, 0)).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' }); };
+  const fmtTime = (iso) => iso ? new Date(iso).toLocaleTimeString('en-US', { timeZone: 'Pacific/Honolulu', hour: 'numeric', minute: '2-digit' }) : '-';
+  let html = `<?xml version="1.0"?><html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"/><style>
+    body { font-family: Calibri, Arial, sans-serif; }
+    .title { font-size: 18pt; font-weight: bold; color: #4f46e5; padding: 10px; }
+    .subtitle { font-size: 11pt; color: #6b7280; padding-left: 10px; padding-bottom: 10px; }
+    table { border-collapse: collapse; }
+    th { background-color: #4f46e5; color: #ffffff; font-weight: bold; padding: 8px 12px; border: 1px solid #3730a3; text-align: left; font-size: 11pt; }
+    td { padding: 6px 12px; border: 1px solid #e5e7eb; font-size: 10pt; }
+    .total { background-color: #d1fae5; color: #065f46; font-weight: bold; }
+    .sub-header { background-color: #ddd6fe; color: #4c1d95; font-weight: bold; padding: 6px 12px; }
+    .user-row { background-color: #f3f4f6; font-weight: bold; }
+    tr:nth-child(even) td { background-color: #fafafa; }
+  </style></head><body>`;
+  html += `<div class="title">CCH Time Tracker Report</div>`;
+  html += `<div class="subtitle">${monthLabel} • Cutoff: ${cutoff === '1-15' ? '1st - 15th' : '16th - End of Month'} • Period: ${fmtDay(startStr)} - ${fmtDay(endStr)}</div>`;
+  if (scope === 'summary') {
+    html += `<table><thead><tr><th>User</th><th>Role</th><th>Total Hours</th></tr></thead><tbody>`;
+    rows.forEach(r => {
+      html += `<tr><td>${r.userName}</td><td>${formatRole(r.userRole)}</td><td class="total">${formatDurationSeconds(r.totalWorkSeconds)}</td></tr>`;
+    });
+    html += `</tbody></table>`;
+  } else if (scope === 'user') {
+    const u = rows;
+    html += `<div style="padding:10px;font-size:13pt;font-weight:bold;color:#4f46e5;">${u.userName} <span style="font-weight:normal;color:#6b7280;font-size:11pt;">— ${formatRole(u.userRole)}</span></div>`;
+    html += `<div style="padding:0 10px 10px;font-size:11pt;color:#065f46;font-weight:bold;">Total Hours This Cutoff: ${formatDurationSeconds(u.totalWorkSeconds)}</div>`;
+    html += `<table><thead><tr><th>Date</th><th>Time In</th><th>Time Out</th><th>Total Hours</th></tr></thead><tbody>`;
+    u.daysList.forEach(d => {
+      const total = d.states['Time In'] + d.states['Meeting'];
+      html += `<tr><td>${fmtDay(d.day)}</td><td>${fmtTime(d.timeInFirst)}</td><td>${fmtTime(d.timeOutLast)}</td><td class="total">${formatDurationSeconds(total)}</td></tr>`;
+    });
+    html += `</tbody></table>`;
+  } else if (scope === 'all') {
+    html += `<table><thead><tr><th>User</th><th>Role</th><th>Date</th><th>Time In</th><th>Time Out</th><th>Total Hours</th></tr></thead><tbody>`;
+    rows.forEach(u => {
+      u.daysList.forEach((d, idx) => {
+        const total = d.states['Time In'] + d.states['Meeting'];
+        html += `<tr>`;
+        html += idx === 0 ? `<td class="user-row" rowspan="${u.daysList.length}">${u.userName}</td><td class="user-row" rowspan="${u.daysList.length}">${formatRole(u.userRole)}</td>` : '';
+        html += `<td>${fmtDay(d.day)}</td><td>${fmtTime(d.timeInFirst)}</td><td>${fmtTime(d.timeOutLast)}</td><td class="total">${formatDurationSeconds(total)}</td>`;
+        html += `</tr>`;
+      });
+      html += `<tr><td colspan="5" style="text-align:right;font-weight:bold;background:#ddd6fe;color:#4c1d95;">Subtotal for ${u.userName}:</td><td style="background:#a7f3d0;color:#064e3b;font-weight:bold;">${formatDurationSeconds(u.totalWorkSeconds)}</td></tr>`;
+    });
+    html += `</tbody></table>`;
+  }
+  html += `</body></html>`;
+  const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const fileLabel = scope === 'user' ? rows.userName.replace(/\s+/g, '_') : scope;
+  a.download = `TimeTracker_${monthLabel.replace(' ', '_')}_${cutoff}_${fileLabel}.xls`;
+  a.click();
+  URL.revokeObjectURL(url);
 };
 const formatDurationSeconds = (sec) => {
   if (sec == null) return '-';
@@ -4327,27 +4451,84 @@ onDelete={(isITViewOnly || (isEodModule(activeModule) && currentUser?.role !== '
   return (
     <div className="space-y-4">
       <div className={CARD.base}>
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-700">User:</label>
-            <select value={activityFilterUser} onChange={e => setActivityFilterUser(e.target.value)} className={INPUT.filter}>
-              <option value="all">All Users</option>
-              {users.filter(u => u.role !== 'super_admin').map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-            </select>
-          </div>
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-700">Date:</label>
-            <input type="date" value={activityFilterDate} onChange={e => setActivityFilterDate(e.target.value)} className="p-2 border-2 border-gray-200 rounded-xl text-sm focus:border-purple-400 outline-none" />
-          </div>
-          <button onClick={loadActivityLogs} className={`px-4 py-2 ${BTN.admin}`}>Apply Filter</button>
-          <button onClick={() => {
-            setActivityFilterUser('all');
-            const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Pacific/Honolulu', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
-            setActivityFilterDate(`${parts.find(p => p.type === 'year').value}-${parts.find(p => p.type === 'month').value}-${parts.find(p => p.type === 'day').value}`);
-            setTimeout(loadActivityLogs, 0);
-          }} className={`px-4 py-2 ${BTN.cancel}`}>Reset</button>
+        <div className="flex gap-2 mb-4 pb-4 border-b border-gray-100">
+          <button onClick={() => setTimeTrackerSubTab('daily')} className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${timeTrackerSubTab === 'daily' ? 'bg-purple-500 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>Daily</button>
+          <button onClick={() => { setTimeTrackerSubTab('report'); loadReportData(reportMonth, reportCutoff); }} className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${timeTrackerSubTab === 'report' ? 'bg-purple-500 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>Report</button>
         </div>
+        {timeTrackerSubTab === 'daily' ? (
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-gray-700">User:</label>
+              <select value={activityFilterUser} onChange={e => setActivityFilterUser(e.target.value)} className={INPUT.filter}>
+                <option value="all">All Users</option>
+                {users.filter(u => u.role !== 'super_admin').map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-gray-700">Date:</label>
+              <input type="date" value={activityFilterDate} onChange={e => setActivityFilterDate(e.target.value)} className="p-2 border-2 border-gray-200 rounded-xl text-sm focus:border-purple-400 outline-none" />
+            </div>
+            <button onClick={loadActivityLogs} className={`px-4 py-2 ${BTN.admin}`}>Apply Filter</button>
+            <button onClick={() => {
+              setActivityFilterUser('all');
+              const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Pacific/Honolulu', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+              setActivityFilterDate(`${parts.find(p => p.type === 'year').value}-${parts.find(p => p.type === 'month').value}-${parts.find(p => p.type === 'day').value}`);
+              setTimeout(loadActivityLogs, 0);
+            }} className={`px-4 py-2 ${BTN.cancel}`}>Reset</button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              <button onClick={() => { const d = new Date(reportMonth); d.setMonth(d.getMonth() - 1); setReportMonth(d); loadReportData(d, reportCutoff); }} className="p-2 hover:bg-gray-100 rounded-xl"><ChevronLeft className="w-4 h-4" /></button>
+              <h3 className="font-semibold text-gray-800 min-w-[140px] text-center">{reportMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}</h3>
+              <button onClick={() => { const d = new Date(reportMonth); d.setMonth(d.getMonth() + 1); setReportMonth(d); loadReportData(d, reportCutoff); }} className="p-2 hover:bg-gray-100 rounded-xl"><ChevronRight className="w-4 h-4" /></button>
+            </div>
+            <div className="flex items-center gap-2 ml-2">
+              <label className="text-sm font-medium text-gray-700">Cutoff:</label>
+              <button onClick={() => { setReportCutoff('1-15'); loadReportData(reportMonth, '1-15'); }} className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${reportCutoff === '1-15' ? 'bg-emerald-500 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>1 - 15</button>
+              <button onClick={() => { setReportCutoff('16-end'); loadReportData(reportMonth, '16-end'); }} className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${reportCutoff === '16-end' ? 'bg-emerald-500 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>16 - End</button>
+            </div>
+            <button onClick={() => exportReportToExcel(reportData, reportMonth, reportCutoff, 'all')} disabled={reportData.length === 0} className={`ml-auto px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-all ${reportData.length === 0 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600 shadow-md'}`}>
+              <Download className="w-4 h-4" /> Export Full Report
+            </button>
+            <button onClick={() => exportReportToExcel(reportData, reportMonth, reportCutoff, 'summary')} disabled={reportData.length === 0} className={`px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-all ${reportData.length === 0 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white hover:from-blue-600 hover:to-indigo-600 shadow-md'}`}>
+              <Download className="w-4 h-4" /> Export Summary
+            </button>
+          </div>
+        )}
       </div>
+      {timeTrackerSubTab === 'report' ? (
+        <div className={CARD.base}>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-gray-800">Cutoff Summary ({reportData.length} users)</h3>
+            <div className="px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-lg text-xs font-semibold">Total: {formatDurationSeconds(reportData.reduce((s, r) => s + r.totalWorkSeconds, 0))}</div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-200">
+                  <th className="px-3 py-2.5 text-left font-semibold text-gray-600">User</th>
+                  <th className="px-3 py-2.5 text-left font-semibold text-gray-600">Role</th>
+                  <th className="px-3 py-2.5 text-center font-semibold text-gray-600">Days Worked</th>
+                  <th className="px-3 py-2.5 text-right font-semibold text-emerald-700 bg-emerald-50">Total Hours</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {reportData.length === 0 ? (
+                  <tr><td colSpan="4" className="px-3 py-8 text-center text-gray-400">No data for this cutoff</td></tr>
+                ) : reportData.map(u => (
+                  <tr key={u.userId} onClick={() => setReportUserPopup(u)} className="hover:bg-purple-50 cursor-pointer transition-colors">
+                    <td className="px-3 py-2.5 font-medium text-gray-800">{u.userName}</td>
+                    <td className="px-3 py-2.5 text-gray-600 text-xs">{formatRole(u.userRole) || '-'}</td>
+                    <td className="px-3 py-2.5 text-center text-gray-700">{u.daysList.length}</td>
+                    <td className="px-3 py-2.5 text-right font-bold text-emerald-700 bg-emerald-50/40">{formatDurationSeconds(u.totalWorkSeconds)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
       <div className={CARD.base}>
         <h3 className="font-semibold text-gray-800 mb-4">Daily Summary ({dayRows.length})</h3>
         <div className="overflow-x-auto">
@@ -4382,6 +4563,7 @@ onDelete={(isITViewOnly || (isEodModule(activeModule) && currentUser?.role !== '
           </table>
         </div>
       </div>
+      )}
       {/* Time Tracker Preview Popup */}
       {timeTrackerPopup && (() => {
         const d = timeTrackerPopup;
@@ -4399,14 +4581,10 @@ onDelete={(isITViewOnly || (isEodModule(activeModule) && currentUser?.role !== '
                 <button onClick={() => setTimeTrackerPopup(null)} className="p-2 hover:bg-white/50 rounded-xl"><X className="w-5 h-5" /></button>
               </div>
               <div className="p-5 overflow-y-auto space-y-4">
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200">
                     <p className="text-xs font-medium text-emerald-700 mb-1">Total Hours</p>
                     <p className="text-xl font-bold text-emerald-800">{formatDurationSeconds(totalWork)}</p>
-                  </div>
-                  <div className="p-3 rounded-xl bg-amber-50 border border-amber-200">
-                    <p className="text-xs font-medium text-amber-700 mb-1">Paused Time</p>
-                    <p className="text-xl font-bold text-amber-800">{formatDurationSeconds(totalPaused)}</p>
                   </div>
                   <div className="p-3 rounded-xl bg-gray-50 border border-gray-200">
                     <p className="text-xs font-medium text-gray-600 mb-1">Time In → Time Out</p>
@@ -4448,6 +4626,72 @@ onDelete={(isITViewOnly || (isEodModule(activeModule) && currentUser?.role !== '
               </div>
               <div className="p-4 border-t bg-gray-50 flex-shrink-0">
                 <button onClick={() => setTimeTrackerPopup(null)} className={`w-full py-2.5 ${BTN.cancel} rounded-xl`}>Close</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+      {/* Report User Breakdown Popup */}
+      {reportUserPopup && (() => {
+        const u = reportUserPopup;
+        const fmtDayStr = (d) => { const [y, mo, da] = d.split('-').map(Number); return new Date(Date.UTC(y, mo - 1, da, 12, 0, 0)).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' }); };
+        const fmtT = (iso) => iso ? new Date(iso).toLocaleTimeString('en-US', { timeZone: 'Pacific/Honolulu', hour: 'numeric', minute: '2-digit' }) : '-';
+        return (
+          <div className={LAYOUT.modalOverlay} onClick={() => setReportUserPopup(null)}>
+            <div className="bg-white rounded-2xl max-w-3xl w-full mx-2 sm:mx-auto shadow-2xl overflow-hidden max-h-[90vh] flex flex-col" onClick={ev => ev.stopPropagation()}>
+              <div className="p-5 border-b bg-gradient-to-r from-purple-50 to-indigo-50 flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold text-gray-800 text-lg">{u.userName}</h3>
+                  <p className="text-sm text-gray-500">{formatRole(u.userRole)} • {reportMonth.toLocaleString('default', { month: 'long', year: 'numeric' })} • Cutoff {reportCutoff === '1-15' ? '1 - 15' : '16 - End'}</p>
+                </div>
+                <button onClick={() => setReportUserPopup(null)} className="p-2 hover:bg-white/50 rounded-xl"><X className="w-5 h-5" /></button>
+              </div>
+              <div className="p-5 overflow-y-auto space-y-4">
+                <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-emerald-700 mb-1">Total Hours This Cutoff</p>
+                    <p className="text-2xl font-bold text-emerald-800">{formatDurationSeconds(u.totalWorkSeconds)}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-emerald-700">Days Worked</p>
+                    <p className="text-2xl font-bold text-emerald-800">{u.daysList.length}</p>
+                  </div>
+                </div>
+                <div className="border border-gray-200 rounded-xl overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-gray-50 border-b border-gray-200">
+                        <th className="px-3 py-2.5 text-left font-semibold text-gray-600">Date</th>
+                        <th className="px-3 py-2.5 text-left font-semibold text-gray-600">User</th>
+                        <th className="px-3 py-2.5 text-left font-semibold text-gray-600">Role</th>
+                        <th className="px-3 py-2.5 text-left font-semibold text-gray-600">Time In</th>
+                        <th className="px-3 py-2.5 text-left font-semibold text-gray-600">Time Out</th>
+                        <th className="px-3 py-2.5 text-right font-semibold text-emerald-700 bg-emerald-50">Total Hours</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {u.daysList.map(d => {
+                        const total = d.states['Time In'] + d.states['Meeting'];
+                        return (
+                          <tr key={d.day} className="hover:bg-gray-50/50">
+                            <td className="px-3 py-2.5 text-gray-700 text-xs whitespace-nowrap font-medium">{fmtDayStr(d.day)}</td>
+                            <td className="px-3 py-2.5 text-gray-800">{u.userName}</td>
+                            <td className="px-3 py-2.5 text-gray-600 text-xs">{formatRole(u.userRole)}</td>
+                            <td className="px-3 py-2.5 text-gray-700 text-xs whitespace-nowrap">{fmtT(d.timeInFirst)}</td>
+                            <td className="px-3 py-2.5 text-gray-700 text-xs whitespace-nowrap">{fmtT(d.timeOutLast)}</td>
+                            <td className="px-3 py-2.5 text-right font-bold text-emerald-700 bg-emerald-50/40">{formatDurationSeconds(total)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <div className="p-4 border-t bg-gray-50 flex-shrink-0 flex gap-2">
+                <button onClick={() => exportReportToExcel(u, reportMonth, reportCutoff, 'user')} className="flex-1 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl font-medium hover:from-emerald-600 hover:to-teal-600 shadow-md flex items-center justify-center gap-2">
+                  <Download className="w-4 h-4" /> Export to Excel
+                </button>
+                <button onClick={() => setReportUserPopup(null)} className={`px-6 py-2.5 ${BTN.cancel} rounded-xl`}>Close</button>
               </div>
             </div>
           </div>
