@@ -51,7 +51,12 @@ const LOCATE_BY_OPTIONS = ['Call', 'Web & CS', 'Uploaded', 'Drive', 'FAX'];
 const PAYMENT_TYPE_OPTIONS = ['Insurance Check', 'Direct Transfer - EFT', 'Credit/Debit Card - VCC'];
 const CLAIM_STATUSES = ['Acknowledged (Payor)', 'Reopened', 'Resubmitted (Payor)', 'Partially Paid', 'Denied', 'Other', 'Submitted (Payor)', 'Patient to Contact Office', 'CS Please Review', 'Submitted Through Portal', 'Submitted Electronically', 'Claim Submission', 'Close'];
 const SCHEDULING_LOCATIONS = ['Pearl City', 'Kailua', 'Kapolei', 'HHDS', 'Ortho'];
-const ACTIVITY_TYPES = ['Break', 'Bio Break', 'Lunch', 'Meeting'];
+const TIME_STATES = ['Time In', 'Break', 'Bio Break', 'Lunch', 'Meeting', 'Time Out'];
+const WORKING_STATES = ['Time In', 'Meeting'];
+const PAUSED_STATES = ['Break', 'Bio Break', 'Lunch'];
+const STATE_COLORS = { 'Time In': 'bg-emerald-500', 'Meeting': 'bg-violet-500', 'Break': 'bg-amber-500', 'Bio Break': 'bg-orange-500', 'Lunch': 'bg-sky-500', 'Time Out': 'bg-gray-400' };
+// Legacy export for admin view
+const ACTIVITY_TYPES = TIME_STATES;
 const canViewActivityLogs = (role) => ['super_admin', 'rev_rangers_admin', 'finance_admin'].includes(role);
 const canUseActivityTimer = (role) => role && role !== 'super_admin';
 const EOD_STATUSES = ['For Review', 'Approved', 'Updates Needed', 'Declined'];
@@ -1742,10 +1747,10 @@ const [vaReportDate, setVaReportDate] = useState(() => {
 });
 const [vaReportFilter, setVaReportFilter] = useState('all');
 const [vaReportData, setVaReportData] = useState([]);
-// Non-Operation Activity Timer
-const [activitySelected, setActivitySelected] = useState('');
-const [activeActivityLog, setActiveActivityLog] = useState(null);
-const [activityElapsed, setActivityElapsed] = useState(0);
+// Time Clock System
+const [currentTimeState, setCurrentTimeState] = useState(null);
+const [stateElapsed, setStateElapsed] = useState(0);
+const [todayWorkSeconds, setTodayWorkSeconds] = useState(0);
 const [activityLogs, setActivityLogs] = useState([]);
 const [activityFilterUser, setActivityFilterUser] = useState('all');
 const [activityFilterType, setActivityFilterType] = useState('all');
@@ -1848,15 +1853,18 @@ const [callAnalyticsTab, setCallAnalyticsTab] = useState('board');
     setPendingBatchLoaded(true);
   };
 useEffect(() => { if (currentUser?.id) loadPendingBatches(); }, [currentUser?.id]);
-useEffect(() => { if (currentUser?.id && canUseActivityTimer(currentUser?.role)) loadActiveActivity(); }, [currentUser?.id]);
+useEffect(() => { if (currentUser?.id && canUseActivityTimer(currentUser?.role)) loadCurrentTimeState(); }, [currentUser?.id]);
 useEffect(() => {
-  if (!activeActivityLog) return;
+  if (!currentTimeState) return;
   const interval = setInterval(() => {
-    const elapsed = Math.floor((Date.now() - new Date(activeActivityLog.started_at).getTime()) / 1000);
-    setActivityElapsed(elapsed);
+    const elapsed = Math.floor((Date.now() - new Date(currentTimeState.started_at).getTime()) / 1000);
+    setStateElapsed(elapsed);
+    if (WORKING_STATES.includes(currentTimeState.activity_type)) {
+      setTodayWorkSeconds(prev => prev + 1);
+    }
   }, 1000);
   return () => clearInterval(interval);
-}, [activeActivityLog]);
+}, [currentTimeState]);
 useEffect(() => {
   loadLocations();
   const savedSession = localStorage.getItem('cms_session') || sessionStorage.getItem('cms_session');
@@ -2935,40 +2943,64 @@ const loadVaReport = async (dateStr, vaFilterOverride) => {
   }).sort((a, b) => a.vaName.localeCompare(b.vaName));
   setVaReportData(result);
 };
-// Non-Operation Activity Timer
-const loadActiveActivity = async () => {
+// Time Clock System
+const loadCurrentTimeState = async () => {
   if (!currentUser?.id) return;
-  const { data } = await supabase.from('user_activity_logs').select('*').eq('user_id', currentUser.id).is('ended_at', null).order('started_at', { ascending: false }).limit(1);
-  if (data && data.length > 0) {
-    setActiveActivityLog(data[0]);
-    setActivitySelected(data[0].activity_type);
-    const elapsed = Math.floor((Date.now() - new Date(data[0].started_at).getTime()) / 1000);
-    setActivityElapsed(elapsed);
+  // Get the open (active) state row
+  const { data: openRows } = await supabase.from('user_activity_logs').select('*').eq('user_id', currentUser.id).is('ended_at', null).order('started_at', { ascending: false }).limit(1);
+  if (openRows && openRows.length > 0) {
+    setCurrentTimeState(openRows[0]);
+    const elapsed = Math.floor((Date.now() - new Date(openRows[0].started_at).getTime()) / 1000);
+    setStateElapsed(elapsed);
   } else {
-    setActiveActivityLog(null);
-    setActivityElapsed(0);
+    setCurrentTimeState(null);
+    setStateElapsed(0);
   }
+  // Calculate today's accumulated work time (Time In + Meeting durations from HST today)
+  const todayParts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Pacific/Honolulu', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+  const hstToday = `${todayParts.find(p => p.type === 'year').value}-${todayParts.find(p => p.type === 'month').value}-${todayParts.find(p => p.type === 'day').value}`;
+  const { data: todayRows } = await supabase.from('user_activity_logs').select('activity_type, started_at, ended_at, duration_seconds').eq('user_id', currentUser.id).gte('started_at', hstToday + 'T10:00:00Z');
+  let workSecs = 0;
+  if (todayRows) {
+    todayRows.forEach(r => {
+      if (WORKING_STATES.includes(r.activity_type)) {
+        if (r.ended_at && r.duration_seconds != null) workSecs += r.duration_seconds;
+        else if (!r.ended_at) workSecs += Math.floor((Date.now() - new Date(r.started_at).getTime()) / 1000);
+      }
+    });
+  }
+  setTodayWorkSeconds(workSecs);
 };
-const startActivity = async () => {
-  if (!activitySelected) { showMessage('error', 'Please select an activity first'); return; }
-  if (activeActivityLog) { showMessage('error', 'You already have an active activity'); return; }
-  const { data, error } = await supabase.from('user_activity_logs').insert({ user_id: currentUser.id, activity_type: activitySelected, started_at: new Date().toISOString() }).select().single();
-  if (error) { showMessage('error', 'Failed to start activity: ' + error.message); return; }
-  setActiveActivityLog(data);
-  setActivityElapsed(0);
-  showMessage('success', `${activitySelected} started`);
+const changeTimeState = async (newState) => {
+  if (!currentUser?.id) return;
+  if (currentTimeState && currentTimeState.activity_type === newState) return;
+  // Close any open row
+  if (currentTimeState) {
+    const endedAt = new Date();
+    const startedAt = new Date(currentTimeState.started_at);
+    const durationSeconds = Math.floor((endedAt.getTime() - startedAt.getTime()) / 1000);
+    const { error: updErr } = await supabase.from('user_activity_logs').update({ ended_at: endedAt.toISOString(), duration_seconds: durationSeconds }).eq('id', currentTimeState.id);
+    if (updErr) { showMessage('error', 'Failed to update state: ' + updErr.message); return; }
+  }
+  // If new state is Time Out, just close — no new row
+  if (newState === 'Time Out') {
+    setCurrentTimeState(null);
+    setStateElapsed(0);
+    showMessage('success', 'Timed Out');
+    loadCurrentTimeState();
+    return;
+  }
+  // Open new row for new state
+  const { data, error } = await supabase.from('user_activity_logs').insert({ user_id: currentUser.id, activity_type: newState, started_at: new Date().toISOString() }).select().single();
+  if (error) { showMessage('error', 'Failed to change state: ' + error.message); return; }
+  setCurrentTimeState(data);
+  setStateElapsed(0);
+  showMessage('success', `Switched to ${newState}`);
+  loadCurrentTimeState();
 };
-const stopActivity = async () => {
-  if (!activeActivityLog) return;
-  const endedAt = new Date();
-  const startedAt = new Date(activeActivityLog.started_at);
-  const durationSeconds = Math.floor((endedAt.getTime() - startedAt.getTime()) / 1000);
-  const { error } = await supabase.from('user_activity_logs').update({ ended_at: endedAt.toISOString(), duration_seconds: durationSeconds }).eq('id', activeActivityLog.id);
-  if (error) { showMessage('error', 'Failed to stop activity: ' + error.message); return; }
-  showMessage('success', `${activeActivityLog.activity_type} ended (${formatDurationSeconds(durationSeconds)})`);
-  setActiveActivityLog(null);
-  setActivityElapsed(0);
-  setActivitySelected('');
+const formatTimeFromIso = (iso) => {
+  if (!iso) return '';
+  return new Date(iso).toLocaleTimeString('en-US', { timeZone: 'Pacific/Honolulu', hour: 'numeric', minute: '2-digit' });
 };
 const formatDurationSeconds = (sec) => {
   if (sec == null) return '-';
@@ -3732,34 +3764,29 @@ onDelete={(isITViewOnly || (isEodModule(activeModule) && currentUser?.role !== '
 </p>
             </div>
           </div>
-          {canUseActivityTimer(currentUser?.role) && (
-            <div className="mt-3 pt-3 border-t border-white/20">
-              {activeActivityLog ? (
+          {canUseActivityTimer(currentUser?.role) && (() => {
+            const stateName = currentTimeState?.activity_type || 'Time Out';
+            const dotColor = STATE_COLORS[stateName] || 'bg-gray-400';
+            const isWorking = WORKING_STATES.includes(stateName);
+            const sinceLabel = currentTimeState ? `since ${formatTimeFromIso(currentTimeState.started_at)}` : 'not clocked in';
+            return (
+              <div className="mt-3 pt-3 border-t border-white/20">
                 <div className="flex items-center gap-2">
-                  <div className="flex-1 bg-white/15 backdrop-blur-sm rounded-lg px-3 py-2 flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-red-400 animate-pulse"></div>
-                    <div className="flex-1">
-                      <p className="text-xs text-white/80 leading-tight">{activeActivityLog.activity_type}</p>
-                      <p className="text-sm font-bold text-white font-mono leading-tight">{(() => { const h = Math.floor(activityElapsed / 3600); const m = Math.floor((activityElapsed % 3600) / 60); const s = activityElapsed % 60; return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`; })()}</p>
-                    </div>
-                  </div>
-                  <button onClick={stopActivity} className="px-3 py-2 bg-red-500 hover:bg-red-600 text-white text-xs font-semibold rounded-lg shadow-md transition-all flex items-center gap-1">
-                    <X className="w-3 h-3" /> Stop
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <select value={activitySelected} onChange={e => setActivitySelected(e.target.value)} className="flex-1 px-2 py-1.5 bg-white/15 backdrop-blur-sm border border-white/20 text-white rounded-lg text-xs outline-none focus:bg-white/25" style={{ colorScheme: 'dark' }}>
-                    <option value="" className="text-gray-800">Select Activity...</option>
-                    {ACTIVITY_TYPES.map(a => <option key={a} value={a} className="text-gray-800">{a}</option>)}
+                  <div className={`w-2.5 h-2.5 rounded-full ${dotColor} ${currentTimeState ? 'animate-pulse' : ''} flex-shrink-0`}></div>
+                  <select value={stateName} onChange={e => changeTimeState(e.target.value)} className="flex-1 px-2 py-1.5 bg-white/15 backdrop-blur-sm border border-white/20 text-white rounded-lg text-xs outline-none focus:bg-white/25" style={{ colorScheme: 'dark' }}>
+                    {TIME_STATES.map(s => <option key={s} value={s} className="text-gray-800">{s}</option>)}
                   </select>
-                  <button onClick={startActivity} disabled={!activitySelected} className={`px-3 py-1.5 text-xs font-semibold rounded-lg shadow-md transition-all flex items-center gap-1 ${activitySelected ? 'bg-emerald-500 hover:bg-emerald-600 text-white' : 'bg-white/10 text-white/40 cursor-not-allowed'}`}>
-                    <Clock className="w-3 h-3" /> Start
-                  </button>
+                  <span className="text-xs text-white/80 whitespace-nowrap">{sinceLabel}</span>
                 </div>
-              )}
-            </div>
-          )}
+                {currentTimeState && (
+                  <div className="mt-2 flex items-center justify-between text-xs">
+                    <span className="text-white/70">{isWorking ? 'Work timer:' : 'On pause:'}</span>
+                    <span className="font-mono font-bold text-white">{(() => { const totalSec = isWorking ? todayWorkSeconds : stateElapsed; const h = Math.floor(totalSec / 3600); const m = Math.floor((totalSec % 3600) / 60); const s = totalSec % 60; return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`; })()}</span>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>
         {isAdmin && (
             <div className="p-4 border-b bg-purple-50 flex-shrink-0">
