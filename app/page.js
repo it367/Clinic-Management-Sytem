@@ -4025,7 +4025,7 @@ onDelete={(isITViewOnly || (isEodModule(activeModule) && currentUser?.role !== '
               <button onClick={() => setSidebarOpen(!sidebarOpen)} className="lg:hidden p-2 hover:bg-gray-100 rounded-xl"><Menu className="w-5 h-5" /></button>
               <div>
 <h1 className="font-bold text-gray-800 text-sm sm:text-lg truncate max-w-[180px] sm:max-w-none">
-                  {isAdmin ? (adminView === 'users' ? 'User Management' : adminView === 'export' ? 'Export Data' : adminView === 'documents' ? 'All Documents' : adminView === 'sop' ? 'SOPs' : adminView === 'settings' ? 'Settings' : adminView === 'analytics' ? 'Operations Analytics' : adminView === 'eod-tracking' ? 'EOD Tracking' : adminView === 'eod-analytics' ? 'EOD Analytics' : adminView === 'eod-trends' ? 'Trend Analysis' : adminView === 'rev-entry' ? `New Entry: ${currentModule?.name}` : currentUser?.role === 'rev_rangers' ? `Review: ${currentModule?.name}` : currentModule?.name) : (view === 'settings' ? 'Settings' : view === 'sop' ? 'SOPs' : currentModule?.name)}
+                  {isAdmin ? (adminView === 'users' ? 'User Management' : adminView === 'activity-logs' ? 'Non-Operation Activity' : adminView === 'export' ? 'Export Data' : adminView === 'documents' ? 'All Documents' : adminView === 'sop' ? 'SOPs' : adminView === 'settings' ? 'Settings' : adminView === 'analytics' ? 'Operations Analytics' : adminView === 'eod-tracking' ? 'EOD Tracking' : adminView === 'eod-analytics' ? 'EOD Analytics' : adminView === 'eod-trends' ? 'Trend Analysis' : adminView === 'rev-entry' ? `New Entry: ${currentModule?.name}` : currentUser?.role === 'rev_rangers' ? `Review: ${currentModule?.name}` : currentModule?.name) : (view === 'settings' ? 'Settings' : view === 'sop' ? 'SOPs' : currentModule?.name)}
                 </h1>
                 <p className="text-xs sm:text-sm text-gray-500 truncate max-w-[180px] sm:max-w-none">{isAdmin ? (adminLocation === 'all' ? 'All Locations' : adminLocation) : selectedLocation}</p>
               </div>
@@ -4290,40 +4290,59 @@ onDelete={(isITViewOnly || (isEodModule(activeModule) && currentUser?.role !== '
           )}
 {/* ADMIN: Non-Operation Activity Logs */}
 {isAdmin && adminView === 'activity-logs' && canViewActivityLogs(currentUser?.role) && (() => {
-  const totalSeconds = activityLogs.reduce((sum, l) => sum + (l.duration_seconds || 0), 0);
-  const activeCount = activityLogs.filter(l => !l.ended_at).length;
-  const byType = {};
-  ACTIVITY_TYPES.forEach(t => { byType[t] = { count: 0, seconds: 0 }; });
-  activityLogs.forEach(l => {
-    if (!byType[l.activity_type]) byType[l.activity_type] = { count: 0, seconds: 0 };
-    byType[l.activity_type].count++;
-    byType[l.activity_type].seconds += l.duration_seconds || 0;
+  // Aggregate logs by user-day (Hawaii timezone)
+  const grouped = {};
+  activityLogs.forEach(log => {
+    const day = new Date(log.started_at).toLocaleDateString('en-CA', { timeZone: 'Pacific/Honolulu' });
+    const userId = log.user_id;
+    const key = `${userId}|${day}`;
+    if (!grouped[key]) {
+      grouped[key] = {
+        key, userId, day,
+        userName: log.user?.name || 'Unknown',
+        userRole: log.user?.role || '',
+        states: { 'Time In': 0, 'Break': 0, 'Bio Break': 0, 'Lunch': 0, 'Meeting': 0 },
+        timeInFirst: null,
+        timeOutLast: null,
+        rows: []
+      };
+    }
+    const g = grouped[key];
+    const dur = log.duration_seconds != null ? log.duration_seconds : (log.ended_at ? 0 : Math.floor((Date.now() - new Date(log.started_at).getTime()) / 1000));
+    if (g.states[log.activity_type] != null) g.states[log.activity_type] += dur;
+    if (log.activity_type === 'Time In' && (!g.timeInFirst || new Date(log.started_at) < new Date(g.timeInFirst))) g.timeInFirst = log.started_at;
+    if (log.ended_at && (!g.timeOutLast || new Date(log.ended_at) > new Date(g.timeOutLast))) g.timeOutLast = log.ended_at;
+    g.rows.push(log);
   });
+  const dayRows = Object.values(grouped).sort((a, b) => {
+    if (b.day !== a.day) return b.day.localeCompare(a.day);
+    return a.userName.localeCompare(b.userName);
+  });
+  // Totals across all visible day-rows
+  const totals = { 'Time In': 0, 'Break': 0, 'Bio Break': 0, 'Lunch': 0, 'Meeting': 0 };
+  dayRows.forEach(d => Object.keys(totals).forEach(k => { totals[k] += d.states[k]; }));
+  const totalSeconds = Object.values(totals).reduce((s, v) => s + v, 0);
+  const fmtTime = (iso) => iso ? new Date(iso).toLocaleTimeString('en-US', { timeZone: 'Pacific/Honolulu', hour: 'numeric', minute: '2-digit' }) : '-';
+  const fmtDay = (d) => { const [y, mo, da] = d.split('-').map(Number); return new Date(Date.UTC(y, mo - 1, da, 12, 0, 0)).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' }); };
   return (
     <div className="space-y-4">
       <div className={CARD.base}>
         <div className="flex items-start justify-between flex-wrap gap-3 mb-4">
           <div>
             <h2 className="font-semibold text-gray-800 text-lg">Non-Operation Activity</h2>
-            <p className="text-sm text-gray-500">Time tracked for Break, Bio Break, Lunch, and Meeting</p>
+            <p className="text-sm text-gray-500">One row per user per day — totals across all states</p>
           </div>
           <div className="flex items-center gap-2">
             <div className="px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-lg text-xs font-semibold flex items-center gap-1.5">
               <Clock className="w-3.5 h-3.5" /> Total: {formatDurationSeconds(totalSeconds)}
             </div>
-            {activeCount > 0 && (
-              <div className="px-3 py-1.5 bg-red-50 text-red-700 rounded-lg text-xs font-semibold flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span> {activeCount} Active
-              </div>
-            )}
           </div>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-          {ACTIVITY_TYPES.map(t => (
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-4">
+          {['Time In', 'Meeting', 'Break', 'Bio Break', 'Lunch'].map(t => (
             <div key={t} className="p-3 rounded-xl border-2 border-gray-100 bg-gray-50">
               <p className="text-xs font-medium text-gray-500 mb-1">{t}</p>
-              <p className="text-lg font-bold text-gray-800">{byType[t].count}</p>
-              <p className="text-xs text-gray-500">{formatDurationSeconds(byType[t].seconds)}</p>
+              <p className="text-lg font-bold text-gray-800">{formatDurationSeconds(totals[t])}</p>
             </div>
           ))}
         </div>
@@ -4339,7 +4358,7 @@ onDelete={(isITViewOnly || (isEodModule(activeModule) && currentUser?.role !== '
             <label className="text-sm font-medium text-gray-700">Activity:</label>
             <select value={activityFilterType} onChange={e => setActivityFilterType(e.target.value)} className={INPUT.filter}>
               <option value="all">All Activities</option>
-              {ACTIVITY_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+              {TIME_STATES.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
           <div className="flex items-center gap-2">
@@ -4355,38 +4374,38 @@ onDelete={(isITViewOnly || (isEodModule(activeModule) && currentUser?.role !== '
         </div>
       </div>
       <div className={CARD.base}>
-        <h3 className="font-semibold text-gray-800 mb-4">All Records ({activityLogs.length})</h3>
+        <h3 className="font-semibold text-gray-800 mb-4">Daily Summary ({dayRows.length})</h3>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
+                <th className="px-3 py-2.5 text-left font-semibold text-gray-600">Date</th>
                 <th className="px-3 py-2.5 text-left font-semibold text-gray-600">User</th>
                 <th className="px-3 py-2.5 text-left font-semibold text-gray-600">Role</th>
-                <th className="px-3 py-2.5 text-left font-semibold text-gray-600">Activity</th>
-                <th className="px-3 py-2.5 text-left font-semibold text-gray-600">Started</th>
-                <th className="px-3 py-2.5 text-left font-semibold text-gray-600">Ended</th>
-                <th className="px-3 py-2.5 text-right font-semibold text-gray-600">Duration</th>
-                <th className="px-3 py-2.5 text-center font-semibold text-gray-600">Status</th>
+                <th className="px-3 py-2.5 text-left font-semibold text-gray-600">Time In</th>
+                <th className="px-3 py-2.5 text-left font-semibold text-gray-600">Time Out</th>
+                <th className="px-3 py-2.5 text-right font-semibold text-emerald-700 bg-emerald-50">Work Time</th>
+                <th className="px-3 py-2.5 text-right font-semibold text-violet-700 bg-violet-50">Meeting</th>
+                <th className="px-3 py-2.5 text-right font-semibold text-amber-700 bg-amber-50">Break</th>
+                <th className="px-3 py-2.5 text-right font-semibold text-orange-700 bg-orange-50">Bio Break</th>
+                <th className="px-3 py-2.5 text-right font-semibold text-sky-700 bg-sky-50">Lunch</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {activityLogs.length === 0 ? (
-                <tr><td colSpan="7" className="px-3 py-8 text-center text-gray-400">No activity logs found</td></tr>
-              ) : activityLogs.map(log => (
-                <tr key={log.id} className="hover:bg-gray-50/50">
-                  <td className="px-3 py-2.5 font-medium text-gray-800">{log.user?.name || 'Unknown'}</td>
-                  <td className="px-3 py-2.5 text-gray-600 text-xs">{formatRole(log.user?.role) || '-'}</td>
-                  <td className="px-3 py-2.5"><span className="px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 text-xs font-medium">{log.activity_type}</span></td>
-                  <td className="px-3 py-2.5 text-gray-700 text-xs whitespace-nowrap">{new Date(log.started_at).toLocaleString('en-US', { timeZone: 'Pacific/Honolulu', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}</td>
-                  <td className="px-3 py-2.5 text-gray-700 text-xs whitespace-nowrap">{log.ended_at ? new Date(log.ended_at).toLocaleString('en-US', { timeZone: 'Pacific/Honolulu', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '-'}</td>
-                  <td className="px-3 py-2.5 text-right font-medium text-gray-800">{log.duration_seconds != null ? formatDurationSeconds(log.duration_seconds) : '-'}</td>
-                  <td className="px-3 py-2.5 text-center">
-                    {log.ended_at ? (
-                      <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-xs font-medium">Completed</span>
-                    ) : (
-                      <span className="px-2 py-0.5 rounded-md bg-red-50 text-red-700 text-xs font-medium flex items-center gap-1 justify-center"><span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span> Active</span>
-                    )}
-                  </td>
+              {dayRows.length === 0 ? (
+                <tr><td colSpan="10" className="px-3 py-8 text-center text-gray-400">No activity logs found</td></tr>
+              ) : dayRows.map(d => (
+                <tr key={d.key} className="hover:bg-gray-50/50">
+                  <td className="px-3 py-2.5 text-gray-700 text-xs whitespace-nowrap font-medium">{fmtDay(d.day)}</td>
+                  <td className="px-3 py-2.5 font-medium text-gray-800">{d.userName}</td>
+                  <td className="px-3 py-2.5 text-gray-600 text-xs">{formatRole(d.userRole) || '-'}</td>
+                  <td className="px-3 py-2.5 text-gray-700 text-xs whitespace-nowrap">{fmtTime(d.timeInFirst)}</td>
+                  <td className="px-3 py-2.5 text-gray-700 text-xs whitespace-nowrap">{fmtTime(d.timeOutLast)}</td>
+                  <td className="px-3 py-2.5 text-right font-bold text-emerald-700 bg-emerald-50/40">{formatDurationSeconds(d.states['Time In'])}</td>
+                  <td className="px-3 py-2.5 text-right font-medium text-violet-700 bg-violet-50/40">{formatDurationSeconds(d.states['Meeting'])}</td>
+                  <td className="px-3 py-2.5 text-right font-medium text-amber-700 bg-amber-50/40">{formatDurationSeconds(d.states['Break'])}</td>
+                  <td className="px-3 py-2.5 text-right font-medium text-orange-700 bg-orange-50/40">{formatDurationSeconds(d.states['Bio Break'])}</td>
+                  <td className="px-3 py-2.5 text-right font-medium text-sky-700 bg-sky-50/40">{formatDurationSeconds(d.states['Lunch'])}</td>
                 </tr>
               ))}
             </tbody>
