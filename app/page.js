@@ -51,6 +51,9 @@ const LOCATE_BY_OPTIONS = ['Call', 'Web & CS', 'Uploaded', 'Drive', 'FAX'];
 const PAYMENT_TYPE_OPTIONS = ['Insurance Check', 'Direct Transfer - EFT', 'Credit/Debit Card - VCC'];
 const CLAIM_STATUSES = ['Acknowledged (Payor)', 'Reopened', 'Resubmitted (Payor)', 'Partially Paid', 'Denied', 'Other', 'Submitted (Payor)', 'Patient to Contact Office', 'CS Please Review', 'Submitted Through Portal', 'Submitted Electronically', 'Claim Submission', 'Close'];
 const SCHEDULING_LOCATIONS = ['Pearl City', 'Kailua', 'Kapolei', 'HHDS', 'Ortho'];
+const ACTIVITY_TYPES = ['Break', 'Bio Break', 'Lunch', 'Meeting'];
+const canViewActivityLogs = (role) => ['super_admin', 'rev_rangers_admin', 'finance_admin'].includes(role);
+const canUseActivityTimer = (role) => role && role !== 'super_admin';
 const EOD_STATUSES = ['For Review', 'Approved', 'Updates Needed', 'Declined'];
 
 // MODULE_FIELD_CONFIG: maps moduleId -> fields used in saveEntry / startEditingStaffEntry / saveStaffEntryUpdate
@@ -1739,6 +1742,15 @@ const [vaReportDate, setVaReportDate] = useState(() => {
 });
 const [vaReportFilter, setVaReportFilter] = useState('all');
 const [vaReportData, setVaReportData] = useState([]);
+// Non-Operation Activity Timer
+const [activitySelected, setActivitySelected] = useState('');
+const [activeActivityLog, setActiveActivityLog] = useState(null);
+const [activityElapsed, setActivityElapsed] = useState(0);
+const [activityLogs, setActivityLogs] = useState([]);
+const [activityFilterUser, setActivityFilterUser] = useState('all');
+const [activityFilterType, setActivityFilterType] = useState('all');
+const [activityFilterStart, setActivityFilterStart] = useState('');
+const [activityFilterEnd, setActivityFilterEnd] = useState('');
 const [callAnalyticsRecords, setCallAnalyticsRecords] = useState([]);
 const [callAnalyticsForm, setCallAnalyticsForm] = useState(() => {
   const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Pacific/Honolulu', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
@@ -1836,6 +1848,15 @@ const [callAnalyticsTab, setCallAnalyticsTab] = useState('board');
     setPendingBatchLoaded(true);
   };
 useEffect(() => { if (currentUser?.id) loadPendingBatches(); }, [currentUser?.id]);
+useEffect(() => { if (currentUser?.id && canUseActivityTimer(currentUser?.role)) loadActiveActivity(); }, [currentUser?.id]);
+useEffect(() => {
+  if (!activeActivityLog) return;
+  const interval = setInterval(() => {
+    const elapsed = Math.floor((Date.now() - new Date(activeActivityLog.started_at).getTime()) / 1000);
+    setActivityElapsed(elapsed);
+  }, 1000);
+  return () => clearInterval(interval);
+}, [activeActivityLog]);
 useEffect(() => {
   loadLocations();
   const savedSession = localStorage.getItem('cms_session') || sessionStorage.getItem('cms_session');
@@ -2850,17 +2871,42 @@ const loadVaReport = async (dateStr, vaFilterOverride) => {
   let query = supabase.from('eod_patient_scheduling').select('*').gte('created_at', dateStr + 'T10:00:00Z').lte('created_at', nextDayStr + 'T09:59:59Z');
   if (filter !== 'all') query = query.eq('created_by', filter);
   const { data } = await query;
-  if (!data) { setVaReportData([]); return; }
-  // Group by creator
+  // Also load pending (unsubmitted) records for the same module
+  let pendingQuery = supabase.from('eod_pending_batches').select('user_id, batch_data, updated_at').eq('module_id', 'eod-patient-scheduling');
+  if (filter !== 'all') pendingQuery = pendingQuery.eq('user_id', filter);
+  const { data: pendingData } = await pendingQuery;
+  // Determine if selected date is today (HST) — used as fallback for pending records with no worked_call_date
+  const todayParts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Pacific/Honolulu', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+  const hstToday = `${todayParts.find(p => p.type === 'year').value}-${todayParts.find(p => p.type === 'month').value}-${todayParts.find(p => p.type === 'day').value}`;
+  const isSelectedDateToday = dateStr === hstToday;
+  // Group by creator (submitted entries)
   const byCreator = {};
-  for (const entry of data) {
-    const creatorId = entry.created_by;
-    if (!byCreator[creatorId]) byCreator[creatorId] = { creatorId, records: [] };
-    const rows = entry.batch_records && entry.batch_records.length > 0 ? entry.batch_records : [entry];
-    rows.forEach(r => byCreator[creatorId].records.push(r));
+  if (data) {
+    for (const entry of data) {
+      const creatorId = entry.created_by;
+      if (!byCreator[creatorId]) byCreator[creatorId] = { creatorId, records: [] };
+      const rows = entry.batch_records && entry.batch_records.length > 0 ? entry.batch_records : [entry];
+      rows.forEach(r => byCreator[creatorId].records.push(r));
+    }
+  }
+  // Merge in pending records — match by worked_call_date OR fallback to today's pending if selected date is today
+  if (pendingData) {
+    for (const pb of pendingData) {
+      const creatorId = pb.user_id;
+      if (!Array.isArray(pb.batch_data)) continue;
+      pb.batch_data.forEach(item => {
+        const rec = item.entryData || item.displayData || {};
+        const workedDate = rec.worked_call_date || null;
+        const matchesDate = workedDate ? workedDate === dateStr : isSelectedDateToday;
+        if (!matchesDate) return;
+        if (!byCreator[creatorId]) byCreator[creatorId] = { creatorId, records: [] };
+        byCreator[creatorId].records.push(rec);
+      });
+    }
   }
   // Resolve creator names
   const creatorIds = Object.keys(byCreator);
+  if (creatorIds.length === 0) { setVaReportData([]); return; }
   let creatorMap = {};
   if (creatorIds.length > 0) {
     const { data: usersData } = await supabase.from('users').select('id, name').in('id', creatorIds);
@@ -2888,6 +2934,62 @@ const loadVaReport = async (dateStr, vaFilterOverride) => {
     return { vaName: creatorMap[cid] || 'Unknown', inbound, outbound, apptConfirmation, didNotCall, apptBooked, apptRescheduled, rcm, totalCalls, totalPatients };
   }).sort((a, b) => a.vaName.localeCompare(b.vaName));
   setVaReportData(result);
+};
+// Non-Operation Activity Timer
+const loadActiveActivity = async () => {
+  if (!currentUser?.id) return;
+  const { data } = await supabase.from('user_activity_logs').select('*').eq('user_id', currentUser.id).is('ended_at', null).order('started_at', { ascending: false }).limit(1);
+  if (data && data.length > 0) {
+    setActiveActivityLog(data[0]);
+    setActivitySelected(data[0].activity_type);
+    const elapsed = Math.floor((Date.now() - new Date(data[0].started_at).getTime()) / 1000);
+    setActivityElapsed(elapsed);
+  } else {
+    setActiveActivityLog(null);
+    setActivityElapsed(0);
+  }
+};
+const startActivity = async () => {
+  if (!activitySelected) { showMessage('error', 'Please select an activity first'); return; }
+  if (activeActivityLog) { showMessage('error', 'You already have an active activity'); return; }
+  const { data, error } = await supabase.from('user_activity_logs').insert({ user_id: currentUser.id, activity_type: activitySelected, started_at: new Date().toISOString() }).select().single();
+  if (error) { showMessage('error', 'Failed to start activity: ' + error.message); return; }
+  setActiveActivityLog(data);
+  setActivityElapsed(0);
+  showMessage('success', `${activitySelected} started`);
+};
+const stopActivity = async () => {
+  if (!activeActivityLog) return;
+  const endedAt = new Date();
+  const startedAt = new Date(activeActivityLog.started_at);
+  const durationSeconds = Math.floor((endedAt.getTime() - startedAt.getTime()) / 1000);
+  const { error } = await supabase.from('user_activity_logs').update({ ended_at: endedAt.toISOString(), duration_seconds: durationSeconds }).eq('id', activeActivityLog.id);
+  if (error) { showMessage('error', 'Failed to stop activity: ' + error.message); return; }
+  showMessage('success', `${activeActivityLog.activity_type} ended (${formatDurationSeconds(durationSeconds)})`);
+  setActiveActivityLog(null);
+  setActivityElapsed(0);
+  setActivitySelected('');
+};
+const formatDurationSeconds = (sec) => {
+  if (sec == null) return '-';
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = sec % 60;
+  return h > 0 ? `${h}h ${m}m ${s}s` : m > 0 ? `${m}m ${s}s` : `${s}s`;
+};
+const loadActivityLogs = async () => {
+  let query = supabase.from('user_activity_logs').select('*, user:users!user_activity_logs_user_id_fkey(id, name, role)').order('started_at', { ascending: false });
+  if (activityFilterUser !== 'all') query = query.eq('user_id', activityFilterUser);
+  if (activityFilterType !== 'all') query = query.eq('activity_type', activityFilterType);
+  if (activityFilterStart) query = query.gte('started_at', activityFilterStart + 'T10:00:00Z');
+  if (activityFilterEnd) {
+    const [y, mo, d] = activityFilterEnd.split('-').map(Number);
+    const next = new Date(Date.UTC(y, mo - 1, d + 1)).toISOString().split('T')[0];
+    query = query.lte('started_at', next + 'T09:59:59Z');
+  }
+  const { data, error } = await query;
+  if (error) { showMessage('error', 'Failed to load activity logs: ' + error.message); return; }
+  setActivityLogs(data || []);
 };
 const canManageCallAnalytics = currentUser?.role === 'super_admin' || currentUser?.role === 'rev_rangers_admin';
 const loadCallAnalytics = async () => {
@@ -3630,6 +3732,34 @@ onDelete={(isITViewOnly || (isEodModule(activeModule) && currentUser?.role !== '
 </p>
             </div>
           </div>
+          {canUseActivityTimer(currentUser?.role) && (
+            <div className="mt-3 pt-3 border-t border-white/20">
+              {activeActivityLog ? (
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 bg-white/15 backdrop-blur-sm rounded-lg px-3 py-2 flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-red-400 animate-pulse"></div>
+                    <div className="flex-1">
+                      <p className="text-xs text-white/80 leading-tight">{activeActivityLog.activity_type}</p>
+                      <p className="text-sm font-bold text-white font-mono leading-tight">{(() => { const h = Math.floor(activityElapsed / 3600); const m = Math.floor((activityElapsed % 3600) / 60); const s = activityElapsed % 60; return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`; })()}</p>
+                    </div>
+                  </div>
+                  <button onClick={stopActivity} className="px-3 py-2 bg-red-500 hover:bg-red-600 text-white text-xs font-semibold rounded-lg shadow-md transition-all flex items-center gap-1">
+                    <X className="w-3 h-3" /> Stop
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <select value={activitySelected} onChange={e => setActivitySelected(e.target.value)} className="flex-1 px-2 py-1.5 bg-white/15 backdrop-blur-sm border border-white/20 text-white rounded-lg text-xs outline-none focus:bg-white/25" style={{ colorScheme: 'dark' }}>
+                    <option value="" className="text-gray-800">Select Activity...</option>
+                    {ACTIVITY_TYPES.map(a => <option key={a} value={a} className="text-gray-800">{a}</option>)}
+                  </select>
+                  <button onClick={startActivity} disabled={!activitySelected} className={`px-3 py-1.5 text-xs font-semibold rounded-lg shadow-md transition-all flex items-center gap-1 ${activitySelected ? 'bg-emerald-500 hover:bg-emerald-600 text-white' : 'bg-white/10 text-white/40 cursor-not-allowed'}`}>
+                    <Clock className="w-3 h-3" /> Start
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
         {isAdmin && (
             <div className="p-4 border-b bg-purple-50 flex-shrink-0">
@@ -3803,6 +3933,13 @@ onDelete={(isITViewOnly || (isEodModule(activeModule) && currentUser?.role !== '
                   {adminView === 'users' && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse"></div>}
                 </button>
               )}
+              {canViewActivityLogs(currentUser?.role) && (
+                <button onClick={() => { setAdminView('activity-logs'); loadActivityLogs(); loadUsers(); setSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all duration-200 group/item ${adminView === 'activity-logs' ? 'bg-purple-50 text-purple-700 shadow-sm' : 'text-gray-600 hover:bg-white hover:shadow-sm hover:translate-x-0.5'}`}>
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 ${adminView === 'activity-logs' ? 'bg-purple-100' : 'bg-white group-hover/item:scale-105'}`}><Clock className={`w-4 h-4 transition-colors duration-200 ${adminView === 'activity-logs' ? 'text-purple-600' : 'text-gray-400 group-hover/item:text-gray-600'}`} /></div>
+                  <span className="text-sm font-medium">Non-Operation Activity</span>
+                  {adminView === 'activity-logs' && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse"></div>}
+                </button>
+              )}
                 </div>
               </div>
           </div>
@@ -3952,26 +4089,22 @@ onDelete={(isITViewOnly || (isEodModule(activeModule) && currentUser?.role !== '
                   )}
                 </div>
               </div>
-              {(showAddUser || editingUser) && (
+              {showAddUser && (
                 <div className={CARD.base}>
-                  <h3 className="font-semibold mb-4 text-gray-800">{editingUser ? 'Edit User' : 'Add New User'}</h3>
-<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <InputField label="Name *" value={editingUser ? editingUser.name : newUser.name} onChange={e => editingUser ? setEditingUser({...editingUser, name: e.target.value}) : setNewUser({...newUser, name: e.target.value})} />
-                    <InputField label="Username *" value={editingUser ? (editingUser.username || '') : newUser.username} onChange={e => editingUser ? setEditingUser({...editingUser, username: e.target.value}) : setNewUser({...newUser, username: e.target.value})} placeholder="Login username" />
-                    <InputField label="Email *" value={editingUser ? editingUser.email : newUser.email} onChange={e => editingUser ? setEditingUser({...editingUser, email: e.target.value}) : setNewUser({...newUser, email: e.target.value})} />
-                    <PasswordField label={editingUser ? "New Password" : "Password *"} value={editingUser ? (editingUser.newPassword || '') : newUser.password} onChange={e => editingUser ? setEditingUser({...editingUser, newPassword: e.target.value}) : setNewUser({...newUser, password: e.target.value})} placeholder={editingUser ? "Leave blank to keep current" : ""} />
-<InputField label="Role" value={editingUser ? editingUser.role : newUser.role} onChange={e => editingUser ? setEditingUser({...editingUser, role: e.target.value}) : setNewUser({...newUser, role: e.target.value})}options={currentUser?.role === 'super_admin' ? ['staff', 'office_manager', 'rev_rangers', 'rev_rangers_admin', 'finance_admin', 'it', 'super_admin'] : (currentUser?.role === 'it' || currentUser?.role === 'rev_rangers' || currentUser?.role === 'rev_rangers_admin') ? ['staff', 'office_manager', 'rev_rangers', 'rev_rangers_admin', 'finance_admin', 'it'] : ['staff', 'office_manager', 'rev_rangers', 'rev_rangers_admin', 'finance_admin']} />
+                  <h3 className="font-semibold mb-4 text-gray-800">Add New User</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <InputField label="Name *" value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})} />
+                    <InputField label="Username *" value={newUser.username} onChange={e => setNewUser({...newUser, username: e.target.value})} placeholder="Login username" />
+                    <InputField label="Email *" value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})} />
+                    <PasswordField label="Password *" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} />
+                    <InputField label="Role" value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value})} options={currentUser?.role === 'super_admin' ? ['staff', 'office_manager', 'rev_rangers', 'rev_rangers_admin', 'finance_admin', 'it', 'super_admin'] : (currentUser?.role === 'it' || currentUser?.role === 'rev_rangers' || currentUser?.role === 'rev_rangers_admin') ? ['staff', 'office_manager', 'rev_rangers', 'rev_rangers_admin', 'finance_admin', 'it'] : ['staff', 'office_manager', 'rev_rangers', 'rev_rangers_admin', 'finance_admin']} />
                   </div>
-{((editingUser ? editingUser.role : newUser.role) === 'staff' || (editingUser ? editingUser.role : newUser.role) === 'office_manager') && (
+                  {(newUser.role === 'staff' || newUser.role === 'office_manager') && (
                     <div className="mt-4">
                       <label className="text-xs font-medium text-gray-600 mb-2 block">Assigned Locations</label>
                       <div className="flex flex-wrap gap-2">
                         {locations.map(loc => (
-                          <button
-                            key={loc.id}
-                            onClick={() => toggleUserLocation(loc.id, !!editingUser)}
-                            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${(editingUser ? editingUser.locationIds : newUser.locations)?.includes(loc.id) ? BTN.admin : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-                          >
+                          <button key={loc.id} onClick={() => toggleUserLocation(loc.id, false)} className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${newUser.locations?.includes(loc.id) ? BTN.admin : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
                             {loc.name}
                           </button>
                         ))}
@@ -3979,10 +4112,8 @@ onDelete={(isITViewOnly || (isEodModule(activeModule) && currentUser?.role !== '
                     </div>
                   )}
                   <div className="flex gap-2 mt-5">
-                    <button onClick={editingUser ? updateUser : addUser} className={`flex-1 py-3 ${BTN.admin}`}>
-                      {editingUser ? 'Update' : 'Add'} User
-                    </button>
-                    <button onClick={() => { setShowAddUser(false); setEditingUser(null); }} className={`px-6 py-3 ${BTN.cancel}`}>Cancel</button>
+                    <button onClick={addUser} className={`flex-1 py-3 ${BTN.admin}`}>Add User</button>
+                    <button onClick={() => setShowAddUser(false)} className={`px-6 py-3 ${BTN.cancel}`}>Cancel</button>
                   </div>
                 </div>
               )}
@@ -4034,8 +4165,8 @@ onDelete={(isITViewOnly || (isEodModule(activeModule) && currentUser?.role !== '
 {u.id !== currentUser.id && !(currentUser.role === 'it' && u.role === 'super_admin') && (
               <>
                 <button
-                  onClick={() => setEditingUser({ ...u, username: u.username || '', locationIds: u.locations?.map(l => l.id) || [] })}
-                  className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                  onClick={() => setEditingUser(editingUser?.id === u.id ? null : { ...u, username: u.username || '', locationIds: u.locations?.map(l => l.id) || [] })}
+                  className={`p-2 rounded-lg transition-all ${editingUser?.id === u.id ? 'text-blue-600 bg-blue-50' : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'}`}
                   title="Edit user"
                 >
                   <Edit3 className="w-4 h-4" />
@@ -4047,6 +4178,43 @@ onDelete={(isITViewOnly || (isEodModule(activeModule) && currentUser?.role !== '
             )}
           </div>
         </div>
+        {editingUser?.id === u.id && (
+          <div className="px-4 pb-4">
+            <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="font-semibold text-blue-800 flex items-center gap-2">
+                  <Edit3 className="w-4 h-4" /> Edit User: {u.name}
+                </h4>
+                <button onClick={() => setEditingUser(null)} className="text-blue-600 hover:text-blue-800">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <InputField label="Name *" value={editingUser.name} onChange={e => setEditingUser({...editingUser, name: e.target.value})} />
+                <InputField label="Username *" value={editingUser.username || ''} onChange={e => setEditingUser({...editingUser, username: e.target.value})} placeholder="Login username" />
+                <InputField label="Email *" value={editingUser.email} onChange={e => setEditingUser({...editingUser, email: e.target.value})} />
+                <PasswordField label="New Password" value={editingUser.newPassword || ''} onChange={e => setEditingUser({...editingUser, newPassword: e.target.value})} placeholder="Leave blank to keep current" />
+                <InputField label="Role" value={editingUser.role} onChange={e => setEditingUser({...editingUser, role: e.target.value})} options={currentUser?.role === 'super_admin' ? ['staff', 'office_manager', 'rev_rangers', 'rev_rangers_admin', 'finance_admin', 'it', 'super_admin'] : (currentUser?.role === 'it' || currentUser?.role === 'rev_rangers' || currentUser?.role === 'rev_rangers_admin') ? ['staff', 'office_manager', 'rev_rangers', 'rev_rangers_admin', 'finance_admin', 'it'] : ['staff', 'office_manager', 'rev_rangers', 'rev_rangers_admin', 'finance_admin']} />
+              </div>
+              {(editingUser.role === 'staff' || editingUser.role === 'office_manager') && (
+                <div className="mt-4">
+                  <label className="text-xs font-medium text-gray-600 mb-2 block">Assigned Locations</label>
+                  <div className="flex flex-wrap gap-2">
+                    {locations.map(loc => (
+                      <button key={loc.id} onClick={() => toggleUserLocation(loc.id, true)} className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${editingUser.locationIds?.includes(loc.id) ? BTN.admin : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                        {loc.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="flex gap-2 mt-5">
+                <button onClick={updateUser} className={`flex-1 py-3 ${BTN.admin}`}>Update User</button>
+                <button onClick={() => setEditingUser(null)} className={`px-6 py-3 ${BTN.cancel}`}>Cancel</button>
+              </div>
+            </div>
+          </div>
+        )}
         {viewingUserSessions === u.id && (
           <div className="px-4 pb-4">
             <div className="bg-cyan-50 rounded-xl p-4 border border-cyan-200">
@@ -4093,6 +4261,114 @@ onDelete={(isITViewOnly || (isEodModule(activeModule) && currentUser?.role !== '
     </div>
             </div>
           )}
+{/* ADMIN: Non-Operation Activity Logs */}
+{isAdmin && adminView === 'activity-logs' && canViewActivityLogs(currentUser?.role) && (() => {
+  const totalSeconds = activityLogs.reduce((sum, l) => sum + (l.duration_seconds || 0), 0);
+  const activeCount = activityLogs.filter(l => !l.ended_at).length;
+  const byType = {};
+  ACTIVITY_TYPES.forEach(t => { byType[t] = { count: 0, seconds: 0 }; });
+  activityLogs.forEach(l => {
+    if (!byType[l.activity_type]) byType[l.activity_type] = { count: 0, seconds: 0 };
+    byType[l.activity_type].count++;
+    byType[l.activity_type].seconds += l.duration_seconds || 0;
+  });
+  return (
+    <div className="space-y-4">
+      <div className={CARD.base}>
+        <div className="flex items-start justify-between flex-wrap gap-3 mb-4">
+          <div>
+            <h2 className="font-semibold text-gray-800 text-lg">Non-Operation Activity</h2>
+            <p className="text-sm text-gray-500">Time tracked for Break, Bio Break, Lunch, and Meeting</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-lg text-xs font-semibold flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5" /> Total: {formatDurationSeconds(totalSeconds)}
+            </div>
+            {activeCount > 0 && (
+              <div className="px-3 py-1.5 bg-red-50 text-red-700 rounded-lg text-xs font-semibold flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span> {activeCount} Active
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+          {ACTIVITY_TYPES.map(t => (
+            <div key={t} className="p-3 rounded-xl border-2 border-gray-100 bg-gray-50">
+              <p className="text-xs font-medium text-gray-500 mb-1">{t}</p>
+              <p className="text-lg font-bold text-gray-800">{byType[t].count}</p>
+              <p className="text-xs text-gray-500">{formatDurationSeconds(byType[t].seconds)}</p>
+            </div>
+          ))}
+        </div>
+        <div className="flex items-center gap-3 flex-wrap pt-4 border-t border-gray-100">
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium text-gray-700">User:</label>
+            <select value={activityFilterUser} onChange={e => setActivityFilterUser(e.target.value)} className={INPUT.filter}>
+              <option value="all">All Users</option>
+              {users.filter(u => u.role !== 'super_admin').map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium text-gray-700">Activity:</label>
+            <select value={activityFilterType} onChange={e => setActivityFilterType(e.target.value)} className={INPUT.filter}>
+              <option value="all">All Activities</option>
+              {ACTIVITY_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium text-gray-700">From:</label>
+            <input type="date" value={activityFilterStart} onChange={e => setActivityFilterStart(e.target.value)} className="p-2 border-2 border-gray-200 rounded-xl text-sm focus:border-purple-400 outline-none" />
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium text-gray-700">To:</label>
+            <input type="date" value={activityFilterEnd} onChange={e => setActivityFilterEnd(e.target.value)} className="p-2 border-2 border-gray-200 rounded-xl text-sm focus:border-purple-400 outline-none" />
+          </div>
+          <button onClick={loadActivityLogs} className={`px-4 py-2 ${BTN.admin}`}>Apply Filter</button>
+          <button onClick={() => { setActivityFilterUser('all'); setActivityFilterType('all'); setActivityFilterStart(''); setActivityFilterEnd(''); setTimeout(loadActivityLogs, 0); }} className={`px-4 py-2 ${BTN.cancel}`}>Reset</button>
+        </div>
+      </div>
+      <div className={CARD.base}>
+        <h3 className="font-semibold text-gray-800 mb-4">All Records ({activityLogs.length})</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-200">
+                <th className="px-3 py-2.5 text-left font-semibold text-gray-600">User</th>
+                <th className="px-3 py-2.5 text-left font-semibold text-gray-600">Role</th>
+                <th className="px-3 py-2.5 text-left font-semibold text-gray-600">Activity</th>
+                <th className="px-3 py-2.5 text-left font-semibold text-gray-600">Started</th>
+                <th className="px-3 py-2.5 text-left font-semibold text-gray-600">Ended</th>
+                <th className="px-3 py-2.5 text-right font-semibold text-gray-600">Duration</th>
+                <th className="px-3 py-2.5 text-center font-semibold text-gray-600">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {activityLogs.length === 0 ? (
+                <tr><td colSpan="7" className="px-3 py-8 text-center text-gray-400">No activity logs found</td></tr>
+              ) : activityLogs.map(log => (
+                <tr key={log.id} className="hover:bg-gray-50/50">
+                  <td className="px-3 py-2.5 font-medium text-gray-800">{log.user?.name || 'Unknown'}</td>
+                  <td className="px-3 py-2.5 text-gray-600 text-xs">{formatRole(log.user?.role) || '-'}</td>
+                  <td className="px-3 py-2.5"><span className="px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 text-xs font-medium">{log.activity_type}</span></td>
+                  <td className="px-3 py-2.5 text-gray-700 text-xs whitespace-nowrap">{new Date(log.started_at).toLocaleString('en-US', { timeZone: 'Pacific/Honolulu', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}</td>
+                  <td className="px-3 py-2.5 text-gray-700 text-xs whitespace-nowrap">{log.ended_at ? new Date(log.ended_at).toLocaleString('en-US', { timeZone: 'Pacific/Honolulu', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '-'}</td>
+                  <td className="px-3 py-2.5 text-right font-medium text-gray-800">{log.duration_seconds != null ? formatDurationSeconds(log.duration_seconds) : '-'}</td>
+                  <td className="px-3 py-2.5 text-center">
+                    {log.ended_at ? (
+                      <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-xs font-medium">Completed</span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-md bg-red-50 text-red-700 text-xs font-medium flex items-center gap-1 justify-center"><span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span> Active</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+})()}
 {/* ADMIN: Analytics */}
 {isAdmin && adminView === 'analytics' && currentUser?.role !== 'rev_rangers_admin' && (
   <div className="space-y-6">
@@ -4903,21 +5179,6 @@ if (filteredData.length === 0) {
             ))}
           </tbody>
         </table>
-      </div>
-    </div>
-    {/* Module Legend */}
-    <div className={CARD.base}>
-      <h3 className="font-semibold text-gray-800 mb-3">Module Legend</h3>
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
-        {EOD_MODULES.map(mod => {
-          const colors = MODULE_COLORS[mod.id] || {};
-          return (
-            <div key={mod.id} className={`p-3 rounded-xl ${colors.bg} ${colors.border} border text-center`}>
-              <mod.icon className={`w-5 h-5 mx-auto ${colors.text}`} />
-              <p className={`text-xs font-medium mt-1 ${colors.text}`}>{mod.name}</p>
-            </div>
-          );
-        })}
       </div>
     </div>
   </div>
