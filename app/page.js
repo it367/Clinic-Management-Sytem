@@ -1756,6 +1756,11 @@ const [activityFilterUser, setActivityFilterUser] = useState('all');
 const [activityFilterType, setActivityFilterType] = useState('all');
 const [activityFilterStart, setActivityFilterStart] = useState('');
 const [activityFilterEnd, setActivityFilterEnd] = useState('');
+const [activityFilterDate, setActivityFilterDate] = useState(() => {
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Pacific/Honolulu', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+  return `${parts.find(p => p.type === 'year').value}-${parts.find(p => p.type === 'month').value}-${parts.find(p => p.type === 'day').value}`;
+});
+const [timeTrackerPopup, setTimeTrackerPopup] = useState(null);
 const [callAnalyticsRecords, setCallAnalyticsRecords] = useState([]);
 const [callAnalyticsForm, setCallAnalyticsForm] = useState(() => {
   const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Pacific/Honolulu', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
@@ -3012,12 +3017,11 @@ const formatDurationSeconds = (sec) => {
 const loadActivityLogs = async () => {
   let query = supabase.from('user_activity_logs').select('*, user:users!user_activity_logs_user_id_fkey(id, name, role)').order('started_at', { ascending: false });
   if (activityFilterUser !== 'all') query = query.eq('user_id', activityFilterUser);
-  if (activityFilterType !== 'all') query = query.eq('activity_type', activityFilterType);
-  if (activityFilterStart) query = query.gte('started_at', activityFilterStart + 'T10:00:00Z');
-  if (activityFilterEnd) {
-    const [y, mo, d] = activityFilterEnd.split('-').map(Number);
+  if (activityFilterDate) {
+    // Hawaii UTC-10 single day window
+    const [y, mo, d] = activityFilterDate.split('-').map(Number);
     const next = new Date(Date.UTC(y, mo - 1, d + 1)).toISOString().split('T')[0];
-    query = query.lte('started_at', next + 'T09:59:59Z');
+    query = query.gte('started_at', activityFilterDate + 'T10:00:00Z').lte('started_at', next + 'T09:59:59Z');
   }
   const { data, error } = await query;
   if (error) { showMessage('error', 'Failed to load activity logs: ' + error.message); return; }
@@ -3963,7 +3967,7 @@ onDelete={(isITViewOnly || (isEodModule(activeModule) && currentUser?.role !== '
               {canViewActivityLogs(currentUser?.role) && (
                 <button onClick={() => { setAdminView('activity-logs'); loadActivityLogs(); loadUsers(); setSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all duration-200 group/item ${adminView === 'activity-logs' ? 'bg-purple-50 text-purple-700 shadow-sm' : 'text-gray-600 hover:bg-white hover:shadow-sm hover:translate-x-0.5'}`}>
                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 ${adminView === 'activity-logs' ? 'bg-purple-100' : 'bg-white group-hover/item:scale-105'}`}><Clock className={`w-4 h-4 transition-colors duration-200 ${adminView === 'activity-logs' ? 'text-purple-600' : 'text-gray-400 group-hover/item:text-gray-600'}`} /></div>
-                  <span className="text-sm font-medium">Non-Operation Activity</span>
+                  <span className="text-sm font-medium">Time Tracker</span>
                   {adminView === 'activity-logs' && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse"></div>}
                 </button>
               )}
@@ -4025,7 +4029,7 @@ onDelete={(isITViewOnly || (isEodModule(activeModule) && currentUser?.role !== '
               <button onClick={() => setSidebarOpen(!sidebarOpen)} className="lg:hidden p-2 hover:bg-gray-100 rounded-xl"><Menu className="w-5 h-5" /></button>
               <div>
 <h1 className="font-bold text-gray-800 text-sm sm:text-lg truncate max-w-[180px] sm:max-w-none">
-                  {isAdmin ? (adminView === 'users' ? 'User Management' : adminView === 'activity-logs' ? 'Non-Operation Activity' : adminView === 'export' ? 'Export Data' : adminView === 'documents' ? 'All Documents' : adminView === 'sop' ? 'SOPs' : adminView === 'settings' ? 'Settings' : adminView === 'analytics' ? 'Operations Analytics' : adminView === 'eod-tracking' ? 'EOD Tracking' : adminView === 'eod-analytics' ? 'EOD Analytics' : adminView === 'eod-trends' ? 'Trend Analysis' : adminView === 'rev-entry' ? `New Entry: ${currentModule?.name}` : currentUser?.role === 'rev_rangers' ? `Review: ${currentModule?.name}` : currentModule?.name) : (view === 'settings' ? 'Settings' : view === 'sop' ? 'SOPs' : currentModule?.name)}
+                  {isAdmin ? (adminView === 'users' ? 'User Management' : adminView === 'activity-logs' ? 'Time Tracker' : adminView === 'export' ? 'Export Data' : adminView === 'documents' ? 'All Documents' : adminView === 'sop' ? 'SOPs' : adminView === 'settings' ? 'Settings' : adminView === 'analytics' ? 'Operations Analytics' : adminView === 'eod-tracking' ? 'EOD Tracking' : adminView === 'eod-analytics' ? 'EOD Analytics' : adminView === 'eod-trends' ? 'Trend Analysis' : adminView === 'rev-entry' ? `New Entry: ${currentModule?.name}` : currentUser?.role === 'rev_rangers' ? `Review: ${currentModule?.name}` : currentModule?.name) : (view === 'settings' ? 'Settings' : view === 'sop' ? 'SOPs' : currentModule?.name)}
                 </h1>
                 <p className="text-xs sm:text-sm text-gray-500 truncate max-w-[180px] sm:max-w-none">{isAdmin ? (adminLocation === 'all' ? 'All Locations' : adminLocation) : selectedLocation}</p>
               </div>
@@ -4288,7 +4292,7 @@ onDelete={(isITViewOnly || (isEodModule(activeModule) && currentUser?.role !== '
     </div>
             </div>
           )}
-{/* ADMIN: Non-Operation Activity Logs */}
+{/* ADMIN: Time Tracker */}
 {isAdmin && adminView === 'activity-logs' && canViewActivityLogs(currentUser?.role) && (() => {
   // Aggregate logs by user-day (Hawaii timezone)
   const grouped = {};
@@ -4318,35 +4322,12 @@ onDelete={(isITViewOnly || (isEodModule(activeModule) && currentUser?.role !== '
     if (b.day !== a.day) return b.day.localeCompare(a.day);
     return a.userName.localeCompare(b.userName);
   });
-  // Totals across all visible day-rows
-  const totals = { 'Time In': 0, 'Break': 0, 'Bio Break': 0, 'Lunch': 0, 'Meeting': 0 };
-  dayRows.forEach(d => Object.keys(totals).forEach(k => { totals[k] += d.states[k]; }));
-  const totalSeconds = Object.values(totals).reduce((s, v) => s + v, 0);
   const fmtTime = (iso) => iso ? new Date(iso).toLocaleTimeString('en-US', { timeZone: 'Pacific/Honolulu', hour: 'numeric', minute: '2-digit' }) : '-';
   const fmtDay = (d) => { const [y, mo, da] = d.split('-').map(Number); return new Date(Date.UTC(y, mo - 1, da, 12, 0, 0)).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' }); };
   return (
     <div className="space-y-4">
       <div className={CARD.base}>
-        <div className="flex items-start justify-between flex-wrap gap-3 mb-4">
-          <div>
-            <h2 className="font-semibold text-gray-800 text-lg">Non-Operation Activity</h2>
-            <p className="text-sm text-gray-500">One row per user per day — totals across all states</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-lg text-xs font-semibold flex items-center gap-1.5">
-              <Clock className="w-3.5 h-3.5" /> Total: {formatDurationSeconds(totalSeconds)}
-            </div>
-          </div>
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-4">
-          {['Time In', 'Meeting', 'Break', 'Bio Break', 'Lunch'].map(t => (
-            <div key={t} className="p-3 rounded-xl border-2 border-gray-100 bg-gray-50">
-              <p className="text-xs font-medium text-gray-500 mb-1">{t}</p>
-              <p className="text-lg font-bold text-gray-800">{formatDurationSeconds(totals[t])}</p>
-            </div>
-          ))}
-        </div>
-        <div className="flex items-center gap-3 flex-wrap pt-4 border-t border-gray-100">
+        <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-2">
             <label className="text-sm font-medium text-gray-700">User:</label>
             <select value={activityFilterUser} onChange={e => setActivityFilterUser(e.target.value)} className={INPUT.filter}>
@@ -4355,22 +4336,16 @@ onDelete={(isITViewOnly || (isEodModule(activeModule) && currentUser?.role !== '
             </select>
           </div>
           <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-700">Activity:</label>
-            <select value={activityFilterType} onChange={e => setActivityFilterType(e.target.value)} className={INPUT.filter}>
-              <option value="all">All Activities</option>
-              {TIME_STATES.map(t => <option key={t} value={t}>{t}</option>)}
-            </select>
-          </div>
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-700">From:</label>
-            <input type="date" value={activityFilterStart} onChange={e => setActivityFilterStart(e.target.value)} className="p-2 border-2 border-gray-200 rounded-xl text-sm focus:border-purple-400 outline-none" />
-          </div>
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-700">To:</label>
-            <input type="date" value={activityFilterEnd} onChange={e => setActivityFilterEnd(e.target.value)} className="p-2 border-2 border-gray-200 rounded-xl text-sm focus:border-purple-400 outline-none" />
+            <label className="text-sm font-medium text-gray-700">Date:</label>
+            <input type="date" value={activityFilterDate} onChange={e => setActivityFilterDate(e.target.value)} className="p-2 border-2 border-gray-200 rounded-xl text-sm focus:border-purple-400 outline-none" />
           </div>
           <button onClick={loadActivityLogs} className={`px-4 py-2 ${BTN.admin}`}>Apply Filter</button>
-          <button onClick={() => { setActivityFilterUser('all'); setActivityFilterType('all'); setActivityFilterStart(''); setActivityFilterEnd(''); setTimeout(loadActivityLogs, 0); }} className={`px-4 py-2 ${BTN.cancel}`}>Reset</button>
+          <button onClick={() => {
+            setActivityFilterUser('all');
+            const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Pacific/Honolulu', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+            setActivityFilterDate(`${parts.find(p => p.type === 'year').value}-${parts.find(p => p.type === 'month').value}-${parts.find(p => p.type === 'day').value}`);
+            setTimeout(loadActivityLogs, 0);
+          }} className={`px-4 py-2 ${BTN.cancel}`}>Reset</button>
         </div>
       </div>
       <div className={CARD.base}>
@@ -4384,34 +4359,100 @@ onDelete={(isITViewOnly || (isEodModule(activeModule) && currentUser?.role !== '
                 <th className="px-3 py-2.5 text-left font-semibold text-gray-600">Role</th>
                 <th className="px-3 py-2.5 text-left font-semibold text-gray-600">Time In</th>
                 <th className="px-3 py-2.5 text-left font-semibold text-gray-600">Time Out</th>
-                <th className="px-3 py-2.5 text-right font-semibold text-emerald-700 bg-emerald-50">Work Time</th>
-                <th className="px-3 py-2.5 text-right font-semibold text-violet-700 bg-violet-50">Meeting</th>
-                <th className="px-3 py-2.5 text-right font-semibold text-amber-700 bg-amber-50">Break</th>
-                <th className="px-3 py-2.5 text-right font-semibold text-orange-700 bg-orange-50">Bio Break</th>
-                <th className="px-3 py-2.5 text-right font-semibold text-sky-700 bg-sky-50">Lunch</th>
+                <th className="px-3 py-2.5 text-right font-semibold text-emerald-700 bg-emerald-50">Total Hours</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {dayRows.length === 0 ? (
-                <tr><td colSpan="10" className="px-3 py-8 text-center text-gray-400">No activity logs found</td></tr>
-              ) : dayRows.map(d => (
-                <tr key={d.key} className="hover:bg-gray-50/50">
-                  <td className="px-3 py-2.5 text-gray-700 text-xs whitespace-nowrap font-medium">{fmtDay(d.day)}</td>
-                  <td className="px-3 py-2.5 font-medium text-gray-800">{d.userName}</td>
-                  <td className="px-3 py-2.5 text-gray-600 text-xs">{formatRole(d.userRole) || '-'}</td>
-                  <td className="px-3 py-2.5 text-gray-700 text-xs whitespace-nowrap">{fmtTime(d.timeInFirst)}</td>
-                  <td className="px-3 py-2.5 text-gray-700 text-xs whitespace-nowrap">{fmtTime(d.timeOutLast)}</td>
-                  <td className="px-3 py-2.5 text-right font-bold text-emerald-700 bg-emerald-50/40">{formatDurationSeconds(d.states['Time In'])}</td>
-                  <td className="px-3 py-2.5 text-right font-medium text-violet-700 bg-violet-50/40">{formatDurationSeconds(d.states['Meeting'])}</td>
-                  <td className="px-3 py-2.5 text-right font-medium text-amber-700 bg-amber-50/40">{formatDurationSeconds(d.states['Break'])}</td>
-                  <td className="px-3 py-2.5 text-right font-medium text-orange-700 bg-orange-50/40">{formatDurationSeconds(d.states['Bio Break'])}</td>
-                  <td className="px-3 py-2.5 text-right font-medium text-sky-700 bg-sky-50/40">{formatDurationSeconds(d.states['Lunch'])}</td>
-                </tr>
-              ))}
+                <tr><td colSpan="6" className="px-3 py-8 text-center text-gray-400">No activity logs found</td></tr>
+              ) : dayRows.map(d => {
+                const totalSec = d.states['Time In'] + d.states['Meeting'];
+                return (
+                  <tr key={d.key} onClick={() => setTimeTrackerPopup(d)} className="hover:bg-purple-50 cursor-pointer transition-colors">
+                    <td className="px-3 py-2.5 text-gray-700 text-xs whitespace-nowrap font-medium">{fmtDay(d.day)}</td>
+                    <td className="px-3 py-2.5 font-medium text-gray-800">{d.userName}</td>
+                    <td className="px-3 py-2.5 text-gray-600 text-xs">{formatRole(d.userRole) || '-'}</td>
+                    <td className="px-3 py-2.5 text-gray-700 text-xs whitespace-nowrap">{fmtTime(d.timeInFirst)}</td>
+                    <td className="px-3 py-2.5 text-gray-700 text-xs whitespace-nowrap">{fmtTime(d.timeOutLast)}</td>
+                    <td className="px-3 py-2.5 text-right font-bold text-emerald-700 bg-emerald-50/40">{formatDurationSeconds(totalSec)}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       </div>
+      {/* Time Tracker Preview Popup */}
+      {timeTrackerPopup && (() => {
+        const d = timeTrackerPopup;
+        const totalWork = d.states['Time In'] + d.states['Meeting'];
+        const totalPaused = d.states['Break'] + d.states['Bio Break'] + d.states['Lunch'];
+        const sortedRows = [...d.rows].sort((a, b) => new Date(a.started_at) - new Date(b.started_at));
+        return (
+          <div className={LAYOUT.modalOverlay} onClick={() => setTimeTrackerPopup(null)}>
+            <div className="bg-white rounded-2xl max-w-3xl w-full mx-2 sm:mx-auto shadow-2xl overflow-hidden max-h-[90vh] flex flex-col" onClick={ev => ev.stopPropagation()}>
+              <div className="p-5 border-b bg-gradient-to-r from-purple-50 to-indigo-50 flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold text-gray-800 text-lg">{d.userName}</h3>
+                  <p className="text-sm text-gray-500">{formatRole(d.userRole)} • {fmtDay(d.day)}</p>
+                </div>
+                <button onClick={() => setTimeTrackerPopup(null)} className="p-2 hover:bg-white/50 rounded-xl"><X className="w-5 h-5" /></button>
+              </div>
+              <div className="p-5 overflow-y-auto space-y-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200">
+                    <p className="text-xs font-medium text-emerald-700 mb-1">Total Hours</p>
+                    <p className="text-xl font-bold text-emerald-800">{formatDurationSeconds(totalWork)}</p>
+                  </div>
+                  <div className="p-3 rounded-xl bg-amber-50 border border-amber-200">
+                    <p className="text-xs font-medium text-amber-700 mb-1">Paused Time</p>
+                    <p className="text-xl font-bold text-amber-800">{formatDurationSeconds(totalPaused)}</p>
+                  </div>
+                  <div className="p-3 rounded-xl bg-gray-50 border border-gray-200">
+                    <p className="text-xs font-medium text-gray-600 mb-1">Time In → Time Out</p>
+                    <p className="text-sm font-bold text-gray-800">{fmtTime(d.timeInFirst)} — {fmtTime(d.timeOutLast)}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                  <div className="p-2.5 rounded-lg bg-emerald-50/60 border border-emerald-100"><p className="text-xs text-emerald-700 font-medium">Time In</p><p className="font-bold text-emerald-800 text-sm">{formatDurationSeconds(d.states['Time In'])}</p></div>
+                  <div className="p-2.5 rounded-lg bg-violet-50/60 border border-violet-100"><p className="text-xs text-violet-700 font-medium">Meeting</p><p className="font-bold text-violet-800 text-sm">{formatDurationSeconds(d.states['Meeting'])}</p></div>
+                  <div className="p-2.5 rounded-lg bg-amber-50/60 border border-amber-100"><p className="text-xs text-amber-700 font-medium">Break</p><p className="font-bold text-amber-800 text-sm">{formatDurationSeconds(d.states['Break'])}</p></div>
+                  <div className="p-2.5 rounded-lg bg-orange-50/60 border border-orange-100"><p className="text-xs text-orange-700 font-medium">Bio Break</p><p className="font-bold text-orange-800 text-sm">{formatDurationSeconds(d.states['Bio Break'])}</p></div>
+                  <div className="p-2.5 rounded-lg bg-sky-50/60 border border-sky-100"><p className="text-xs text-sky-700 font-medium">Lunch</p><p className="font-bold text-sky-800 text-sm">{formatDurationSeconds(d.states['Lunch'])}</p></div>
+                </div>
+                <div>
+                  <h4 className="font-semibold text-gray-800 mb-2 text-sm">Activity Timeline</h4>
+                  <div className="border border-gray-200 rounded-xl overflow-hidden">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="bg-gray-50 border-b border-gray-200">
+                          <th className="px-3 py-2 text-left font-semibold text-gray-600">Activity</th>
+                          <th className="px-3 py-2 text-left font-semibold text-gray-600">Started</th>
+                          <th className="px-3 py-2 text-left font-semibold text-gray-600">Ended</th>
+                          <th className="px-3 py-2 text-right font-semibold text-gray-600">Duration</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {sortedRows.map(r => (
+                          <tr key={r.id} className="hover:bg-gray-50/50">
+                            <td className="px-3 py-2"><span className={`px-2 py-0.5 rounded-md text-xs font-medium ${r.activity_type === 'Time In' ? 'bg-emerald-50 text-emerald-700' : r.activity_type === 'Meeting' ? 'bg-violet-50 text-violet-700' : r.activity_type === 'Break' ? 'bg-amber-50 text-amber-700' : r.activity_type === 'Bio Break' ? 'bg-orange-50 text-orange-700' : r.activity_type === 'Lunch' ? 'bg-sky-50 text-sky-700' : 'bg-gray-100 text-gray-700'}`}>{r.activity_type}</span></td>
+                            <td className="px-3 py-2 text-gray-700 whitespace-nowrap">{fmtTime(r.started_at)}</td>
+                            <td className="px-3 py-2 text-gray-700 whitespace-nowrap">{r.ended_at ? fmtTime(r.ended_at) : <span className="text-red-600 font-medium">Active</span>}</td>
+                            <td className="px-3 py-2 text-right font-medium text-gray-800">{r.duration_seconds != null ? formatDurationSeconds(r.duration_seconds) : '-'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+              <div className="p-4 border-t bg-gray-50 flex-shrink-0">
+                <button onClick={() => setTimeTrackerPopup(null)} className={`w-full py-2.5 ${BTN.cancel} rounded-xl`}>Close</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 })()}
