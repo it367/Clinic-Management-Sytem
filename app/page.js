@@ -1733,6 +1733,12 @@ const [eodAnalyticsMonth, setEodAnalyticsMonth] = useState(() => {
 const [eodSelectedUser, setEodSelectedUser] = useState('all');
 const [eodAnalyticsData, setEodAnalyticsData] = useState({});
 const [eodCalendarPopup, setEodCalendarPopup] = useState(null);
+const [vaReportDate, setVaReportDate] = useState(() => {
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Pacific/Honolulu', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+  return `${parts.find(p => p.type === 'year').value}-${parts.find(p => p.type === 'month').value}-${parts.find(p => p.type === 'day').value}`;
+});
+const [vaReportFilter, setVaReportFilter] = useState('all');
+const [vaReportData, setVaReportData] = useState([]);
 const [callAnalyticsRecords, setCallAnalyticsRecords] = useState([]);
 const [callAnalyticsForm, setCallAnalyticsForm] = useState(() => {
   const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Pacific/Honolulu', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
@@ -2363,6 +2369,7 @@ setAdminView('analytics');
       setActiveModule('eod-patient-scheduling');
       setAdminView('eod-tracking');
       loadEodAnalyticsData(eodAnalyticsMonth);
+      loadVaReport(vaReportDate, vaReportFilter);
     }
     showMessage('success', '✓ Login successful!');
   } catch (err) {
@@ -2833,6 +2840,54 @@ const loadEodCalendarEntries = async (dateStr, moduleId, moduleName, userOverrid
   const { data } = await query;
   const enriched = data ? await enrichWithLocationsAndUsers(data, false) : [];
   setEodCalendarPopup({ date: dateStr, moduleId, moduleName, entries: enriched });
+};
+const loadVaReport = async (dateStr, vaFilterOverride) => {
+  const filter = vaFilterOverride !== undefined ? vaFilterOverride : vaReportFilter;
+  // Hawaii UTC-10: dateStr 00:00 HST = dateStr 10:00 UTC, dateStr 23:59 HST = next day 09:59 UTC
+  const [y, mo, d] = dateStr.split('-').map(Number);
+  const nextDay = new Date(Date.UTC(y, mo - 1, d + 1));
+  const nextDayStr = nextDay.toISOString().split('T')[0];
+  let query = supabase.from('eod_patient_scheduling').select('*').gte('created_at', dateStr + 'T10:00:00Z').lte('created_at', nextDayStr + 'T09:59:59Z');
+  if (filter !== 'all') query = query.eq('created_by', filter);
+  const { data } = await query;
+  if (!data) { setVaReportData([]); return; }
+  // Group by creator
+  const byCreator = {};
+  for (const entry of data) {
+    const creatorId = entry.created_by;
+    if (!byCreator[creatorId]) byCreator[creatorId] = { creatorId, records: [] };
+    const rows = entry.batch_records && entry.batch_records.length > 0 ? entry.batch_records : [entry];
+    rows.forEach(r => byCreator[creatorId].records.push(r));
+  }
+  // Resolve creator names
+  const creatorIds = Object.keys(byCreator);
+  let creatorMap = {};
+  if (creatorIds.length > 0) {
+    const { data: usersData } = await supabase.from('users').select('id, name').in('id', creatorIds);
+    if (usersData) usersData.forEach(u => { creatorMap[u.id] = u.name; });
+  }
+  // Aggregate metrics per VA
+  const result = creatorIds.map(cid => {
+    const recs = byCreator[cid].records;
+    let inbound = 0, outbound = 0, apptConfirmation = 0, didNotCall = 0, apptBooked = 0, apptRescheduled = 0, rcm = 0, totalPatients = 0;
+    recs.forEach(r => {
+      const ct = (r.call_type || '').toLowerCase();
+      const co = (r.call_outcome || '').toLowerCase();
+      if (ct === 'inbound') inbound++;
+      else if (ct === 'outbound') outbound++;
+      else if (ct === 'appointment confirmation') apptConfirmation++;
+      if (co === 'no answer' || co === 'left vm' || co === 'no vm' || co === 'full vm') didNotCall++;
+      if (co === 'scheduled' || co === 'appt confirmed') apptBooked++;
+      if (co === 'rescheduled') apptRescheduled++;
+      if (co === 'rcm' || ct === 'rcm') rcm++;
+      // Count this patient + any additional_patients on the record
+      const addl = Array.isArray(r.additional_patients) ? r.additional_patients.length : 0;
+      totalPatients += 1 + addl;
+    });
+    const totalCalls = inbound + outbound + apptConfirmation;
+    return { vaName: creatorMap[cid] || 'Unknown', inbound, outbound, apptConfirmation, didNotCall, apptBooked, apptRescheduled, rcm, totalCalls, totalPatients };
+  }).sort((a, b) => a.vaName.localeCompare(b.vaName));
+  setVaReportData(result);
 };
 const canManageCallAnalytics = currentUser?.role === 'super_admin' || currentUser?.role === 'rev_rangers_admin';
 const loadCallAnalytics = async () => {
@@ -3650,7 +3705,7 @@ onDelete={(isITViewOnly || (isEodModule(activeModule) && currentUser?.role !== '
     </button>
     <div className={`transition-all duration-300 ease-in-out overflow-hidden ${collapsedSections.eodReports ? 'max-h-0 opacity-0' : 'max-h-[400px] opacity-100'}`}>
       <div className="px-1.5 pb-2 space-y-0.5">
-        <button onClick={() => { setAdminView('eod-tracking'); loadEodAnalyticsData(eodAnalyticsMonth); setSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all duration-200 group/item ${adminView === 'eod-tracking' ? 'bg-emerald-50 text-emerald-700 shadow-sm' : 'text-gray-600 hover:bg-white hover:shadow-sm hover:translate-x-0.5'}`}>
+        <button onClick={() => { setAdminView('eod-tracking'); loadEodAnalyticsData(eodAnalyticsMonth); loadVaReport(vaReportDate, vaReportFilter); setSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all duration-200 group/item ${adminView === 'eod-tracking' ? 'bg-emerald-50 text-emerald-700 shadow-sm' : 'text-gray-600 hover:bg-white hover:shadow-sm hover:translate-x-0.5'}`}>
           <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 ${adminView === 'eod-tracking' ? 'bg-emerald-100' : 'bg-white group-hover/item:scale-105'}`}>
             <BarChart3 className={`w-4 h-4 transition-colors duration-200 ${adminView === 'eod-tracking' ? 'text-emerald-600' : 'text-gray-400 group-hover/item:text-gray-600'}`} />
           </div>
@@ -4793,6 +4848,63 @@ if (filteredData.length === 0) {
         </div>
       </div>
     )}
+    {/* VA Performance Report */}
+    <div className={CARD.base}>
+      <div className="mb-4">
+        <h3 className="font-semibold text-gray-800 text-lg mb-1">Report for: {new Date(vaReportDate + 'T12:00:00').toLocaleDateString('en-US', { timeZone: 'Pacific/Honolulu', year: 'numeric', month: 'long', day: 'numeric' })}</h3>
+        <p className="text-sm text-gray-500">Patient Scheduling — Per VA breakdown</p>
+      </div>
+      <div className="flex items-center gap-3 flex-wrap mb-4 pb-4 border-b border-gray-100">
+        <div className="flex items-center gap-2">
+          <label className="text-sm font-medium text-gray-700">Select Date:</label>
+          <input type="date" value={vaReportDate} onChange={e => setVaReportDate(e.target.value)} className="p-2 border-2 border-gray-200 rounded-xl text-sm focus:border-emerald-400 outline-none" />
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-sm font-medium text-gray-700">VA Name:</label>
+          <select value={vaReportFilter} onChange={e => setVaReportFilter(e.target.value)} className="p-2 border-2 border-gray-200 rounded-xl text-sm focus:border-emerald-400 outline-none bg-white">
+            <option value="all">All</option>
+            {users.filter(u => u.role === 'rev_rangers').map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+          </select>
+        </div>
+        <button onClick={() => loadVaReport(vaReportDate, vaReportFilter)} className="px-4 py-2 bg-gradient-to-r from-rose-500 to-red-500 text-white rounded-xl text-sm font-medium hover:from-rose-600 hover:to-red-600 shadow-md">Filter</button>
+      </div>
+      <div className="overflow-x-auto rounded-xl border border-gray-200">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-blue-500 text-white">
+              <th className="px-3 py-3 text-center font-semibold border-r border-blue-400 whitespace-nowrap">VA NAME</th>
+              <th className="px-3 py-3 text-center font-semibold border-r border-blue-400 whitespace-nowrap">INBOUND CALLS</th>
+              <th className="px-3 py-3 text-center font-semibold border-r border-blue-400 whitespace-nowrap">OUTBOUND CALLS</th>
+              <th className="px-3 py-3 text-center font-semibold border-r border-blue-400 whitespace-nowrap">APPOINTMENT CONFIRMATION</th>
+              <th className="px-3 py-3 text-center font-semibold border-r border-blue-400 whitespace-nowrap">COMPLETED PATIENT ALLOCATION (DID NOT CALL)</th>
+              <th className="px-3 py-3 text-center font-semibold border-r border-blue-400 whitespace-nowrap">APPOINTMENT BOOKED</th>
+              <th className="px-3 py-3 text-center font-semibold border-r border-blue-400 whitespace-nowrap">APPOINTMENT RESCHEDULED</th>
+              <th className="px-3 py-3 text-center font-semibold border-r border-blue-400 whitespace-nowrap">RCM</th>
+              <th className="px-3 py-3 text-center font-semibold border-r border-blue-400 whitespace-nowrap">TOTAL CALLS</th>
+              <th className="px-3 py-3 text-center font-semibold whitespace-nowrap">TOTAL PATIENTS HANDLED</th>
+            </tr>
+          </thead>
+          <tbody>
+            {vaReportData.length === 0 ? (
+              <tr><td colSpan="10" className="px-3 py-8 text-center text-gray-400">No data for this date</td></tr>
+            ) : vaReportData.map((row, idx) => (
+              <tr key={idx} className="border-t border-gray-200">
+                <td className="px-3 py-3 text-center font-medium text-gray-800 bg-white">{row.vaName}</td>
+                <td className="px-3 py-3 text-center bg-green-50 text-green-700 font-medium">{row.inbound}</td>
+                <td className="px-3 py-3 text-center bg-blue-50 text-blue-700 font-medium">{row.outbound}</td>
+                <td className="px-3 py-3 text-center bg-amber-50 text-amber-700 font-medium">{row.apptConfirmation}</td>
+                <td className="px-3 py-3 text-center bg-purple-50 text-purple-700 font-medium">{row.didNotCall}</td>
+                <td className="px-3 py-3 text-center bg-sky-50 text-sky-700 font-medium">{row.apptBooked}</td>
+                <td className="px-3 py-3 text-center bg-gray-50 text-gray-700 font-medium">{row.apptRescheduled}</td>
+                <td className="px-3 py-3 text-center bg-violet-50 text-violet-700 font-medium">{row.rcm}</td>
+                <td className="px-3 py-3 text-center bg-rose-50 text-rose-700 font-bold">{row.totalCalls}</td>
+                <td className="px-3 py-3 text-center bg-pink-50 text-pink-700 font-bold">{row.totalPatients}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
     {/* Module Legend */}
     <div className={CARD.base}>
       <h3 className="font-semibold text-gray-800 mb-3">Module Legend</h3>
