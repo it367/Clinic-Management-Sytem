@@ -1,4 +1,4 @@
-//Care Command Hub v0.91
+//Care Command Hub v0.94
 // Devoloper: Mark Murillo
 // Company: Kidshine Hawaii
 
@@ -3465,7 +3465,7 @@ if (!currentUser) {
               <span>256-bit encrypted</span>
             </div>
             <span className="text-gray-300">|</span>
-            <p className="text-xs text-gray-400">v0.90</p>
+            <p className="text-xs text-gray-400">v0.94</p>
           </div>
         </div>
       </div>
@@ -4851,7 +4851,7 @@ if (filteredData.length === 0) {
     {/* VA Performance Report */}
     <div className={CARD.base}>
       <div className="mb-4">
-        <h3 className="font-semibold text-gray-800 text-lg mb-1">Report for: {new Date(vaReportDate + 'T12:00:00').toLocaleDateString('en-US', { timeZone: 'Pacific/Honolulu', year: 'numeric', month: 'long', day: 'numeric' })}</h3>
+        <h3 className="font-semibold text-gray-800 text-lg mb-1">Report for: {(() => { const [y, mo, d] = vaReportDate.split('-').map(Number); return new Date(Date.UTC(y, mo - 1, d, 12, 0, 0)).toLocaleDateString('en-US', { timeZone: 'UTC', year: 'numeric', month: 'long', day: 'numeric' }); })()}</h3>
         <p className="text-sm text-gray-500">Patient Scheduling — Per VA breakdown</p>
       </div>
       <div className="flex items-center gap-3 flex-wrap mb-4 pb-4 border-b border-gray-100">
@@ -4863,7 +4863,7 @@ if (filteredData.length === 0) {
           <label className="text-sm font-medium text-gray-700">VA Name:</label>
           <select value={vaReportFilter} onChange={e => setVaReportFilter(e.target.value)} className="p-2 border-2 border-gray-200 rounded-xl text-sm focus:border-emerald-400 outline-none bg-white">
             <option value="all">All</option>
-            {users.filter(u => u.role === 'rev_rangers').map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+            {users.filter(u => u.role === 'rev_rangers' || u.role === 'rev_rangers_admin').map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
           </select>
         </div>
         <button onClick={() => loadVaReport(vaReportDate, vaReportFilter)} className="px-4 py-2 bg-gradient-to-r from-rose-500 to-red-500 text-white rounded-xl text-sm font-medium hover:from-rose-600 hover:to-red-600 shadow-md">Filter</button>
@@ -6507,7 +6507,7 @@ if (filteredData.length === 0) {
 {sidebarOpen && <div className={LAYOUT.sidebarOverlay} onClick={() => setSidebarOpen(false)} />}
 {/* Version Footer */}
       <div className="fixed bottom-2 sm:bottom-6 left-4 lg:left-[310px] z-[25] pointer-events-none">
-        <p className="text-[10px] sm:text-xs text-gray-400 opacity-70">CCH v0.90</p>
+        <p className="text-[10px] sm:text-xs text-gray-400 opacity-70">CCH v0.94</p>
       </div>
     </div>
   );
